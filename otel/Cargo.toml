@@ -1,0 +1,12 @@
+[package]
+name = "otel"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+env = { path = "../env" }
+opentelemetry = { version = "0.17.0", features = ["rt-tokio", "metrics", "tokio"] }
+opentelemetry-otlp = { version = "0.10.0", features = ["tonic", "metrics", "tls", "tls-roots"] }
+log = { version = "0.4.17" }
+tonic = { version = "0.6.2" }
+tokio = { version = "1.17.0" }

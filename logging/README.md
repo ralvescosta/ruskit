@@ -1,1 +1,1 @@
-# Hedro Logging Crate
+# Logging Crate

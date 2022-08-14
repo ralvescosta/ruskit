@@ -1,1 +1,1 @@
-# Hedro Opentelemetry Crate
+# Opentelemetry Crate

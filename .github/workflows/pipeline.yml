@@ -1,0 +1,31 @@
+name: pipeline
+
+on:
+  push:
+    branches: 
+      - "*"
+  pull_request:
+    branches: 
+      - "develop"
+      - "main"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Install tools
+      run: |
+        cargo install cargo-tarpaulin
+      
+    - name: Run tests
+      run: cargo tarpaulin --out Xml
+      
+    - name: Codecov
+      run: bash <(curl -s https://codecov.io/bash)

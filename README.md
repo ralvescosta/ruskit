@@ -1,5 +1,7 @@
 # Rust Kit
 
+[![pipeline](https://github.com/ralvescosta/ruskit/actions/workflows/pipeline.yml/badge.svg)](https://github.com/ralvescosta/ruskit/actions/workflows/pipeline.yml) [![codecov](https://codecov.io/gh/ralvescosta/ruskit/branch/main/graph/badge.svg?token=6EAILKZFDO)](https://codecov.io/gh/ralvescosta/ruskit)
+
 **Ruskit** is a collection of useful crates. Every time I started a new project I always needed to configure the same things: *Environment, Logging, Telemetry, Metrics, Custom Errors, RabbitMQ Topology with retry police* and so on. Because of that I decided to create this project to concentrate all these default settings for a web projects.
 
 

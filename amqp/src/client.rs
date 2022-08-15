@@ -61,23 +61,23 @@ pub trait IAmqp {
         data: &PublishData,
     ) -> Result<(), AmqpError>;
     async fn install_topology(&self, topology: &AmqpTopology) -> Result<(), AmqpError>;
-    async fn consume(
+    async fn consume<'c>(
         &self,
-        def: &ConsumerDefinition,
+        def: &'c ConsumerDefinition,
         handler: Arc<dyn ConsumerHandler + Send + Sync>,
-        delivery: &Delivery,
+        delivery: &'c Delivery,
     ) -> Result<(), AmqpError>;
 }
 
 #[derive(Debug)]
 pub struct Amqp {
-    conn: Connection,
-    channel: Channel,
+    conn: Box<Connection>,
+    channel: Box<Channel>,
     tracer: BoxedTracer,
 }
 
 impl Amqp {
-    pub async fn new<'n>(cfg: &Config) -> Result<Arc<dyn IAmqp + Send + Sync>, AmqpError> {
+    pub async fn new(cfg: &Config) -> Result<Arc<dyn IAmqp + Send + Sync>, AmqpError> {
         debug!("creating amqp connection...");
         let options =
             ConnectionProperties::default().with_connection_name(LongString::from(cfg.app_name));
@@ -96,8 +96,8 @@ impl Amqp {
         debug!("channel created");
 
         Ok(Arc::new(Amqp {
-            conn,
-            channel,
+            conn: Box::new(conn),
+            channel: Box::new(channel),
             tracer: global::tracer("amqp"),
         }))
     }
@@ -246,11 +246,11 @@ impl IAmqp for Amqp {
         Ok(())
     }
 
-    async fn consume(
+    async fn consume<'c>(
         &self,
-        def: &ConsumerDefinition,
+        def: &'c ConsumerDefinition<'c>,
         handler: Arc<dyn ConsumerHandler + Send + Sync>,
-        delivery: &Delivery,
+        delivery: &'c Delivery,
     ) -> Result<(), AmqpError> {
         let header = match delivery.properties.headers() {
             Some(val) => val.to_owned(),
@@ -264,7 +264,8 @@ impl IAmqp for Amqp {
             def.name, def.queue, metadata.msg_type
         );
 
-        let (ctx, mut span) = otel::amqp::get_span(&self.tracer, metadata.traceparent, def.name);
+        let (ctx, mut span) =
+            otel::amqp::get_span(&self.tracer, &metadata.traceparent, &metadata.msg_type);
 
         if metadata.msg_type.is_empty() || metadata.msg_type != def.msg_type.to_string() {
             debug!("message type does not match, skipping msg");
@@ -369,7 +370,10 @@ impl IAmqp for Amqp {
 }
 
 impl Amqp {
-    async fn install_exchanges<'i>(&self, exch: &'i ExchangeDefinition) -> Result<(), AmqpError> {
+    async fn install_exchanges<'i>(
+        &self,
+        exch: &'i ExchangeDefinition<'i>,
+    ) -> Result<(), AmqpError> {
         debug!("creating exchange: {}", exch.name);
 
         self.channel
@@ -395,7 +399,7 @@ impl Amqp {
 }
 
 impl Amqp {
-    async fn install_queues<'i>(&self, def: &'i QueueDefinition) -> Result<(), AmqpError> {
+    async fn install_queues<'i>(&self, def: &'i QueueDefinition<'i>) -> Result<(), AmqpError> {
         debug!("creating and binding queue: {}", def.name);
 
         let queue_map = self.install_retry(def).await?;
@@ -441,7 +445,7 @@ impl Amqp {
 
     async fn install_retry<'i>(
         &self,
-        def: &'i QueueDefinition,
+        def: &'i QueueDefinition<'i>,
     ) -> Result<BTreeMap<ShortString, AMQPValue>, AmqpError> {
         if !def.with_retry {
             return Ok(BTreeMap::new());
@@ -495,7 +499,7 @@ impl Amqp {
 
     async fn install_dlq<'i>(
         &self,
-        def: &'i QueueDefinition,
+        def: &'i QueueDefinition<'i>,
         queue_map_from_retry: BTreeMap<ShortString, AMQPValue>,
     ) -> Result<BTreeMap<ShortString, AMQPValue>, AmqpError> {
         if !def.with_dlq && !def.with_retry {

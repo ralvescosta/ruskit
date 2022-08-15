@@ -10,7 +10,7 @@ use opentelemetry::{
     Context, KeyValue,
 };
 use opentelemetry_otlp::{Protocol, WithExportConfig};
-use std::{error::Error, time::Duration};
+use std::{borrow::Cow, error::Error, time::Duration};
 use tonic::metadata::*;
 // use tracing_opentelemetry::OpenTelemetrySpanExt;
 
@@ -49,9 +49,9 @@ pub fn setup(cfg: &Config) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn new_span(tracer: &BoxedTracer, name: &'static str) -> (Context, BoxedSpan) {
+pub fn new_span(tracer: &BoxedTracer, name: &str) -> (Context, BoxedSpan) {
     let span = tracer
-        .span_builder(name)
+        .span_builder(Cow::from(name.to_owned()))
         .with_kind(SpanKind::Consumer)
         .start(tracer);
 
@@ -67,15 +67,15 @@ pub fn new_span(tracer: &BoxedTracer, name: &'static str) -> (Context, BoxedSpan
     (
         ctx.with_value(flags),
         tracer
-            .span_builder(name)
+            .span_builder(Cow::from(name.to_owned()))
             .with_kind(SpanKind::Consumer)
             .start_with_context(tracer, &ctx),
     )
 }
 
-pub fn new_ctx(tracer: &BoxedTracer, name: &'static str) -> Context {
+pub fn new_ctx(tracer: &BoxedTracer, name: &str) -> Context {
     let span = tracer
-        .span_builder(name)
+        .span_builder(Cow::from(name.to_owned()))
         .with_kind(SpanKind::Consumer)
         .start(tracer);
 
@@ -91,9 +91,9 @@ pub fn new_ctx(tracer: &BoxedTracer, name: &'static str) -> Context {
     ctx.with_value(flags)
 }
 
-pub fn ctx_from_ctx(tracer: &BoxedTracer, ctx: &Context, name: &'static str) -> Context {
+pub fn ctx_from_ctx(tracer: &BoxedTracer, ctx: &Context, name: &str) -> Context {
     let span = tracer
-        .span_builder(name)
+        .span_builder(Cow::from(name.to_owned()))
         .with_kind(SpanKind::Consumer)
         .start_with_context(tracer, ctx);
 

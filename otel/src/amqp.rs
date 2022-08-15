@@ -7,6 +7,7 @@ use opentelemetry::{
     },
     Context,
 };
+use std::borrow::Cow;
 
 const TRACE_VERSION: u8 = 0;
 
@@ -18,7 +19,7 @@ pub struct Traceparent {
 
 ///traceparent is compos from {trace-version}-{trace-id}-{parent-id}-{trace-flags}
 impl Traceparent {
-    pub fn from_string(traceparent: String) -> Traceparent {
+    pub fn from_string(traceparent: &str) -> Traceparent {
         if traceparent.is_empty() {
             return Traceparent::new_empty();
         }
@@ -69,11 +70,7 @@ impl Traceparent {
     }
 }
 
-pub fn get_span(
-    tracer: &BoxedTracer,
-    traceparent: String,
-    span_name: &'static str,
-) -> (Context, BoxedSpan) {
+pub fn get_span(tracer: &BoxedTracer, traceparent: &str, span_name: &str) -> (Context, BoxedSpan) {
     let traceparent = Traceparent::from_string(traceparent);
 
     let ctx = Context::new().with_remote_span_context(SpanContext::new(
@@ -85,7 +82,7 @@ pub fn get_span(
     ));
 
     let span = tracer
-        .span_builder(span_name)
+        .span_builder(Cow::from(span_name.to_owned()))
         .with_kind(SpanKind::Consumer)
         .start_with_context(tracer, &ctx);
 

@@ -4,14 +4,14 @@ use errors::amqp::AmqpError;
 use opentelemetry::Context;
 
 #[derive(Debug, Clone, Copy, Default)]
-pub struct QueueBindingDefinition {
-    pub exchange: &'static str,
-    pub queue: &'static str,
-    pub routing_key: &'static str,
+pub struct QueueBindingDefinition<'q> {
+    pub exchange: &'q str,
+    pub queue: &'q str,
+    pub routing_key: &'q str,
 }
 
-impl QueueBindingDefinition {
-    pub fn new(exchange: &'static str, queue: &'static str, routing_key: &'static str) -> Self {
+impl<'q> QueueBindingDefinition<'q> {
+    pub fn new(exchange: &'q str, queue: &'q str, routing_key: &'q str) -> Self {
         QueueBindingDefinition {
             exchange,
             queue,
@@ -21,19 +21,19 @@ impl QueueBindingDefinition {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct QueueDefinition {
-    pub name: &'static str,
+pub struct QueueDefinition<'q> {
+    pub name: &'q str,
     pub msg_type: AmqpMessageType,
-    pub bindings: Vec<QueueBindingDefinition>,
+    pub bindings: Vec<QueueBindingDefinition<'q>>,
     pub with_dlq: bool,
-    pub dlq_name: &'static str,
+    pub dlq_name: &'q str,
     pub with_retry: bool,
     pub retry_ttl: Option<i32>,
     pub retries: Option<i64>,
 }
 
-impl QueueDefinition {
-    pub fn name(name: &'static str) -> QueueDefinition {
+impl<'q> QueueDefinition<'q> {
+    pub fn name(name: &str) -> QueueDefinition {
         QueueDefinition {
             name,
             ..Default::default()
@@ -58,7 +58,7 @@ impl QueueDefinition {
         self
     }
 
-    pub fn binding(mut self, bind: QueueBindingDefinition) -> Self {
+    pub fn binding(mut self, bind: QueueBindingDefinition<'q>) -> Self {
         self.bindings.push(bind);
         self
     }
@@ -89,13 +89,13 @@ impl ExchangeKind {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct ExchangeDefinition {
-    pub name: &'static str,
+pub struct ExchangeDefinition<'e> {
+    pub name: &'e str,
     pub kind: ExchangeKind,
 }
 
-impl ExchangeDefinition {
-    pub fn name(name: &'static str) -> Self {
+impl<'e> ExchangeDefinition<'e> {
+    pub fn name(name: &'e str) -> Self {
         ExchangeDefinition {
             name,
             kind: ExchangeKind::default(),
@@ -129,18 +129,18 @@ pub trait ConsumerHandler {
 }
 
 #[derive(Debug, Default, Clone, Copy)]
-pub struct ConsumerDefinition {
-    pub name: &'static str,
-    pub queue: &'static str,
+pub struct ConsumerDefinition<'c> {
+    pub name: &'c str,
+    pub queue: &'c str,
     pub msg_type: AmqpMessageType,
     pub with_retry: bool,
     pub retries: i64,
     pub with_dlq: bool,
-    pub dlq_name: &'static str,
+    pub dlq_name: &'c str,
 }
 
-impl ConsumerDefinition {
-    pub fn name(name: &'static str) -> ConsumerDefinition {
+impl<'c> ConsumerDefinition<'c> {
+    pub fn name(name: &str) -> ConsumerDefinition {
         ConsumerDefinition {
             name,
             retries: 1,
@@ -148,7 +148,7 @@ impl ConsumerDefinition {
         }
     }
 
-    pub fn queue(mut self, queue: &'static str) -> Self {
+    pub fn queue(mut self, queue: &'c str) -> Self {
         self.queue = queue;
         self
     }
@@ -170,13 +170,13 @@ impl ConsumerDefinition {
     }
 }
 
-pub struct AmqpTopology {
-    pub exchanges: Vec<ExchangeDefinition>,
-    pub queues: Vec<QueueDefinition>,
-    pub consumers: Vec<ConsumerDefinition>,
+pub struct AmqpTopology<'a> {
+    pub exchanges: Vec<ExchangeDefinition<'a>>,
+    pub queues: Vec<QueueDefinition<'a>>,
+    pub consumers: Vec<ConsumerDefinition<'a>>,
 }
 
-impl AmqpTopology {
+impl<'a> AmqpTopology<'a> {
     pub fn new() -> Self {
         AmqpTopology {
             exchanges: vec![],
@@ -185,12 +185,12 @@ impl AmqpTopology {
         }
     }
 
-    pub fn exchange(mut self, exch: ExchangeDefinition) -> Self {
+    pub fn exchange(mut self, exch: ExchangeDefinition<'a>) -> Self {
         self.exchanges.push(exch);
         self
     }
 
-    pub fn queue(mut self, queue: QueueDefinition) -> Self {
+    pub fn queue(mut self, queue: QueueDefinition<'a>) -> Self {
         self.queues.push(queue);
         self
     }
@@ -309,7 +309,7 @@ mod tests {
         assert!(consumer_def.is_some());
 
         let queue_def = QueueDefinition::name("queue").with_retry(1000, 3);
-        let _topology = topology.queue(queue_def.clone());
-        assert!(consumer_def.is_some());
+        let topology = topology.queue(queue_def.clone());
+        assert!(topology.get_consumers_def("queue").is_some());
     }
 }

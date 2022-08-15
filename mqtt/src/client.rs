@@ -14,7 +14,7 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 
 #[async_trait]
 pub trait IMQTT {
-    fn connect(&mut self) -> EventLoop;
+    fn connect(&mut self, cfg: &Config) -> EventLoop;
     async fn subscriber(
         &mut self,
         topic: String,
@@ -34,16 +34,14 @@ pub trait IMQTT {
 }
 
 pub struct MQTT {
-    cfg: Box<Config>,
-    client: Option<AsyncClient>,
+    client: Option<Box<AsyncClient>>,
     dispatchers: HashMap<String, Arc<dyn Controller + Sync + Send>>,
     tracer: BoxedTracer,
 }
 
 impl MQTT {
-    pub fn new(cfg: Box<Config>) -> Box<dyn IMQTT + Send + Sync> {
+    pub fn new() -> Box<dyn IMQTT + Send + Sync> {
         Box::new(MQTT {
-            cfg,
             client: None,
             dispatchers: HashMap::default(),
             tracer: global::tracer("mqtt"),
@@ -52,11 +50,9 @@ impl MQTT {
 
     #[cfg(test)]
     pub fn mock(
-        cfg: Box<Config>,
         dispatchers: HashMap<String, Arc<dyn Controller + Sync + Send>>,
     ) -> Box<dyn IMQTT + Send + Sync> {
         Box::new(MQTT {
-            cfg,
             client: None,
             dispatchers,
             tracer: global::tracer("mqtt"),
@@ -66,17 +62,16 @@ impl MQTT {
 
 #[async_trait]
 impl IMQTT for MQTT {
-    fn connect(&mut self) -> EventLoop {
-        let mut mqtt_options =
-            MqttOptions::new(self.cfg.app_name, self.cfg.mqtt_host, self.cfg.mqtt_port);
+    fn connect(&mut self, cfg: &Config) -> EventLoop {
+        let mut mqtt_options = MqttOptions::new(cfg.app_name, cfg.mqtt_host, cfg.mqtt_port);
 
         mqtt_options
-            .set_credentials(self.cfg.mqtt_user, self.cfg.mqtt_password)
+            .set_credentials(cfg.mqtt_user, cfg.mqtt_password)
             .set_keep_alive(Duration::from_secs(5));
 
         let (client, eventloop) = AsyncClient::new(mqtt_options, 50);
 
-        self.client = Some(client);
+        self.client = Some(Box::new(client));
 
         eventloop
     }
@@ -176,8 +171,8 @@ mod tests {
 
     #[test]
     fn should_connect() {
-        let mut mq = MQTT::new(Config::mock());
-        mq.connect();
+        let mut mq = MQTT::new();
+        mq.connect(&Config::mock());
     }
 
     #[tokio::test]
@@ -188,7 +183,7 @@ mod tests {
 
         map.insert("".to_owned(), Arc::new(mocked_controller));
 
-        let mq = MQTT::mock(Config::mock(), map);
+        let mq = MQTT::mock(map);
 
         let event = Event::Incoming(Packet::Publish(Publish {
             dup: true,
@@ -211,7 +206,7 @@ mod tests {
 
         map.insert("".to_owned(), Arc::new(mocked_controller));
 
-        let mq = MQTT::mock(Config::mock(), map);
+        let mq = MQTT::mock(map);
 
         let event = Event::Incoming(Packet::Publish(Publish {
             dup: true,
@@ -234,7 +229,7 @@ mod tests {
 
         map.insert("".to_owned(), Arc::new(mocked_controller));
 
-        let mq = MQTT::mock(Config::mock(), map);
+        let mq = MQTT::mock(map);
 
         let event = Event::Incoming(Packet::Publish(Publish {
             dup: true,
@@ -257,7 +252,7 @@ mod tests {
 
         map.insert("".to_owned(), Arc::new(mocked_controller));
 
-        let mq = MQTT::mock(Config::mock(), map);
+        let mq = MQTT::mock(map);
 
         let event = Event::Incoming(Packet::Publish(Publish {
             dup: true,

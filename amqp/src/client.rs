@@ -79,8 +79,8 @@ pub struct Amqp {
 impl Amqp {
     pub async fn new(cfg: &Config) -> Result<Arc<dyn IAmqp + Send + Sync>, AmqpError> {
         debug!("creating amqp connection...");
-        let options =
-            ConnectionProperties::default().with_connection_name(LongString::from(cfg.app_name));
+        let options = ConnectionProperties::default()
+            .with_connection_name(LongString::from(cfg.app_name.clone()));
 
         let uri = &cfg.amqp_uri();
         let conn = Connection::connect(uri, options)

@@ -31,14 +31,14 @@ pub fn setup(cfg: &Config) -> Result<(), Box<dyn Error>> {
                 .with_max_events_per_span(64)
                 .with_max_attributes_per_span(16)
                 .with_resource(Resource::new(vec![
-                    KeyValue::new("service.name", cfg.app_name),
-                    KeyValue::new("service.type", cfg.otlp_service_type),
+                    KeyValue::new("service.name", cfg.app_name.clone()),
+                    KeyValue::new("service.type", cfg.otlp_service_type.clone()),
                 ])),
         )
         .with_exporter(
             opentelemetry_otlp::new_exporter()
                 .tonic()
-                .with_endpoint(cfg.otlp_host)
+                .with_endpoint(&cfg.otlp_host)
                 .with_protocol(Protocol::Grpc)
                 .with_timeout(Duration::from_secs(cfg.otlp_export_time))
                 .with_metadata(map.clone()),

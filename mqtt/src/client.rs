@@ -63,10 +63,10 @@ impl MQTT {
 #[async_trait]
 impl IMQTT for MQTT {
     fn connect(&mut self, cfg: &Config) -> EventLoop {
-        let mut mqtt_options = MqttOptions::new(cfg.app_name, cfg.mqtt_host, cfg.mqtt_port);
+        let mut mqtt_options = MqttOptions::new(&cfg.app_name, &cfg.mqtt_host, cfg.mqtt_port);
 
         mqtt_options
-            .set_credentials(cfg.mqtt_user, cfg.mqtt_password)
+            .set_credentials(&cfg.mqtt_user, &cfg.mqtt_password)
             .set_keep_alive(Duration::from_secs(5));
 
         let (client, eventloop) = AsyncClient::new(mqtt_options, 50);

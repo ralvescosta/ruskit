@@ -17,7 +17,7 @@ pub fn setup(cfg: &Config) -> Result<(), ()> {
         .with_exporter(
             opentelemetry_otlp::new_exporter()
                 .tonic()
-                .with_endpoint(cfg.otlp_host)
+                .with_endpoint(&cfg.otlp_host)
                 .with_timeout(Duration::from_secs(5))
                 .with_protocol(Protocol::Grpc)
                 .with_metadata(map),

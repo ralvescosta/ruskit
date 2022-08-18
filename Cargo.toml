@@ -5,7 +5,8 @@ members = [
     "logging",
     "otel",
     "amqp",
-    "mqtt"
+    "mqtt",
+    "postgres"
 ]
 
-default-members = ["errors", "logging", "otel", "amqp", "mqtt"]
+default-members = ["errors", "logging", "otel", "amqp", "mqtt", "postgres"]

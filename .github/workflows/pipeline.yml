@@ -29,3 +29,30 @@ jobs:
       
     - name: Codecov
       run: bash <(curl -s https://codecov.io/bash)
+
+  tag_build:
+    needs: ci
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/main' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Get Previous tag
+        id: previoustag
+        uses: WyriHaximus/github-action-get-previous-tag@v1
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get next version
+        id: semvers
+        uses: WyriHaximus/github-action-next-semvers@v1
+        with:
+            version: ${{ steps.previoustag.outputs.tag }}
+
+      - name: Release Version
+        run: |
+          git tag ${{ steps.semvers.outputs.v_patch }}
+          git push origin ${{ steps.semvers.outputs.v_patch }}

@@ -132,10 +132,7 @@ impl Config {
                 .unwrap_or(&String::from("https://otlp.nr-data.net:4317"))
                 .to_string(),
 
-            otlp_key: map
-                .get("OTLP_KEY")
-                .unwrap_or(&String::from("e84b3e41a69635447392533e627aac0c56c5NRAL"))
-                .to_string(),
+            otlp_key: map.get("OTLP_KEY").unwrap_or(&String::from("")).to_string(),
 
             otlp_service_type: map
                 .get("OTLP_SERVICE_TYPE")

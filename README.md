@@ -30,4 +30,4 @@ logging = { git = "ssh://git@github.com/ralvescosta/ruskit.git",  rev = "v1.0.1"
 errors = { git = "ssh://git@github.com/ralvescosta/ruskit.git",  rev = "v1.0.1"  }
 ```
 
-**WARNING**: At this moment, this repository do not work with Tags and Releases versions.
+Where rev = "v1.0.0" is the tag name.

@@ -25,9 +25,9 @@
 To use one of these crates just add to your Cargo.toml
 
 ```toml
-env = { git = "ssh://git@github.com/ralvescosta/ruskit.git", branch = "main" }
-logging = { git = "ssh://git@github.com/ralvescosta/ruskit.git", branch = "main"  }
-errors = { git = "ssh://git@github.com/ralvescosta/ruskit.git", branch = "main"  }
+env = { git = "ssh://git@github.com/ralvescosta/ruskit.git",  rev = "v1.0.1" }
+logging = { git = "ssh://git@github.com/ralvescosta/ruskit.git",  rev = "v1.0.1"  }
+errors = { git = "ssh://git@github.com/ralvescosta/ruskit.git",  rev = "v1.0.1"  }
 ```
 
 **WARNING**: At this moment, this repository do not work with Tags and Releases versions.

@@ -1,4 +1,3 @@
-use super::types::AmqpMessageType;
 use async_trait::async_trait;
 use errors::amqp::AmqpError;
 use opentelemetry::Context;
@@ -23,7 +22,6 @@ impl<'q> QueueBindingDefinition<'q> {
 #[derive(Debug, Clone, Default)]
 pub struct QueueDefinition<'q> {
     pub name: &'q str,
-    pub msg_type: AmqpMessageType,
     pub bindings: Vec<QueueBindingDefinition<'q>>,
     pub with_dlq: bool,
     pub dlq_name: &'q str,
@@ -33,16 +31,11 @@ pub struct QueueDefinition<'q> {
 }
 
 impl<'q> QueueDefinition<'q> {
-    pub fn name(name: &str) -> QueueDefinition {
+    pub fn name(name: &'q str) -> QueueDefinition<'q> {
         QueueDefinition {
             name,
             ..Default::default()
         }
-    }
-
-    pub fn msg_type(mut self, msg_type: AmqpMessageType) -> Self {
-        self.msg_type = msg_type;
-        self
     }
 
     pub fn with_dlq(mut self) -> Self {
@@ -132,7 +125,7 @@ pub trait ConsumerHandler {
 pub struct ConsumerDefinition<'c> {
     pub name: &'c str,
     pub queue: &'c str,
-    pub msg_type: AmqpMessageType,
+    pub msg_type: &'c str,
     pub with_retry: bool,
     pub retries: i64,
     pub with_dlq: bool,
@@ -153,7 +146,7 @@ impl<'c> ConsumerDefinition<'c> {
         self
     }
 
-    pub fn msg_type(mut self, msg_type: AmqpMessageType) -> Self {
+    pub fn msg_type(mut self, msg_type: &'c str) -> Self {
         self.msg_type = msg_type;
         self
     }
@@ -199,7 +192,11 @@ impl<'a> AmqpTopology<'a> {
         Box::new(self)
     }
 
-    pub fn get_consumers_def(&self, queue_name: &str) -> Option<ConsumerDefinition> {
+    pub fn new_consumer_def(
+        &self,
+        queue_name: &'a str,
+        msg_type: &'a str,
+    ) -> Option<ConsumerDefinition<'a>> {
         for queue in self.queues.clone() {
             if queue.name == queue_name {
                 let retries = match queue.retries {
@@ -209,7 +206,7 @@ impl<'a> AmqpTopology<'a> {
                 return Some(ConsumerDefinition {
                     name: queue.name,
                     queue: queue.name,
-                    msg_type: queue.msg_type,
+                    msg_type,
                     retries,
                     with_dlq: queue.with_dlq,
                     dlq_name: queue.dlq_name,
@@ -305,11 +302,11 @@ mod tests {
         let topology = topology.queue(queue_def.clone());
         assert_eq!(topology.queues[0].name, queue_def.name);
 
-        let consumer_def = topology.get_consumers_def("queue");
+        let consumer_def = topology.new_consumer_def("queue", "msg_type");
         assert!(consumer_def.is_some());
 
         let queue_def = QueueDefinition::name("queue").with_retry(1000, 3);
         let topology = topology.queue(queue_def.clone());
-        assert!(topology.get_consumers_def("queue").is_some());
+        assert!(topology.new_consumer_def("queue", "msg_type").is_some());
     }
 }

@@ -9,18 +9,21 @@ use opentelemetry::{
     trace::{Span, SpanKind, TraceContextExt, Tracer},
     Context, KeyValue,
 };
+#[cfg(feature = "otlp")]
 use opentelemetry_otlp::{Protocol, WithExportConfig};
 use std::{borrow::Cow, error::Error, time::Duration};
+#[cfg(feature = "otlp")]
 use tonic::metadata::*;
 // use tracing_opentelemetry::OpenTelemetrySpanExt;
 
+#[cfg(feature = "otlp")]
 pub fn setup(cfg: &Config) -> Result<(), Box<dyn Error>> {
     debug!("telemetry :: starting telemetry setup...");
 
     let mut map = MetadataMap::with_capacity(3);
     map.insert("api-key", cfg.otlp_key.parse().unwrap());
 
-    debug!("telemetry :: creating the tracer...");
+    debug!("telemetry :: creating the OTLP tracing extractor...");
 
     opentelemetry_otlp::new_pipeline()
         .tracing()
@@ -44,7 +47,20 @@ pub fn setup(cfg: &Config) -> Result<(), Box<dyn Error>> {
                 .with_metadata(map.clone()),
         )
         .install_batch(opentelemetry::runtime::Tokio)?;
-    debug!("telemetry :: tracer installed");
+    debug!("telemetry :: tracing extractor installed");
+
+    Ok(())
+}
+
+#[cfg(feature = "jaeger")]
+pub fn setup(cfg: &Config) -> Result<(), Box<dyn Error>> {
+    debug!("telemetry :: starting telemetry setup...");
+
+    debug!("telemetry :: creating the Jaeger tracing extractor...");
+
+    opentelemetry_jaeger::new_pipeline().install_batch(opentelemetry::runtime::Tokio)?;
+
+    debug!("telemetry :: tracing extractor installed");
 
     Ok(())
 }

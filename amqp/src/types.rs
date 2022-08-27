@@ -1,3 +1,4 @@
+use super::defs;
 use errors::amqp::AmqpError;
 use lapin::types::FieldTable;
 use serde::Serialize;
@@ -12,11 +13,11 @@ pub struct Metadata {
 
 impl Metadata {
     pub fn extract(header: &FieldTable) -> Metadata {
-        let count = match header.inner().get("x-death") {
+        let count = match header.inner().get(defs::AMQP_HEADERS_X_DEATH) {
             Some(value) => match value.as_array() {
                 Some(arr) => match arr.as_slice().get(0) {
                     Some(value) => match value.as_field_table() {
-                        Some(table) => match table.inner().get("count") {
+                        Some(table) => match table.inner().get(defs::AMQP_HEADERS_COUNT) {
                             Some(value) => match value.as_long_long_int() {
                                 Some(long) => long,
                                 _ => 0,
@@ -32,7 +33,7 @@ impl Metadata {
             _ => 0,
         };
 
-        let msg_type = match header.inner().get("type") {
+        let msg_type = match header.inner().get(defs::AMQP_HEADERS_MSG_TYPE) {
             Some(value) => match value.as_long_string() {
                 Some(st) => st.to_string(),
                 _ => "".to_owned(),
@@ -40,7 +41,7 @@ impl Metadata {
             _ => "".to_owned(),
         };
 
-        let traceparent = match header.inner().get("traceparent") {
+        let traceparent = match header.inner().get(defs::AMQP_HEADERS_OTEL_TRACEPARENT) {
             Some(value) => match value.as_long_string() {
                 Some(st) => st.to_string(),
                 _ => "".to_owned(),
@@ -71,7 +72,7 @@ impl Display for AmqpMessageType {
 }
 
 pub trait PublishPayload {
-    fn get_type(&self) -> AmqpMessageType;
+    fn get_type(&self) -> String;
 }
 
 #[derive(Debug, Clone)]
@@ -90,7 +91,7 @@ impl PublishData {
             .into_boxed_slice();
 
         Ok(PublishData {
-            msg_type: payload.get_type().to_string(),
+            msg_type: payload.get_type(),
             payload: serialized,
         })
     }

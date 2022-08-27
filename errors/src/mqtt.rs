@@ -8,8 +8,14 @@ pub enum MqttError {
     #[error("mqtt unknown message kind")]
     UnknownMessageKindError,
 
+    #[error("mqtt failure to deserialize message - MqttError::DeserializeMessageError: `{0}`")]
+    DeserializeMessageError(String),
+
     #[error("mqtt unformatted topic")]
     UnformattedTopicError,
+
+    #[error("controller for this topic was not founded")]
+    TopicControllerWasNotFound,
 
     #[error("mqtt failure to publish in a topic")]
     PublishingError,

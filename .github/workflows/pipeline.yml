@@ -56,3 +56,11 @@ jobs:
         run: |
           git tag ${{ steps.semvers.outputs.v_patch }}
           git push origin ${{ steps.semvers.outputs.v_patch }}
+
+      - name: Release
+          uses: softprops/action-gh-release@v1
+          if: startsWith(github.ref, 'refs/tags/')
+          with:
+            # body_path: ${{ github.workspace }}/CHANGELOG.md
+            tag_name: ${{ steps.semvers.outputs.v_patch }}
+            generate_release_notes: true

@@ -1,0 +1,11 @@
+[package]
+name = "httpw"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+errors = { path = '../errors' }
+actix-web = { version = "4.1.0" }
+actix-cors = { version = "0.6.1" }
+thiserror = { version = "1.0.31" }
+serde = { version = "1.0.140", features = ["derive"] }

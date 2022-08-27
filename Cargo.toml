@@ -6,7 +6,8 @@ members = [
     "otel",
     "amqp",
     "mqtt",
-    "postgres"
+    "postgres",
+    "httpw",
 ]
 
 default-members = ["errors", "logging", "otel", "amqp", "mqtt", "postgres"]

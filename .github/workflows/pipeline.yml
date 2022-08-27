@@ -62,6 +62,6 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          # body_path: ${{ github.workspace }}/CHANGELOG.md
+          body_path: ${{ github.workspace }}/CHANGELOG.md
+          name: release ${{ steps.semvers.outputs.v_patch }}
           tag_name: ${{ steps.semvers.outputs.v_patch }}
-          generate_release_notes: true

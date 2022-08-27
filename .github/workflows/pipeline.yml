@@ -13,24 +13,24 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  ci:
-    runs-on: ubuntu-latest
-    container:
-      image:  xd009642/tarpaulin:develop-nightly
-      options: --security-opt seccomp=unconfined
+  # ci:
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image:  xd009642/tarpaulin:develop-nightly
+  #     options: --security-opt seccomp=unconfined
 
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+  #   steps:
+  #   - name: Checkout
+  #     uses: actions/checkout@v3
       
-    - name: Run tests
-      run: |
-        cargo +nightly tarpaulin --verbose --features otlp --workspace --timeout 120 --out Xml
+  #   - name: Run tests
+  #     run: |
+  #       cargo +nightly tarpaulin --verbose --features otlp --workspace --timeout 120 --out Xml
       
-    - name: Upload to codecov.io
-      uses: codecov/codecov-action@v3
-      with:
-        token: ${{secrets.CODECOV_TOKEN}}
+  #   - name: Upload to codecov.io
+  #     uses: codecov/codecov-action@v3
+  #     with:
+  #       token: ${{secrets.CODECOV_TOKEN}}
 
   tag_build:
     needs: ci
@@ -61,7 +61,6 @@ jobs:
 
       - name: Release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
         with:
           # body_path: ${{ github.workspace }}/CHANGELOG.md
           tag_name: ${{ steps.semvers.outputs.v_patch }}

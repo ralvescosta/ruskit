@@ -1,4 +1,5 @@
 use super::{
+    defs,
     topology::{
         AmqpTopology, ConsumerDefinition, ConsumerHandler, ExchangeDefinition,
         ExchangeKind as MyExchangeKind, QueueDefinition,
@@ -29,7 +30,7 @@ use std::{collections::BTreeMap, sync::Arc};
 use uuid::Uuid;
 
 #[async_trait]
-pub trait IAmqp {
+pub trait Amqp {
     fn channel(&self) -> &Channel;
     fn connection(&self) -> &Connection;
     async fn declare_queue(
@@ -70,14 +71,14 @@ pub trait IAmqp {
 }
 
 #[derive(Debug)]
-pub struct Amqp {
+pub struct AmqpImpl {
     conn: Box<Connection>,
     channel: Box<Channel>,
     tracer: BoxedTracer,
 }
 
-impl Amqp {
-    pub async fn new(cfg: &Config) -> Result<Arc<dyn IAmqp + Send + Sync>, AmqpError> {
+impl AmqpImpl {
+    pub async fn new(cfg: &Config) -> Result<Arc<dyn Amqp + Send + Sync>, AmqpError> {
         debug!("creating amqp connection...");
         let options = ConnectionProperties::default()
             .with_connection_name(LongString::from(cfg.app_name.clone()));
@@ -95,7 +96,7 @@ impl Amqp {
             .map_err(|_| AmqpError::ChannelError {})?;
         debug!("channel created");
 
-        Ok(Arc::new(Amqp {
+        Ok(Arc::new(AmqpImpl {
             conn: Box::new(conn),
             channel: Box::new(channel),
             tracer: global::tracer("amqp"),
@@ -104,7 +105,7 @@ impl Amqp {
 }
 
 #[async_trait]
-impl IAmqp for Amqp {
+impl Amqp for AmqpImpl {
     fn channel(&self) -> &Channel {
         &self.channel
     }
@@ -206,7 +207,7 @@ impl IAmqp for Amqp {
 
         let mut map = BTreeMap::new();
         map.insert(
-            ShortString::from("traceparent"),
+            ShortString::from(defs::AMQP_HEADERS_OTEL_TRACEPARENT),
             AMQPValue::LongString(LongString::from(otel::amqp::Traceparent::string_from_ctx(
                 &cx,
             ))),
@@ -222,14 +223,17 @@ impl IAmqp for Amqp {
                 },
                 &data.payload,
                 AMQPProperties::default()
-                    .with_content_type(ShortString::from("application/json"))
+                    .with_content_type(ShortString::from(defs::AMQP_JSON_CONTENT_TYPE))
                     .with_kind(ShortString::from(data.clone().msg_type))
                     .with_message_id(ShortString::from(Uuid::new_v4().to_string()))
                     .with_headers(FieldTable::from(map)),
             )
             .with_context(cx)
             .await
-            .map_err(|_| AmqpError::PublishingError)?;
+            .map_err(|e| {
+                error!("publish err - {:?}", e);
+                AmqpError::PublishingError
+            })?;
 
         Ok(())
     }
@@ -264,11 +268,7 @@ impl IAmqp for Amqp {
             def.name, def.queue, metadata.msg_type
         );
 
-        let (ctx, mut span) =
-            otel::amqp::get_span(&self.tracer, &metadata.traceparent, &metadata.msg_type);
-
         if metadata.msg_type.is_empty() || metadata.msg_type != def.msg_type.to_string() {
-            debug!("message type does not match, skipping msg");
             match delivery
                 .nack(BasicNackOptions {
                     multiple: false,
@@ -281,6 +281,9 @@ impl IAmqp for Amqp {
             };
             return Ok(());
         }
+
+        let (ctx, mut span) =
+            otel::amqp::get_span(&self.tracer, &metadata.traceparent, &metadata.msg_type);
 
         match handler
             .exec(&ctx, delivery.data.as_slice())
@@ -369,7 +372,7 @@ impl IAmqp for Amqp {
     }
 }
 
-impl Amqp {
+impl AmqpImpl {
     async fn install_exchanges<'i>(
         &self,
         exch: &'i ExchangeDefinition<'i>,
@@ -398,7 +401,7 @@ impl Amqp {
     }
 }
 
-impl Amqp {
+impl AmqpImpl {
     async fn install_queues<'i>(&self, def: &'i QueueDefinition<'i>) -> Result<(), AmqpError> {
         debug!("creating and binding queue: {}", def.name);
 
@@ -454,15 +457,15 @@ impl Amqp {
         debug!("creating retry...");
         let mut retry_map = BTreeMap::new();
         retry_map.insert(
-            ShortString::from("x-dead-letter-exchange"),
+            ShortString::from(defs::AMQP_HEADERS_DEAD_LETTER_EXCHANGE),
             AMQPValue::LongString(LongString::from("")),
         );
         retry_map.insert(
-            ShortString::from("x-dead-letter-routing-key"),
+            ShortString::from(defs::AMQP_HEADERS_DEAD_LETTER_ROUTING_KEY),
             AMQPValue::LongString(LongString::from(def.name)),
         );
         retry_map.insert(
-            ShortString::from("x-message-ttl"),
+            ShortString::from(defs::AMQP_HEADERS_MESSAGE_TTL),
             AMQPValue::LongInt(LongInt::from(def.retry_ttl.unwrap())),
         );
 
@@ -484,12 +487,12 @@ impl Amqp {
 
         let mut queue_map = BTreeMap::new();
         queue_map.insert(
-            ShortString::from("x-dead-letter-exchange"),
+            ShortString::from(defs::AMQP_HEADERS_DEAD_LETTER_EXCHANGE),
             AMQPValue::LongString(LongString::from("")),
         );
 
         queue_map.insert(
-            ShortString::from("x-dead-letter-routing-key"),
+            ShortString::from(defs::AMQP_HEADERS_DEAD_LETTER_ROUTING_KEY),
             AMQPValue::LongString(LongString::from(name)),
         );
         debug!("retry created");
@@ -512,12 +515,12 @@ impl Amqp {
 
         if !def.with_retry {
             queue_map.insert(
-                ShortString::from("x-dead-letter-exchange"),
+                ShortString::from(defs::AMQP_HEADERS_DEAD_LETTER_EXCHANGE),
                 AMQPValue::LongString(LongString::from("")),
             );
 
             queue_map.insert(
-                ShortString::from("x-dead-letter-routing-key"),
+                ShortString::from(defs::AMQP_HEADERS_DEAD_LETTER_ROUTING_KEY),
                 AMQPValue::LongString(LongString::from(name.clone())),
             );
         }

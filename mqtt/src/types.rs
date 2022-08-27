@@ -2,7 +2,6 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use errors::mqtt::MqttError;
 use opentelemetry::Context;
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub enum QoS {
@@ -37,51 +36,9 @@ impl QoS {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Topic<'t> {
-    pub topic: &'t str,
-    pub label: &'t str,
-    //@TODO: create an enum for message kind
-    pub kind: &'t str,
-}
-
-impl<'t> Topic<'t> {
-    pub fn new(topic: &str) -> Result<Topic, MqttError> {
-        return Ok(Topic {
-            topic,
-            label: "",
-            kind: "temp",
-        });
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub enum Messages {
-    Temp(TempMessage),
-}
-
-impl Messages {
-    pub fn from_payload(topic: &Topic, payload: &Bytes) -> Result<Messages, MqttError> {
-        match topic.kind {
-            "temp" => {
-                let t = serde_json::from_slice::<TempMessage>(payload);
-
-                Ok(Messages::Temp(t.map_err(|_| MqttError::InternalError {})?))
-            }
-            _ => Err(MqttError::UnknownMessageKindError {}),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
-pub struct TempMessage {
-    pub temp: f32,
-    pub time: u64,
-}
-
 #[async_trait]
 pub trait Controller {
-    async fn exec(&self, ctx: &Context, msg: &Messages) -> Result<(), MqttError>;
+    async fn exec(&self, ctx: &Context, msgs: &Bytes) -> Result<(), MqttError>;
 }
 
 #[cfg(test)]

@@ -1,8 +1,13 @@
-use super::types::{Controller, Messages, QoS, Topic};
+use super::{
+    topics::TopicMessage,
+    types::{Controller, QoS},
+};
 use async_trait::async_trait;
 use env::Config;
 use errors::mqtt::MqttError;
 use log::{debug, error};
+#[cfg(test)]
+use mockall::predicate::*;
 use opentelemetry::{
     global::{self, BoxedTracer},
     trace::FutureExt,
@@ -13,7 +18,7 @@ use rumqttc::{AsyncClient, Event, EventLoop, MqttOptions, Packet};
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 #[async_trait]
-pub trait IMQTT {
+pub trait MQTT {
     fn connect(&mut self, cfg: &Config) -> EventLoop;
     async fn subscriber(
         &mut self,
@@ -33,15 +38,15 @@ pub trait IMQTT {
     async fn handle_event(&self, event: &Event) -> Result<(), MqttError>;
 }
 
-pub struct MQTT {
+pub struct MQTTImpl {
     client: Option<Box<AsyncClient>>,
     dispatchers: HashMap<String, Arc<dyn Controller + Sync + Send>>,
     tracer: BoxedTracer,
 }
 
-impl MQTT {
-    pub fn new() -> Box<dyn IMQTT + Send + Sync> {
-        Box::new(MQTT {
+impl MQTTImpl {
+    pub fn new() -> Box<dyn MQTT + Send + Sync> {
+        Box::new(MQTTImpl {
             client: None,
             dispatchers: HashMap::default(),
             tracer: global::tracer("mqtt"),
@@ -51,8 +56,8 @@ impl MQTT {
     #[cfg(test)]
     pub fn mock(
         dispatchers: HashMap<String, Arc<dyn Controller + Sync + Send>>,
-    ) -> Box<dyn IMQTT + Send + Sync> {
-        Box::new(MQTT {
+    ) -> Box<dyn MQTT + Send + Sync> {
+        Box::new(MQTTImpl {
             client: None,
             dispatchers,
             tracer: global::tracer("mqtt"),
@@ -61,8 +66,9 @@ impl MQTT {
 }
 
 #[async_trait]
-impl IMQTT for MQTT {
+impl MQTT for MQTTImpl {
     fn connect(&mut self, cfg: &Config) -> EventLoop {
+        debug!("connection to mqtt broker...");
         let mut mqtt_options = MqttOptions::new(&cfg.app_name, &cfg.mqtt_host, cfg.mqtt_port);
 
         mqtt_options
@@ -72,6 +78,8 @@ impl IMQTT for MQTT {
         let (client, eventloop) = AsyncClient::new(mqtt_options, 50);
 
         self.client = Some(Box::new(client));
+
+        debug!("connected to mqtt broker");
 
         eventloop
     }
@@ -127,31 +135,27 @@ impl IMQTT for MQTT {
             debug!("message received in a topic {:?}", msg.topic);
 
             let metadata =
-                Topic::new(&msg.topic).map_err(|_| MqttError::UnformattedTopicError {})?;
+                TopicMessage::new(&msg.topic).map_err(|_| MqttError::UnformattedTopicError {})?;
 
             debug!("metadata: {:?}", metadata);
 
-            let data = Messages::from_payload(&metadata, &msg.payload)?;
-
-            debug!("msg: {:?}", data);
-
-            let name = Box::new(format!("{:?}", msg.topic));
-            let ctx = otel::tracing::new_ctx(&self.tracer, Box::leak(name));
+            let name = format!("{:?}", msg.topic);
+            let ctx = otel::tracing::new_ctx(&self.tracer, &name);
 
             let controller = self.dispatchers.get(metadata.label);
             if controller.is_none() {
                 error!("cant find controller for this topic");
-                return Err(MqttError::InternalError {});
+                return Err(MqttError::TopicControllerWasNotFound {});
             }
 
-            return match controller.unwrap().exec(&ctx, &data).await {
+            return match controller.unwrap().exec(&ctx, &msg.payload).await {
                 Ok(_) => {
                     debug!("event processed successfully");
                     // span.set_status(StatusCode::Ok, format!("event processed successfully"));
                     Ok(())
                 }
                 Err(e) => {
-                    error!("failed to handle the event - {:?}", e);
+                    debug!("failed to handle the event - {:?}", e);
                     // span.set_status(StatusCode::Error, format!("failed to handle the event"));
                     Err(e)
                 }
@@ -171,7 +175,7 @@ mod tests {
 
     #[test]
     fn should_connect() {
-        let mut mq = MQTT::new();
+        let mut mq = MQTTImpl::new();
         mq.connect(&Config::mock());
     }
 
@@ -181,13 +185,13 @@ mod tests {
 
         let mut map: HashMap<String, Arc<dyn Controller + Sync + Send>> = HashMap::default();
 
-        map.insert("".to_owned(), Arc::new(mocked_controller));
+        map.insert("C2B".to_owned(), Arc::new(mocked_controller));
 
-        let mq = MQTT::mock(map);
+        let mq = MQTTImpl::mock(map);
 
         let event = Event::Incoming(Packet::Publish(Publish {
             dup: true,
-            payload: Bytes::try_from("{\"temp\": 40.2, \"time\": 10101010}").unwrap(),
+            payload: Bytes::try_from("[{\"mac\":\"454806000009\",\"time\":\"1660235235\",\"rssi\":\"-95\",\"adv\":\"036F03CAA201000000000000\"}]").unwrap(),
             pkid: 10,
             qos: QoS::AtMostOnce.try_to(),
             retain: false,
@@ -204,40 +208,17 @@ mod tests {
 
         let mut map: HashMap<String, Arc<dyn Controller + Sync + Send>> = HashMap::default();
 
-        map.insert("".to_owned(), Arc::new(mocked_controller));
+        map.insert("C2B".to_owned(), Arc::new(mocked_controller));
 
-        let mq = MQTT::mock(map);
+        let mq = MQTTImpl::mock(map);
 
         let event = Event::Incoming(Packet::Publish(Publish {
             dup: true,
-            payload: Bytes::try_from("{temp: 40.2, time: 10101010}").unwrap(),
+            payload: Bytes::try_from("[{\"mac\":\"454806000009\",\"time\":\"1660235235\",\"rssi\":\"-95\",\"adv\":\"036F03CAA201000000000000\"}]").unwrap(),
             pkid: 10,
             qos: QoS::AtMostOnce.try_to(),
             retain: false,
             topic: "C2B/data/".to_owned(),
-        }));
-
-        let res = mq.handle_event(&event).await;
-        assert!(res.is_err());
-    }
-
-    #[tokio::test]
-    async fn should_return_err_if_message_is_unformatted() {
-        let mocked_controller = MockController::new(None);
-
-        let mut map: HashMap<String, Arc<dyn Controller + Sync + Send>> = HashMap::default();
-
-        map.insert("".to_owned(), Arc::new(mocked_controller));
-
-        let mq = MQTT::mock(map);
-
-        let event = Event::Incoming(Packet::Publish(Publish {
-            dup: true,
-            payload: Bytes::try_from("").unwrap(),
-            pkid: 10,
-            qos: QoS::AtMostOnce.try_to(),
-            retain: false,
-            topic: "C2B/data/collector/device".to_owned(),
         }));
 
         let res = mq.handle_event(&event).await;
@@ -250,13 +231,13 @@ mod tests {
 
         let mut map: HashMap<String, Arc<dyn Controller + Sync + Send>> = HashMap::default();
 
-        map.insert("".to_owned(), Arc::new(mocked_controller));
+        map.insert("C2B".to_owned(), Arc::new(mocked_controller));
 
-        let mq = MQTT::mock(map);
+        let mq = MQTTImpl::mock(map);
 
         let event = Event::Incoming(Packet::Publish(Publish {
             dup: true,
-            payload: Bytes::try_from("{temp: 40.2, time: 10101010}").unwrap(),
+            payload: Bytes::try_from("[{\"mac\":\"454806000009\",\"time\":\"1660235235\",\"rssi\":\"-95\",\"adv\":\"036F03CAA201000000000000\"}]").unwrap(),
             pkid: 10,
             qos: QoS::AtMostOnce.try_to(),
             retain: false,
@@ -279,7 +260,7 @@ mod tests {
 
     #[async_trait]
     impl Controller for MockController {
-        async fn exec(&self, _ctx: &Context, _msg: &Messages) -> Result<(), MqttError> {
+        async fn exec(&self, _ctx: &Context, _msg: &Bytes) -> Result<(), MqttError> {
             if self.mock_error.is_none() {
                 return Ok(());
             }

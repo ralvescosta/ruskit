@@ -33,7 +33,7 @@ jobs:
   #       token: ${{secrets.CODECOV_TOKEN}}
 
   tag_build:
-    needs: ci
+    # needs: ci
     runs-on: ubuntu-latest
     if: ${{ github.ref == 'refs/heads/main' }}
     steps:

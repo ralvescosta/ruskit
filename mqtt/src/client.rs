@@ -148,7 +148,11 @@ impl MQTT for MQTTImpl {
                 return Err(MqttError::TopicControllerWasNotFound {});
             }
 
-            return match controller.unwrap().exec(&ctx, &msg.payload).await {
+            return match controller
+                .unwrap()
+                .exec(&ctx, &msg.payload, &metadata)
+                .await
+            {
                 Ok(_) => {
                     debug!("event processed successfully");
                     // span.set_status(StatusCode::Ok, format!("event processed successfully"));
@@ -260,7 +264,12 @@ mod tests {
 
     #[async_trait]
     impl Controller for MockController {
-        async fn exec(&self, _ctx: &Context, _msg: &Bytes) -> Result<(), MqttError> {
+        async fn exec(
+            &self,
+            _ctx: &Context,
+            _msg: &Bytes,
+            _topic: &TopicMessage,
+        ) -> Result<(), MqttError> {
             if self.mock_error.is_none() {
                 return Ok(());
             }

@@ -82,7 +82,7 @@ pub struct PublishData {
 }
 
 impl PublishData {
-    pub fn new<T>(payload: T) -> Result<Self, AmqpError>
+    pub fn new<T>(payload: &T) -> Result<Self, AmqpError>
     where
         T: PublishPayload + Serialize,
     {

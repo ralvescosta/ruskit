@@ -3,6 +3,8 @@ use bytes::Bytes;
 use errors::mqtt::MqttError;
 use opentelemetry::Context;
 
+use crate::topics::TopicMessage;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub enum QoS {
     AtMostOnce = 0,
@@ -38,7 +40,12 @@ impl QoS {
 
 #[async_trait]
 pub trait Controller {
-    async fn exec(&self, ctx: &Context, msgs: &Bytes) -> Result<(), MqttError>;
+    async fn exec(
+        &self,
+        ctx: &Context,
+        msgs: &Bytes,
+        topic: &TopicMessage,
+    ) -> Result<(), MqttError>;
 }
 
 #[cfg(test)]

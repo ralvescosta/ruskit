@@ -16,6 +16,8 @@
   - [Errors](https://github.com/ralvescosta/ruskit/tree/main/errors)
   - [MQTT](https://github.com/ralvescosta/ruskit/tree/main/mqtt)
   - [RabbitMQ](https://github.com/ralvescosta/ruskit/tree/main/amqp)
+  - [Actix-web Middlewares](https://github.com/ralvescosta/ruskit/tree/main/httpw)
+  - [PostgreSQL Connection](https://github.com/ralvescosta/ruskit/tree/main/postgres)
 
 - [Get Started](#get-started)
 

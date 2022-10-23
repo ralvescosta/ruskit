@@ -14,8 +14,6 @@ use tracing_subscriber::{
 pub fn setup(cfg: &Config) -> Result<(), LoggingError> {
     LogTracer::init().map_err(|_| LoggingError::InternalError {})?;
 
-    let (non_blocking_writer, _guard) = tracing_appender::non_blocking(std::io::stdout());
-
     let level_filter = get_log_level_filter(cfg);
 
     let mut target_filters = Targets::new().with_default(level_filter);
@@ -25,6 +23,7 @@ pub fn setup(cfg: &Config) -> Result<(), LoggingError> {
             .with_target("rumqttc::state", LevelFilter::WARN)
             .with_target("lapin::channels", LevelFilter::WARN)
             .with_target("tower::buffer::worker", LevelFilter::WARN)
+            .with_target("h2::client", LevelFilter::WARN)
             .with_target("h2::codec::framed_read", LevelFilter::WARN)
             .with_target("h2::codec::framed_write", LevelFilter::WARN)
             .with_target("h2::proto::settings", LevelFilter::WARN)
@@ -43,7 +42,7 @@ pub fn setup(cfg: &Config) -> Result<(), LoggingError> {
     } else {
         fmt_json = Some(BunyanFormattingLayer::new(
             cfg.app_name.to_owned(),
-            non_blocking_writer,
+            std::io::stdout,
         ));
     }
 

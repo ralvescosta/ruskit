@@ -1,5 +1,6 @@
 use dotenv::from_filename;
-use std::{collections::HashMap, env};
+use std::{collections::HashMap, env, fmt};
+use tracing::error;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum Environment {
@@ -10,44 +11,107 @@ pub enum Environment {
     Prod,
 }
 
+impl fmt::Display for Environment {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let printable = match *self {
+            Environment::Local => "local",
+            Environment::Dev => "development",
+            Environment::Staging => "staging",
+            Environment::Prod => "prod",
+        };
+        write!(f, "{}", printable)
+    }
+}
+
+impl Environment {
+    pub fn is_local(&self) -> bool {
+        self == &Environment::Local
+    }
+
+    pub fn is_dev(&self) -> bool {
+        self == &Environment::Dev
+    }
+
+    pub fn is_stg(&self) -> bool {
+        self == &Environment::Staging
+    }
+
+    pub fn is_prod(&self) -> bool {
+        self == &Environment::Prod
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct Config {
+    ///Default: APP_NAME
     pub app_name: String,
+    ///Default: Environment::Local
     pub env: Environment,
+    ///Default: 0.0.0.0
     pub app_host: String,
+    ///Default: 31033
     pub app_port: u64,
+    ///Default: debug
     pub log_level: String,
+    ///Default: false
     pub enable_external_creates_logging: bool,
 
+    ///Default: localhost
     pub mqtt_host: String,
+    ///Default: 1883
     pub mqtt_port: u16,
+    ///Default: mqtt_user
     pub mqtt_user: String,
+    /// When the password will be read, we will apply a Base64 decoded so the password needed to be encoded by Base64
+    ///
+    /// Default: password
     pub mqtt_password: String,
 
+    ///Default: localhost
     pub amqp_host: String,
+    ///Default: 5672
     pub amqp_port: u16,
+    ///Default: guest
     pub amqp_user: String,
+    /// When the password will be read, we will apply a Base64 decoded so the password needed to be encoded by Base64
+    ///
+    /// Default: guest
     pub amqp_password: String,
     pub amqp_vhost: String,
 
+    ///Default: false
+    pub enable_traces: bool,
+    ///Default: false
+    pub enable_metrics: bool,
+    ///Default: https://otlp.nr-data.net:4317
     pub otlp_host: String,
+    ///Default: d1a26ee8b5c8f32c8ecf69c6038b72bd6d79NRAL
     pub otlp_key: String,
     pub otlp_service_type: String,
-    pub otlp_export_time: u64,
+    ///Default: 30s
+    pub otlp_export_timeout: u64,
+    ///Default: 60s
+    pub otlp_metrics_export_interval: u64,
 
+    ///Default: localhost
     pub db_host: String,
+    ///Default: postgres
     pub db_user: String,
+    /// When the password will be read, we will apply a Base64 decoded so the password needed to be encoded by Base64
+    ///
+    /// Default: postgres
     pub db_password: String,
+    ///Default: 5432
     pub db_port: u16,
     pub db_name: String,
 }
 
 impl Config {
     pub fn new() -> Config {
-        let e = Config::load_file();
+        let e = Self::load_from_file();
 
         let mut map = HashMap::new();
-        Config::load_from_env(&mut map);
+        Self::load_from_env(&mut map);
 
         Config {
             app_name: map
@@ -62,10 +126,10 @@ impl Config {
 
             app_port: map
                 .get("APP_PORT")
-                .unwrap_or(&String::from("12345"))
+                .unwrap_or(&String::from("31033"))
                 .to_string()
                 .parse()
-                .unwrap_or(12345),
+                .unwrap_or(31033),
             env: e,
 
             log_level: map
@@ -93,10 +157,12 @@ impl Config {
                 .unwrap_or(&String::from("mqtt_user"))
                 .to_string(),
 
-            mqtt_password: map
-                .get("MQTT_PASSWORD")
-                .unwrap_or(&String::from("password"))
-                .to_string(),
+            mqtt_password: Self::decoded(
+                map.get("MQTT_PASSWORD")
+                    .unwrap_or(&String::from("cGFzc3dvcmQ="))
+                    .to_string(),
+            )
+            .unwrap_or_default(),
 
             //
             amqp_host: map
@@ -116,10 +182,12 @@ impl Config {
                 .unwrap_or(&String::from("guest"))
                 .to_string(),
 
-            amqp_password: map
-                .get("AMQP_PASSWORD")
-                .unwrap_or(&String::from("guest"))
-                .to_string(),
+            amqp_password: Self::decoded(
+                map.get("AMQP_PASSWORD")
+                    .unwrap_or(&String::from("Z3Vlc3Q="))
+                    .to_string(),
+            )
+            .unwrap_or_default(),
 
             amqp_vhost: map
                 .get("AMQP_VHOST")
@@ -127,24 +195,46 @@ impl Config {
                 .to_string(),
 
             //
+            enable_traces: map
+                .get("ENABLE_TRACES")
+                .unwrap_or(&String::from("false"))
+                .parse()
+                .unwrap_or(false),
+
+            enable_metrics: map
+                .get("ENABLE_METRICS")
+                .unwrap_or(&String::from("false"))
+                .parse()
+                .unwrap_or(false),
+
             otlp_host: map
                 .get("OTLP_HOST")
                 .unwrap_or(&String::from("https://otlp.nr-data.net:4317"))
                 .to_string(),
 
-            otlp_key: map.get("OTLP_KEY").unwrap_or(&String::from("")).to_string(),
+            otlp_key: map
+                .get("OTLP_KEY")
+                .unwrap_or(&String::from("d1a26ee8b5c8f32c8ecf69c6038b72bd6d79NRAL"))
+                .to_string(),
 
             otlp_service_type: map
                 .get("OTLP_SERVICE_TYPE")
                 .unwrap_or(&String::from("MQTT"))
                 .to_string(),
 
-            otlp_export_time: map
-                .get("OTLP_EXPORT_TIME")
-                .unwrap_or(&String::from("10"))
+            otlp_export_timeout: map
+                .get("OTLP_EXPORT_TIMEOUT")
+                .unwrap_or(&String::from("30"))
                 .to_string()
                 .parse()
-                .unwrap_or(10),
+                .unwrap_or(30),
+
+            otlp_metrics_export_interval: map
+                .get("OTLP_EXPORT_TIMEOUT")
+                .unwrap_or(&String::from("60"))
+                .to_string()
+                .parse()
+                .unwrap_or(60),
 
             //
             db_host: map
@@ -157,10 +247,12 @@ impl Config {
                 .unwrap_or(&String::from("postgres"))
                 .to_string(),
 
-            db_password: map
-                .get("DB_PASSWORD")
-                .unwrap_or(&String::from("postgres"))
-                .to_string(),
+            db_password: Self::decoded(
+                map.get("DB_PASSWORD")
+                    .unwrap_or(&String::from("cG9zdGdyZXM="))
+                    .to_string(),
+            )
+            .unwrap_or_default(),
 
             db_port: map
                 .get("DB_PORT")
@@ -176,31 +268,33 @@ impl Config {
         }
     }
 
-    fn load_file() -> Environment {
+    fn load_from_file() -> Environment {
         let env = env::var("RUST_ENV");
+
         if env.is_err() {
-            from_filename(".env.local").ok();
-            return Environment::Local;
+            return Self::local();
         }
 
         match env.unwrap().as_str() {
             "production" | "prod" | "PRODUCTION" | "PROD" => {
-                from_filename(".env.production").ok();
+                from_filename("./.env.production").ok();
                 Environment::Prod
             }
             "staging" | "stg" | "STAGING" | "STG" => {
-                from_filename(".env.staging").ok();
+                from_filename("./.env.staging").ok();
                 Environment::Staging
             }
             "develop" | "DEVELOP" | "dev" | "DEV" => {
-                from_filename(".env.develop").ok();
+                from_filename("./.env.develop").ok();
                 Environment::Dev
             }
-            _ => {
-                from_filename(".env.local").ok();
-                Environment::Local
-            }
+            _ => Self::local(),
         }
+    }
+
+    fn local() -> Environment {
+        from_filename("./.env.local").ok();
+        Environment::Local
     }
 
     fn load_from_env(map: &mut HashMap<String, String>) {
@@ -236,6 +330,20 @@ impl Config {
         )
     }
 
+    pub fn decoded(text: String) -> Result<String, ()> {
+        let d = base64::decode(text).map_err(|e| {
+            error!(error = e.to_string(), "base64 decoded error");
+            ()
+        })?;
+
+        let string = String::from_utf8(d).map_err(|e| {
+            error!(error = e.to_string(), "error to convert to String");
+            ()
+        })?;
+
+        Ok(string)
+    }
+
     pub fn mock() -> Config {
         Config {
             app_name: "rust_iot".to_owned(),
@@ -253,10 +361,13 @@ impl Config {
             amqp_user: "admin".to_owned(),
             amqp_password: "password".to_owned(),
             amqp_vhost: "".to_owned(),
+            enable_traces: true,
+            enable_metrics: true,
             otlp_host: "https://otlp.nr-data.net:4317".to_owned(),
             otlp_key: "some_key".to_owned(),
             otlp_service_type: "MQTT".to_owned(),
-            otlp_export_time: 10,
+            otlp_export_timeout: 10,
+            otlp_metrics_export_interval: 60,
             db_host: "locahost".to_owned(),
             db_user: "postgres".to_owned(),
             db_password: "password".to_owned(),

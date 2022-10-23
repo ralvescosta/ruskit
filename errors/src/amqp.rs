@@ -2,6 +2,9 @@ use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum AmqpError {
+    #[error("internal error")]
+    InternalError,
+
     #[error("failure to connect")]
     ConnectionError,
 
@@ -37,4 +40,10 @@ pub enum AmqpError {
 
     #[error("failure to publish to dlq")]
     PublishingToDQLError,
+
+    #[error("consumer declaration error")]
+    ConsumerDeclarationError,
+
+    #[error("failure to consume message `{0}`")]
+    ConsumerError(String),
 }

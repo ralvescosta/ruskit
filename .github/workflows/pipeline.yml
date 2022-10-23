@@ -25,7 +25,7 @@ jobs:
       
     - name: Run tests
       run: |
-        cargo +nightly tarpaulin --verbose --features otlp --workspace --timeout 120 --out Xml
+        cargo +nightly tarpaulin --verbose --workspace --timeout 120 --out Xml
       
     - name: Upload to codecov.io
       uses: codecov/codecov-action@v3

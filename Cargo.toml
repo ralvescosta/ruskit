@@ -1,13 +1,27 @@
 [workspace]
 
 members = [
+    "events",
     "errors",
+    "env",
     "logging",
-    "otel",
-    "amqp",
     "mqtt",
+    "amqp",
     "postgres",
+    "traces",
+    "metrics",
     "httpw",
 ]
 
-default-members = ["errors", "logging", "otel", "amqp", "mqtt", "postgres"]
+default-members  = [
+    "events", 
+    "errors", 
+    "env", 
+    "logging", 
+    "mqtt", 
+    "amqp", 
+    "postgres",
+    "traces",
+    "metrics",
+    "httpw",
+]

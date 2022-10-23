@@ -1,9 +1,8 @@
 use async_trait::async_trait;
 use bytes::Bytes;
 use errors::mqtt::MqttError;
+use events::mqtt::TopicMessage;
 use opentelemetry::Context;
-
-use crate::topics::TopicMessage;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub enum QoS {

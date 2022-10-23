@@ -1,21 +1,19 @@
-use super::{
-    topics::TopicMessage,
-    types::{Controller, QoS},
-};
+use super::types::{Controller, QoS};
 use async_trait::async_trait;
 use env::Config;
 use errors::mqtt::MqttError;
-use log::{debug, error};
+use events::mqtt::TopicMessage;
 #[cfg(test)]
 use mockall::predicate::*;
 use opentelemetry::{
     global::{self, BoxedTracer},
-    trace::FutureExt,
+    trace::{FutureExt, SpanKind, TraceContextExt},
     Context,
 };
-use otel;
 use rumqttc::{AsyncClient, Event, EventLoop, MqttOptions, Packet};
 use std::{collections::HashMap, sync::Arc, time::Duration};
+use traces;
+use tracing::{debug, error};
 
 #[async_trait]
 pub trait MQTT {
@@ -116,13 +114,11 @@ impl MQTT for MQTTImpl {
     ) -> Result<(), MqttError> {
         debug!("publishing in a topic {:?}", topic);
 
-        let cx = otel::tracing::ctx_from_ctx(&self.tracer, ctx, "mqtt publish");
-
         self.client
             .clone()
             .unwrap()
             .publish(topic, qos.try_to(), retain, payload)
-            .with_context(cx)
+            .with_context(ctx.to_owned())
             .await
             .map_err(|_| MqttError::PublishingError {})?;
 
@@ -132,19 +128,27 @@ impl MQTT for MQTTImpl {
 
     async fn handle_event(&self, event: &Event) -> Result<(), MqttError> {
         if let Event::Incoming(Packet::Publish(msg)) = event.to_owned() {
-            debug!("message received in a topic {:?}", msg.topic);
-
             let metadata =
                 TopicMessage::new(&msg.topic).map_err(|_| MqttError::UnformattedTopicError {})?;
 
-            debug!("metadata: {:?}", metadata);
-
             let name = format!("{:?}", msg.topic);
-            let ctx = otel::tracing::new_ctx(&self.tracer, &name);
+            let ctx = traces::span_ctx(&self.tracer, SpanKind::Consumer, &name);
+            let span = ctx.span();
+
+            debug!(
+                trace.id = traces::trace_id(&ctx),
+                span.id = traces::span_id(&ctx),
+                "message received in a topic {:?}",
+                msg.topic
+            );
 
             let controller = self.dispatchers.get(metadata.label);
             if controller.is_none() {
-                error!("cant find controller for this topic");
+                error!(
+                    trace.id = traces::trace_id(&ctx),
+                    span.id = traces::span_id(&ctx),
+                    "cant find controller for this topic"
+                );
                 return Err(MqttError::TopicControllerWasNotFound {});
             }
 
@@ -154,13 +158,21 @@ impl MQTT for MQTTImpl {
                 .await
             {
                 Ok(_) => {
-                    debug!("event processed successfully");
-                    // span.set_status(StatusCode::Ok, format!("event processed successfully"));
+                    debug!(
+                        trace.id = traces::trace_id(&ctx),
+                        span.id = traces::span_id(&ctx),
+                        "event processed successfully"
+                    );
                     Ok(())
                 }
                 Err(e) => {
-                    debug!("failed to handle the event - {:?}", e);
-                    // span.set_status(StatusCode::Error, format!("failed to handle the event"));
+                    debug!(
+                        trace.id = traces::trace_id(&ctx),
+                        span.id = traces::span_id(&ctx),
+                        "failed to handle the event - {:?}",
+                        e
+                    );
+                    span.record_error(&e);
                     Err(e)
                 }
             };

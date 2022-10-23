@@ -1,0 +1,12 @@
+[package]
+name = "events"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+errors = { path = "../errors" }
+
+serde = { version = "1.0.147", features = ["derive"] }
+serde_json = { version = "1.0.87" }
+bytes = { version = "1.2.1", features = ["serde"] }
+tracing = { version = "0.1.37" }

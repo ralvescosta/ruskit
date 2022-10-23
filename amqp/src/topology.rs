@@ -51,8 +51,24 @@ impl<'q> QueueDefinition<'q> {
         self
     }
 
-    pub fn binding(mut self, bind: QueueBindingDefinition<'q>) -> Self {
-        self.bindings.push(bind);
+    pub fn binding(mut self, exchange: &'q str, key: &'q str) -> Self {
+        self.bindings.push(QueueBindingDefinition {
+            exchange,
+            queue: self.name,
+            routing_key: key,
+        });
+        self
+    }
+
+    pub fn binding_fanout_exchanges(mut self, exchanges: Vec<&'q str>) -> Self {
+        for exchange in exchanges {
+            self.bindings.push(QueueBindingDefinition {
+                exchange,
+                queue: self.name,
+                routing_key: "",
+            });
+        }
+
         self
     }
 
@@ -192,7 +208,7 @@ impl<'a> AmqpTopology<'a> {
         Box::new(self)
     }
 
-    pub fn new_consumer_def(
+    pub fn consumer_def(
         &self,
         queue_name: &'a str,
         msg_type: &'a str,
@@ -246,7 +262,7 @@ mod tests {
         assert_eq!(def.retry_ttl, Some(1000));
 
         let binding = QueueBindingDefinition::new("exchange", "queue", "routing_key");
-        let def = def.binding(binding);
+        let def = def.binding("exchange", "key");
         assert_eq!(def.bindings[0].exchange, binding.exchange);
     }
 
@@ -302,11 +318,11 @@ mod tests {
         let topology = topology.queue(queue_def.clone());
         assert_eq!(topology.queues[0].name, queue_def.name);
 
-        let consumer_def = topology.new_consumer_def("queue", "msg_type");
+        let consumer_def = topology.consumer_def("queue", "msg_type");
         assert!(consumer_def.is_some());
 
         let queue_def = QueueDefinition::name("queue").with_retry(1000, 3);
         let topology = topology.queue(queue_def.clone());
-        assert!(topology.new_consumer_def("queue", "msg_type").is_some());
+        assert!(topology.consumer_def("queue", "msg_type").is_some());
     }
 }

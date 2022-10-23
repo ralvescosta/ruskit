@@ -1,34 +1,29 @@
 use super::{
     defs,
-    topology::{
-        AmqpTopology, ConsumerDefinition, ConsumerHandler, ExchangeDefinition,
-        ExchangeKind as MyExchangeKind, QueueDefinition,
-    },
-    types::{Metadata, PublishData},
+    topology::{AmqpTopology, ExchangeDefinition, ExchangeKind as MyExchangeKind, QueueDefinition},
+    types::AmqpTracePropagator,
 };
 use async_trait::async_trait;
 use env::Config;
 use errors::amqp::AmqpError;
+use events::amqp::AmqpPublishData;
 use lapin::{
-    message::Delivery,
     options::{
-        BasicAckOptions, BasicConsumeOptions, BasicNackOptions, BasicPublishOptions,
-        ExchangeDeclareOptions, QueueBindOptions, QueueDeclareOptions,
+        BasicConsumeOptions, BasicPublishOptions, ExchangeDeclareOptions, QueueBindOptions,
+        QueueDeclareOptions,
     },
     protocol::basic::AMQPProperties,
     types::{AMQPValue, FieldTable, LongInt, LongString, ShortString},
-    Channel, Connection, ConnectionProperties, Consumer, ExchangeKind, Queue,
+    Channel, Connection, ConnectionProperties, Consumer, ExchangeKind,
 };
-use log::{debug, error, warn};
-use opentelemetry::{
-    global::{self, BoxedTracer},
-    trace::{FutureExt, Span, StatusCode},
-    Context,
-};
-use otel;
+#[cfg(test)]
+use mockall::automock;
+use opentelemetry::{global, trace::FutureExt, Context};
 use std::{collections::BTreeMap, sync::Arc};
+use tracing::{debug, error};
 use uuid::Uuid;
 
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait Amqp {
     fn channel(&self) -> &Channel;
@@ -39,7 +34,7 @@ pub trait Amqp {
         delete: bool,
         durable: bool,
         exclusive: bool,
-    ) -> Result<Queue, AmqpError>;
+    ) -> Result<(), AmqpError>;
     async fn declare_exchange(
         &self,
         name: &str,
@@ -59,22 +54,15 @@ pub trait Amqp {
         ctx: &Context,
         exchange: &str,
         key: &str,
-        data: &PublishData,
+        data: &AmqpPublishData,
     ) -> Result<(), AmqpError>;
-    async fn install_topology(&self, topology: &AmqpTopology) -> Result<(), AmqpError>;
-    async fn consume<'c>(
-        &self,
-        def: &'c ConsumerDefinition,
-        handler: Arc<dyn ConsumerHandler + Send + Sync>,
-        delivery: &'c Delivery,
-    ) -> Result<(), AmqpError>;
+    async fn install_topology<'aq>(&self, topology: &AmqpTopology<'aq>) -> Result<(), AmqpError>;
 }
 
 #[derive(Debug)]
 pub struct AmqpImpl {
     conn: Box<Connection>,
     channel: Box<Channel>,
-    tracer: BoxedTracer,
 }
 
 impl AmqpImpl {
@@ -99,7 +87,6 @@ impl AmqpImpl {
         Ok(Arc::new(AmqpImpl {
             conn: Box::new(conn),
             channel: Box::new(channel),
-            tracer: global::tracer("amqp"),
         }))
     }
 }
@@ -120,7 +107,7 @@ impl Amqp for AmqpImpl {
         delete: bool,
         durable: bool,
         exclusive: bool,
-    ) -> Result<Queue, AmqpError> {
+    ) -> Result<(), AmqpError> {
         self.channel
             .queue_declare(
                 name,
@@ -134,7 +121,9 @@ impl Amqp for AmqpImpl {
                 FieldTable::default(),
             )
             .await
-            .map_err(|_| AmqpError::DeclareQueueError(name.to_owned()))
+            .map_err(|_| AmqpError::DeclareQueueError(name.to_owned()))?;
+
+        Ok(())
     }
 
     async fn declare_exchange(
@@ -201,17 +190,13 @@ impl Amqp for AmqpImpl {
         ctx: &Context,
         exchange: &str,
         key: &str,
-        data: &PublishData,
+        data: &AmqpPublishData,
     ) -> Result<(), AmqpError> {
-        let cx = otel::tracing::ctx_from_ctx(&self.tracer, ctx, "amqp publishing");
-
         let mut map = BTreeMap::new();
-        map.insert(
-            ShortString::from(defs::AMQP_HEADERS_OTEL_TRACEPARENT),
-            AMQPValue::LongString(LongString::from(otel::amqp::Traceparent::string_from_ctx(
-                &cx,
-            ))),
-        );
+
+        global::get_text_map_propagator(|propagator| {
+            propagator.inject_context(ctx, &mut AmqpTracePropagator::new(&mut map))
+        });
 
         self.channel
             .basic_publish(
@@ -228,7 +213,7 @@ impl Amqp for AmqpImpl {
                     .with_message_id(ShortString::from(Uuid::new_v4().to_string()))
                     .with_headers(FieldTable::from(map)),
             )
-            .with_context(cx)
+            .with_context(ctx.to_owned())
             .await
             .map_err(|e| {
                 error!("publish err - {:?}", e);
@@ -238,7 +223,7 @@ impl Amqp for AmqpImpl {
         Ok(())
     }
 
-    async fn install_topology(&self, topology: &AmqpTopology) -> Result<(), AmqpError> {
+    async fn install_topology<'aq>(&self, topology: &AmqpTopology<'aq>) -> Result<(), AmqpError> {
         for exch in topology.exchanges.clone() {
             self.install_exchanges(&exch).await?;
         }
@@ -248,127 +233,6 @@ impl Amqp for AmqpImpl {
         }
 
         Ok(())
-    }
-
-    async fn consume<'c>(
-        &self,
-        def: &'c ConsumerDefinition<'c>,
-        handler: Arc<dyn ConsumerHandler + Send + Sync>,
-        delivery: &'c Delivery,
-    ) -> Result<(), AmqpError> {
-        let header = match delivery.properties.headers() {
-            Some(val) => val.to_owned(),
-            None => FieldTable::default(),
-        };
-
-        let metadata = Metadata::extract(&header);
-
-        debug!(
-            "queue: {} - consumer: {} - received message: {}",
-            def.name, def.queue, metadata.msg_type
-        );
-
-        if metadata.msg_type.is_empty() || metadata.msg_type != def.msg_type.to_string() {
-            match delivery
-                .nack(BasicNackOptions {
-                    multiple: false,
-                    requeue: true,
-                })
-                .await
-            {
-                Ok(_) => {}
-                _ => error!("error whiling ack msg"),
-            };
-            return Ok(());
-        }
-
-        let (ctx, mut span) =
-            otel::amqp::get_span(&self.tracer, &metadata.traceparent, &metadata.msg_type);
-
-        match handler
-            .exec(&ctx, delivery.data.as_slice())
-            .with_context(ctx.clone())
-            .await
-        {
-            Ok(_) => match delivery.ack(BasicAckOptions { multiple: false }).await {
-                Ok(_) => {
-                    span.set_status(StatusCode::Ok, "success".to_owned());
-                    return Ok(());
-                }
-                _ => {
-                    error!("error whiling ack msg");
-                    span.set_status(StatusCode::Error, "error to ack msg".to_owned());
-                    return Err(AmqpError::AckMessageError {});
-                }
-            },
-            _ if def.with_retry => {
-                if metadata.count <= def.retries {
-                    warn!("error whiling handling msg, requeuing for latter");
-                    match delivery
-                        .nack(BasicNackOptions {
-                            multiple: false,
-                            requeue: false,
-                        })
-                        .await
-                    {
-                        Ok(_) => return Ok(()),
-                        _ => {
-                            error!("error whiling requeuing");
-                            span.set_status(StatusCode::Error, "error to requeuing msg".to_owned());
-                            return Err(AmqpError::RequeuingMessageError {});
-                        }
-                    }
-                } else {
-                    error!("too many attempts, sending to dlq");
-                    match self
-                        .channel
-                        .basic_publish(
-                            "",
-                            def.dlq_name,
-                            BasicPublishOptions::default(),
-                            &delivery.data,
-                            delivery.properties.clone(),
-                        )
-                        .await
-                    {
-                        Ok(_) => {
-                            match delivery.ack(BasicAckOptions { multiple: false }).await {
-                                Ok(_) => return Ok(()),
-                                _ => {
-                                    error!("error whiling ack msg to default queue");
-                                    span.set_status(
-                                        StatusCode::Error,
-                                        "msg was sent to dlq".to_owned(),
-                                    );
-                                    return Err(AmqpError::AckMessageError {});
-                                }
-                            };
-                        }
-                        _ => {
-                            error!("error whiling sending to dlq");
-                            span.set_status(StatusCode::Error, "msg was sent to dlq".to_owned());
-                            return Err(AmqpError::PublishingToDQLError {});
-                        }
-                    };
-                }
-            }
-            _ => {
-                match delivery
-                    .nack(BasicNackOptions {
-                        multiple: false,
-                        requeue: false,
-                    })
-                    .await
-                {
-                    Ok(_) => return Ok(()),
-                    _ => {
-                        error!("error whiling nack msg");
-                        span.set_status(StatusCode::Error, "error to nack msg".to_owned());
-                        return Err(AmqpError::NackMessageError {});
-                    }
-                }
-            }
-        }
     }
 }
 

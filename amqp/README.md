@@ -1,1 +1,1 @@
-# AMQP Crate
+# Hedro AMQP Crate

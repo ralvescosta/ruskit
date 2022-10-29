@@ -47,6 +47,12 @@ pub trait Controller {
     ) -> Result<(), MqttError>;
 }
 
+#[async_trait]
+pub trait ControllerV2 {
+    async fn exec(&self, ctx: &Context, msgs: &[u8], topic: &TopicMessage)
+        -> Result<(), MqttError>;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -5,8 +5,14 @@ pub enum MqttError {
     #[error("mqtt internal error")]
     InternalError,
 
+    #[error("mqtt broker connection lost")]
+    ConnectionLost,
+
     #[error("mqtt unknown message kind")]
     UnknownMessageKindError,
+
+    #[error("mqtt serialize payload error: `{0}`")]
+    SerializePayloadError(String),
 
     #[error("mqtt failure to deserialize message - MqttError::DeserializeMessageError: `{0}`")]
     DeserializeMessageError(String),

@@ -10,20 +10,28 @@
 ## Table of content
 
 - [Crates](#table-of-content)
-  - [Environment](https://github.com/ralvescosta/ruskit/tree/main/env)
-  - [Logging](https://github.com/ralvescosta/ruskit/tree/main/logging)
-  - [Tracing](https://github.com/ralvescosta/ruskit/tree/main/traces)
-  - [Metrics](https://github.com/ralvescosta/ruskit/tree/main/metrics)
-  - [Errors](https://github.com/ralvescosta/ruskit/tree/main/errors)
-  - [MQTT](https://github.com/ralvescosta/ruskit/tree/main/mqtt)
   - [RabbitMQ](https://github.com/ralvescosta/ruskit/tree/main/amqp)
+  - [Environment](https://github.com/ralvescosta/ruskit/tree/main/env)
+  - [Errors](https://github.com/ralvescosta/ruskit/tree/main/errors)
   - [Actix-web Middlewares](https://github.com/ralvescosta/ruskit/tree/main/httpw)
+  - [Logging](https://github.com/ralvescosta/ruskit/tree/main/logging)
+  - [Metrics](https://github.com/ralvescosta/ruskit/tree/main/metrics)
+  - [MQTT](https://github.com/ralvescosta/ruskit/tree/main/mqtt)
   - [PostgreSQL Connection](https://github.com/ralvescosta/ruskit/tree/main/postgres)
+  - [Tracing](https://github.com/ralvescosta/ruskit/tree/main/traces)
 
 - [Get Started](#get-started)
 
 
 ## Get Started
+
+Install the followings dependencies:
+
+```
+sudo apt install libssl-dev build-essential cmake pkg-config \
+sudo apt install llvm-dev libclang-dev clang \
+sudo apt install mosquitto-dev libmosquitto-dev
+```
 
 To use one of these crates just add to your Cargo.toml
 

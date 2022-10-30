@@ -28,7 +28,7 @@ jobs:
   
     - name: Install mosquitto dependencies
       run: |
-        apt install libssl-dev build-essential cmake pkg-config mosquitto-dev libmosquitto-dev -y
+        apt install libssl-dev build-essential cmake pkg-config mosquitto -y
       
     - name: Run tests
       run: |

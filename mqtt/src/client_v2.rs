@@ -1,6 +1,6 @@
 use env::Config;
 use errors::{amqp::AmqpError, mqtt::MqttError};
-use futures_util::StreamExt;
+// use futures_util::StreamExt;
 use mqtt::{AsyncClient, AsyncReceiver, Message, MessageBuilder};
 use paho_mqtt as mqtt;
 use serde::Serialize;
@@ -9,7 +9,7 @@ use tracing::{debug, error};
 
 pub struct MqttImplV2 {
     client: AsyncClient,
-    stream: AsyncReceiver<Option<Message>>,
+    pub(super) stream: AsyncReceiver<Option<Message>>,
 }
 
 impl MqttImplV2 {

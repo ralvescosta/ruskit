@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use errors::mqtt::MqttError;
 use events::mqtt::TopicMessage;
+use futures_util::StreamExt;
 use opentelemetry::{
     global::{self, BoxedTracer},
     trace::{SpanKind, TraceContextExt},
@@ -10,17 +11,17 @@ use opentelemetry::{
 use paho_mqtt::{Message, TopicFilter};
 use tracing::{debug, error, warn};
 
-use crate::types::ControllerV2;
+use crate::{client_v2::MqttImplV2, types::ControllerV2};
 
-pub struct MqttDispatches {
-    topics: Vec<String>,
-    dispatches: Vec<Arc<dyn ControllerV2 + Sync + Send>>,
-    tracer: BoxedTracer,
+pub struct MqttDispatcher {
+    pub(crate) topics: Vec<String>,
+    pub(crate) dispatches: Vec<Arc<dyn ControllerV2 + Sync + Send>>,
+    pub(crate) tracer: BoxedTracer,
 }
 
-impl MqttDispatches {
+impl MqttDispatcher {
     pub fn new() -> Self {
-        MqttDispatches {
+        MqttDispatcher {
             topics: vec![],
             dispatches: vec![],
             tracer: global::tracer("mqtt_consumer"),
@@ -42,7 +43,7 @@ impl MqttDispatches {
         Ok(())
     }
 
-    pub async fn consume(&self, ctx: Context, msg: Message) -> Result<(), MqttError> {
+    pub async fn consume(&self, ctx: &Context, msg: &Message) -> Result<(), MqttError> {
         let mut p = -1;
         for (i, tp) in self.topics.clone().into_iter().enumerate() {
             let filter = TopicFilter::new(tp).map_err(|e| {
@@ -108,6 +109,24 @@ impl MqttDispatches {
             }
         };
     }
+
+    pub async fn consume_blocking(&self, client: &mut MqttImplV2) -> Result<(), MqttError> {
+        for topic in self.topics.clone() {
+            client.subscribe(&topic, 2).await?;
+        }
+
+        while let Some(delivery) = client.stream.next().await {
+            match delivery {
+                Some(msg) => match self.consume(&Context::new(), &msg).await {
+                    Err(e) => error!(error = e.to_string(), ""),
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -120,12 +139,12 @@ mod tests {
 
     #[test]
     fn test_new() {
-        MqttDispatches::new();
+        MqttDispatcher::new();
     }
 
     #[test]
     fn test_declare() {
-        let mut dispatch = MqttDispatches::new();
+        let mut dispatch = MqttDispatcher::new();
 
         let res = dispatch.declare("/some/topic".to_owned(), Arc::new(MockDispatch::new()));
         assert!(res.is_ok());
@@ -136,20 +155,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_consume() {
-        let mut dispatch = MqttDispatches::new();
+        let mut dispatch = MqttDispatcher::new();
 
         let res = dispatch.declare("/some/topic/#".to_owned(), Arc::new(MockDispatch::new()));
         assert!(res.is_ok());
 
         let msg = Message::new("/some/topic/sub", vec![], 0);
 
-        let res = dispatch.consume(Context::new(), msg).await;
+        let res = dispatch.consume(&Context::new(), &msg).await;
         assert!(res.is_ok());
     }
 
     #[tokio::test]
     async fn test_consume_with_dispatch_return_err() {
-        let mut dispatch = MqttDispatches::new();
+        let mut dispatch = MqttDispatcher::new();
 
         let mut mock = MockDispatch::new();
         mock.set_error(MqttError::InternalError {});
@@ -159,17 +178,17 @@ mod tests {
 
         let msg = Message::new("/some/topic/sub", vec![], 0);
 
-        let res = dispatch.consume(Context::new(), msg).await;
+        let res = dispatch.consume(&Context::new(), &msg).await;
         assert!(res.is_err());
     }
 
     #[tokio::test]
     async fn test_consume_with_unregistered_consumer() {
-        let dispatch = MqttDispatches::new();
+        let dispatch = MqttDispatcher::new();
 
         let msg = Message::new("/some/topic/sub", vec![], 0);
 
-        let res = dispatch.consume(Context::new(), msg).await;
+        let res = dispatch.consume(&Context::new(), &msg).await;
         assert!(res.is_err());
     }
 

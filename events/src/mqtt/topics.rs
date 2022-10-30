@@ -24,3 +24,20 @@ impl<'t> TopicMessage<'t> {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_right_topic() {
+        let res = TopicMessage::new("/first/second/third");
+        assert!(res.is_ok())
+    }
+
+    #[test]
+    fn test_topic_with_wrong_length() {
+        let res = TopicMessage::new("/first/second");
+        assert!(res.is_err())
+    }
+}

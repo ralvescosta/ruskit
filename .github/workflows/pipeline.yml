@@ -25,6 +25,10 @@ jobs:
 
     - name: Install protoc
       uses: arduino/setup-protoc@v1
+  
+    - name: Install mosquitto dependencies
+      run: |
+        sudo apt install libssl-dev build-essential cmake pkg-config mosquitto-dev libmosquitto-dev - y
       
     - name: Run tests
       run: |

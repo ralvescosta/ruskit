@@ -1,15 +1,15 @@
 use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum MqttError {
     #[error("mqtt internal error")]
     InternalError,
 
     #[error("mqtt broker connection lost")]
-    ConnectionLost,
+    ConnectionLostError,
 
-    #[error("mqtt unknown message kind")]
-    UnknownMessageKindError,
+    #[error("mqtt unregistered dispatch for this topic: `{0}`")]
+    UnregisteredDispatchForThisTopicError(String),
 
     #[error("mqtt serialize payload error: `{0}`")]
     SerializePayloadError(String),
@@ -28,4 +28,7 @@ pub enum MqttError {
 
     #[error("mqtt failure to subscribe in a topic")]
     SubscribeError,
+
+    #[error("mqtt dispatcher error")]
+    DispatcherError,
 }

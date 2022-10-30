@@ -7,7 +7,7 @@ use opentelemetry::{
     trace::{SpanKind, TraceContextExt},
     Context,
 };
-use paho_mqtt::{Message, Topic, TopicFilter};
+use paho_mqtt::{Message, TopicFilter};
 use tracing::{debug, error, warn};
 
 use crate::types::ControllerV2;
@@ -27,29 +27,38 @@ impl MqttDispatches {
         }
     }
 
-    pub fn declare(&mut self, topic: String, handler: Arc<dyn ControllerV2 + Send + Sync>) {
+    pub fn declare(
+        &mut self,
+        topic: String,
+        dispatch: Arc<dyn ControllerV2 + Send + Sync>,
+    ) -> Result<(), MqttError> {
+        if topic.is_empty() {
+            return Err(MqttError::DispatcherError {});
+        }
+
         self.topics.push(topic);
-        self.dispatches.push(handler);
+        self.dispatches.push(dispatch);
+
+        Ok(())
     }
 
     pub async fn consume(&self, ctx: Context, msg: Message) -> Result<(), MqttError> {
-        let filter = TopicFilter::new(msg.topic()).map_err(|e| {
-            error!(
-                error = e.to_string(),
-                trace.id = traces::trace_id(&ctx),
-                span.id = traces::span_id(&ctx),
-                "error to create mqtt topic filter",
-            );
-            MqttError::InternalError {}
-        })?;
-
         let mut p = -1;
         for (i, tp) in self.topics.clone().into_iter().enumerate() {
-            if !filter.is_match(&tp) {
-                continue;
+            let filter = TopicFilter::new(tp).map_err(|e| {
+                error!(
+                    error = e.to_string(),
+                    trace.id = traces::trace_id(&ctx),
+                    span.id = traces::span_id(&ctx),
+                    "error to create mqtt topic filter",
+                );
+                MqttError::InternalError {}
+            })?;
+
+            if filter.is_match(msg.topic()) {
+                p = i as i8;
+                break;
             }
-            p = i as i8;
-            break;
         }
 
         if p == -1 {
@@ -58,11 +67,13 @@ impl MqttDispatches {
                 span.id = traces::span_id(&ctx),
                 "cant find dispatch for this topic"
             );
-            return Err(MqttError::UnknownMessageKindError {});
+
+            return Err(MqttError::UnregisteredDispatchForThisTopicError(
+                msg.topic().to_owned(),
+            ));
         }
 
-        let metadata =
-            TopicMessage::new(msg.topic()).map_err(|_| MqttError::UnformattedTopicError {})?;
+        let metadata = TopicMessage::new(msg.topic())?;
 
         let ctx = traces::span_ctx(&self.tracer, SpanKind::Consumer, msg.topic());
         let span = ctx.span();
@@ -96,5 +107,99 @@ impl MqttDispatches {
                 Err(e)
             }
         };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::vec;
+
+    use super::*;
+    use async_trait::async_trait;
+    use errors::mqtt::MqttError;
+
+    #[test]
+    fn test_new() {
+        MqttDispatches::new();
+    }
+
+    #[test]
+    fn test_declare() {
+        let mut dispatch = MqttDispatches::new();
+
+        let res = dispatch.declare("/some/topic".to_owned(), Arc::new(MockDispatch::new()));
+        assert!(res.is_ok());
+
+        let res = dispatch.declare("".to_owned(), Arc::new(MockDispatch::new()));
+        assert!(res.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_consume() {
+        let mut dispatch = MqttDispatches::new();
+
+        let res = dispatch.declare("/some/topic/#".to_owned(), Arc::new(MockDispatch::new()));
+        assert!(res.is_ok());
+
+        let msg = Message::new("/some/topic/sub", vec![], 0);
+
+        let res = dispatch.consume(Context::new(), msg).await;
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_consume_with_dispatch_return_err() {
+        let mut dispatch = MqttDispatches::new();
+
+        let mut mock = MockDispatch::new();
+        mock.set_error(MqttError::InternalError {});
+
+        let res = dispatch.declare("/some/topic/#".to_owned(), Arc::new(mock));
+        assert!(res.is_ok());
+
+        let msg = Message::new("/some/topic/sub", vec![], 0);
+
+        let res = dispatch.consume(Context::new(), msg).await;
+        assert!(res.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_consume_with_unregistered_consumer() {
+        let dispatch = MqttDispatches::new();
+
+        let msg = Message::new("/some/topic/sub", vec![], 0);
+
+        let res = dispatch.consume(Context::new(), msg).await;
+        assert!(res.is_err());
+    }
+
+    struct MockDispatch {
+        error: Option<MqttError>,
+    }
+
+    impl MockDispatch {
+        pub fn new() -> Self {
+            MockDispatch { error: None }
+        }
+
+        pub fn set_error(&mut self, err: MqttError) {
+            self.error = Some(err)
+        }
+    }
+
+    #[async_trait]
+    impl ControllerV2 for MockDispatch {
+        async fn exec(
+            &self,
+            _ctx: &Context,
+            _msgs: &[u8],
+            _topic: &TopicMessage,
+        ) -> Result<(), MqttError> {
+            if self.error.is_some() {
+                return Err(self.error.clone().unwrap());
+            }
+
+            Ok(())
+        }
     }
 }

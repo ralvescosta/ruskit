@@ -53,7 +53,7 @@ impl MqttImplV2 {
 
         if !self.client.is_connected() {
             error!("connection to mqtt broker was lost");
-            return Err(MqttError::ConnectionLost {});
+            return Err(MqttError::ConnectionLostError {});
         }
 
         debug!("publishing to topic {}", topic);
@@ -74,7 +74,7 @@ impl MqttImplV2 {
     pub async fn subscribe(&self, topic: &str, qos: i32) -> Result<(), MqttError> {
         if !self.client.is_connected() {
             error!("connection to mqtt broker was lost");
-            return Err(MqttError::ConnectionLost {});
+            return Err(MqttError::ConnectionLostError {});
         }
 
         debug!("subscribing to the topic {}", topic);

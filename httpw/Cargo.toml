@@ -5,7 +5,9 @@ edition = "2021"
 
 [dependencies]
 errors = { path = '../errors' }
+env = { path = "../env" }
 health-readiness = { path = "../health_readiness" }
+
 actix-web = { version = "4.1.0" }
 actix-cors = { version = "0.6.1" }
 thiserror = { version = "1.0.31" }

@@ -20,7 +20,7 @@ pub async fn server(cfg: &Config) -> std::io::Result<()> {
             //
             .default_service(web::to(middlewares::default::not_found))
     })
-    .bind(cfg.app_addr())?
+    .bind(cfg.health_readiness_addr())?
     .workers(1)
     .run()
     .await

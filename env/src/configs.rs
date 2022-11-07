@@ -104,6 +104,9 @@ pub struct Config {
     ///Default: 5432
     pub db_port: u16,
     pub db_name: String,
+
+    //Default: 8888
+    pub health_readiness_port: u16,
 }
 
 impl Config {
@@ -127,7 +130,6 @@ impl Config {
             app_port: map
                 .get("APP_PORT")
                 .unwrap_or(&String::from("31033"))
-                .to_string()
                 .parse()
                 .unwrap_or(31033),
             env: e,
@@ -148,7 +150,6 @@ impl Config {
             mqtt_port: map
                 .get("MQTT_PORT")
                 .unwrap_or(&String::from("1883"))
-                .to_string()
                 .parse()
                 .unwrap_or(1883),
 
@@ -173,7 +174,6 @@ impl Config {
             amqp_port: map
                 .get("AMQP_PORT")
                 .unwrap_or(&String::from("5672"))
-                .to_string()
                 .parse()
                 .unwrap_or(5672),
 
@@ -225,14 +225,12 @@ impl Config {
             otlp_export_timeout: map
                 .get("OTLP_EXPORT_TIMEOUT")
                 .unwrap_or(&String::from("30"))
-                .to_string()
                 .parse()
                 .unwrap_or(30),
 
             otlp_metrics_export_interval: map
                 .get("OTLP_EXPORT_TIMEOUT")
                 .unwrap_or(&String::from("60"))
-                .to_string()
                 .parse()
                 .unwrap_or(60),
 
@@ -257,7 +255,6 @@ impl Config {
             db_port: map
                 .get("DB_PORT")
                 .unwrap_or(&String::from("5432"))
-                .to_string()
                 .parse()
                 .unwrap_or(5432),
 
@@ -265,6 +262,12 @@ impl Config {
                 .get("DB_NAME")
                 .unwrap_or(&String::from("postgres"))
                 .to_string(),
+
+            health_readiness_port: map
+                .get("HEALTH_READINESS_PORT")
+                .unwrap_or(&String::from("8888"))
+                .parse()
+                .unwrap_or(8888),
         }
     }
 
@@ -314,6 +317,10 @@ impl Config {
 
     pub fn app_addr(&self) -> String {
         format!("{}:{}", self.app_host, self.app_port)
+    }
+
+    pub fn health_readiness_addr(&self) -> String {
+        format!("0.0.0.0:{}", self.health_readiness_port)
     }
 
     pub fn amqp_uri(&self) -> String {
@@ -373,6 +380,7 @@ impl Config {
             db_password: "password".to_owned(),
             db_port: 5432,
             db_name: "test".to_owned(),
+            health_readiness_port: 8888,
         }
     }
 }

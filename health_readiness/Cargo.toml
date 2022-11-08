@@ -10,4 +10,5 @@ async-trait = { version = "0.1.58" }
 tracing = { version = "0.1.37" }
 deadpool-postgres = { version = "0.10.3" }
 lapin = { version = "2.1.1" }
+paho-mqtt = { version = "0.11" }
 

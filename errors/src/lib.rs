@@ -1,4 +1,10 @@
 pub mod amqp;
+pub mod configs;
+pub mod health_readiness;
+pub mod http_server;
 pub mod logging;
 pub mod mqtt;
+pub mod otel;
+pub mod protocol;
 pub mod repositories;
+pub mod secrets_manager;

@@ -2,6 +2,9 @@ use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum AmqpError {
+    #[error("internal error")]
+    InternalError,
+
     #[error("failure to connect")]
     ConnectionError,
 
@@ -37,4 +40,27 @@ pub enum AmqpError {
 
     #[error("failure to publish to dlq")]
     PublishingToDQLError,
+
+    #[error("consumer declaration error")]
+    ConsumerDeclarationError,
+
+    #[error("failure to consume message `{0}`")]
+    ConsumerError(String),
+
+    #[error("error to deserialization iot prov available message - IoTProvAvailableMessageDeserializationError: `{0}`")]
+    IoTProvAvailableMessageDeserializationError(String),
+
+    #[error("error to deserialization ack message - AcksMessageDeserializationError: `{0}`")]
+    AckMessageDeserializationError(String),
+
+    #[error(
+        "error to deserialization iot single message - IoTSingleMessageDeserializationError: `{0}`"
+    )]
+    IoTSingleMessageDeserializationError(String),
+
+    #[error("error to deserialization iot multiple message - IoTMultipleMessageDeserializationError: `{0}`")]
+    IoTMultipleMessageDeserializationError(String),
+
+    #[error("error to deserialization iot multiple message timer - IoTMultipleMessageTimerDeserializationError: `{0}`")]
+    IoTMultipleMessageTimerDeserializationError(String),
 }

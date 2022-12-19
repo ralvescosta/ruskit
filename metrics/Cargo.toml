@@ -1,0 +1,16 @@
+[package]
+name = "metrics"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+env = { path = "../env" }
+errors = { path = "../errors" }
+opentelemetry = { version = "0.18.0", features = ["rt-tokio", "metrics"] }
+opentelemetry-otlp = { version = "0.11.0", features = ["tonic", "metrics", "grpc-tonic" , "tls", "tls-roots"] }
+tracing = { version = "0.1.37" }
+tonic = { version = "0.8.3", features = ["tls"] }
+tokio = { version = "1.23.0", features = ["default"] }
+# libc = { version = "0.2.137" }
+# these crate use chrono crate with the feature = "colock", becouse of that it introduce a sec problem
+# procfs = { version = "0.14.1" }

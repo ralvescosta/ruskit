@@ -6,5 +6,6 @@ pub const AMQP_HEADERS_OTEL_TRACEPARENT: &str = "traceparent";
 pub const AMQP_HEADERS_DEAD_LETTER_EXCHANGE: &str = "x-dead-letter-exchange";
 pub const AMQP_HEADERS_DEAD_LETTER_ROUTING_KEY: &str = "x-dead-letter-routing-key";
 pub const AMQP_HEADERS_MESSAGE_TTL: &str = "x-message-ttl";
+pub const AMQP_HEADERS_DELAYED_EXCHANGE_TYPE: &str = "x-delayed-type";
 
 pub const AMQP_JSON_CONTENT_TYPE: &str = "application/json";

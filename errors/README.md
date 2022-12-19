@@ -1,1 +1,1 @@
-# Hedro Errors Crate
+# Errors Crate

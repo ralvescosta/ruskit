@@ -2,12 +2,28 @@
 
 members = [
     "errors",
+    "env",
     "logging",
-    "otel",
-    "amqp",
     "mqtt",
+    "amqp",
     "postgres",
+    "traces",
+    "metrics",
     "httpw",
+    "health_readiness",
+    "secrets_manager",
 ]
 
-default-members = ["errors", "logging", "otel", "amqp", "mqtt", "postgres"]
+default-members  = [
+    "errors", 
+    "env", 
+    "logging", 
+    "mqtt", 
+    "amqp", 
+    "postgres",
+    "traces",
+    "metrics",
+    "httpw",
+    "health_readiness",
+    "secrets_manager",
+]

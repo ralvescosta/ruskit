@@ -35,16 +35,15 @@ jobs:
       run: |
         cargo +nightly tarpaulin --workspace --timeout 120 --out Xml
 
-    - name: OSV Scanner
-      run: |
-        curl https://github.com/google/osv-scanner/releases/download/v1.0.1/osv-scanner_1.0.1_linux_amd64
-        ./osv-scanner_1.0.1_linux_amd64
-
     - name: Codecov
       uses: codecov/codecov-action@v3
       with:
         token: ${{secrets.CODECOV_TOKEN}}
-        verbose: true
+
+    - name: OSV Scanner
+      run: |
+        curl https://github.com/google/osv-scanner/releases/download/v1.0.1/osv-scanner_1.0.1_linux_amd64
+        ./osv-scanner_1.0.1_linux_amd64
       
   tag:
     needs: [build]

@@ -1,0 +1,82 @@
+name: ci
+
+on:
+  push:
+    branches: 
+      - "*"
+  pull_request:
+    branches: 
+      - "develop"
+      - "main"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image:  xd009642/tarpaulin:develop-nightly
+      options:  --security-opt seccomp=unconfined
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Install protoc
+      uses: arduino/setup-protoc@v1
+
+    - name: Install paho c dependencies
+      run: |
+        apt update && apt install sudo
+        sudo apt install libssl-dev build-essential cmake pkg-config llvm-dev libclang-dev clang mosquitto-dev libmosquitto-dev -y
+      
+    - name: Run tests
+      run: |
+        cargo +nightly tarpaulin --workspace --timeout 120 --out Xml
+
+    - name: OSV Scanner
+      run: |
+        curl https://github.com/google/osv-scanner/releases/download/v1.0.1/osv-scanner_1.0.1_linux_amd64
+        ./osv-scanner_1.0.1_linux_amd64
+
+    - name: Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        token: ${{secrets.CODECOV_TOKEN}}
+        verbose: true
+      
+  tag:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: '0'
+
+      - name: Pre release
+        if: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop'}}
+        uses: anothrNick/github-tag-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BUMP: patch
+          WITH_V: true
+          PRERELEASE: true
+
+      - name: Patch release
+        if: ${{ github.ref == 'refs/heads/develop' }}
+        uses: anothrNick/github-tag-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BUMP: patch
+          WITH_V: true
+          PRERELEASE: true
+
+      - name: Minor release
+        if: ${{ github.ref == 'refs/heads/main' }}
+        uses: anothrNick/github-tag-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BUMP: minor
+          WITH_V: true

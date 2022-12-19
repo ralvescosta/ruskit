@@ -8,6 +8,7 @@
     - [amqp](https://github.com/ralvescosta/ruskit/tree/main/amqp)
     - [env](https://github.com/ralvescosta/ruskit/tree/main/env)
     - [errors](https://github.com/ralvescosta/ruskit/tree/main/errors)
+    - [health_readiness](https://github.com/ralvescosta/ruskit/tree/main/health_readiness)
     - [httpw](https://github.com/ralvescosta/ruskit/tree/main/httpw)
     - [logging](https://github.com/ralvescosta/ruskit/tree/main/logging)
     - [metrics](https://github.com/ralvescosta/ruskit/tree/main/metrics)

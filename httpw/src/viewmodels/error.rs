@@ -8,7 +8,7 @@ use thiserror::Error;
 
 #[derive(Serialize)]
 pub struct HttpErrorViewModel {
-    pub status_code: i32,
+    pub status_code: u16,
     pub message: String,
     pub details: String,
 }

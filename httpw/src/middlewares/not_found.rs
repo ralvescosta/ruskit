@@ -3,7 +3,7 @@ use actix_web::{
     HttpResponse,
 };
 
-pub async fn handler() -> HttpResponse {
+pub async fn not_found() -> HttpResponse {
     HttpResponse::build(StatusCode::NOT_FOUND)
         .content_type(ContentType::plaintext())
         .body("Not Found")

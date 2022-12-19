@@ -3,18 +3,25 @@ name = "mqtt"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+mocks = ["dep:mockall"]
+
 [dependencies]
 errors = { path = "../errors" }
 env = { path = "../env" }
-otel = { path = "../otel" }
-opentelemetry = { version = "0.17.0" }
-log = { version = "0.4.17" }
-async-trait = { version = "0.1.56" }
-rumqttc = { version =  "0.13.0" }
-serde = { version = "1.0.140", features = ["derive"] }
-serde_json = { version = "1.0.82" }
-bytes = { version = "1.2.0", features = ["serde"] }
+traces = { path = "../traces" }
+opentelemetry = { version = "0.18.0" }
+tracing = { version = "0.1.37" }
+async-trait = { version = "0.1.59" }
+bytes = { version = "1.2.1", features = ["serde"] }
+paho-mqtt = { version = "0.11" }
+serde = { version = "1.0.150", features = ["derive"] }
+serde_json = { version = "1.0.89" }
+futures-util = { version = "0.3.25" }
+
+# Used only with feature mock
+mockall = { version = "0.11.3", optional = true }
 
 [dev-dependencies]
-mockall = { version = "0.11.2" }
-tokio = { version = "1.17.0" }
+mockall = { version = "0.11.3" }
+tokio = { version = "1.22.0" }

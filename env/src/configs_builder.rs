@@ -1,5 +1,5 @@
 use crate::{Config, Environment, SECRET_PREFIX, SECRET_PREFIX_TO_DECODE};
-use dotenv::from_filename;
+use dotenvy::from_filename;
 use errors::configs::ConfigsError;
 use secrets_manager::{AwsSecretClientBuilder, DummyClient, SecretClient};
 use std::{env, sync::Arc};

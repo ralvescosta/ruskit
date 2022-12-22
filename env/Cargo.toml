@@ -7,6 +7,6 @@ edition = "2021"
 errors = { path = "../errors" }
 secrets-manager = { path = "../secrets_manager" }
 
-dotenv = { version = "0.15.0" }
+dotenvy = { version = "0.15.6" }
 base64 = { version = "0.13.1" }
 tracing = { version = "0.1.37" }

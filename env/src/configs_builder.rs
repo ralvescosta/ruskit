@@ -312,6 +312,15 @@ impl ConfigBuilder {
                     cfg.multiple_message_timer =
                         self.get_i32_from_secret(value, client.clone(), 15000);
                 }
+                "SQLITE_FILE_NAME" => {
+                    cfg.sqlite.file = self.get_string_from_secret(value, client.clone(), "local.db".to_owned());
+                }
+                "SQLITE_USER" => {
+                    cfg.sqlite.user = self.get_string_from_secret(value, client.clone(), "user".to_owned());
+                }
+                "SQLITE_PASSWORD" => {
+                    cfg.sqlite.password = self.get_string_from_secret(value, client.clone(), "password".to_owned());
+                }
                 _ => {}
             }
         }

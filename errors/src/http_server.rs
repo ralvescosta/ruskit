@@ -4,4 +4,7 @@ use thiserror::Error;
 pub enum HttpServerError {
     #[error("http server error")]
     ServerError,
+
+    #[error("http port bind error")]
+    HttpPortBindError,
 }

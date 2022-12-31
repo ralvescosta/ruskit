@@ -2,7 +2,7 @@
 
 [![ci](https://github.com/ralvescosta/ruskit/actions/workflows/ci.yml/badge.svg)](https://github.com/ralvescosta/ruskit/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/ralvescosta/ruskit/branch/main/graph/badge.svg?token=6EAILKZFDO)](https://codecov.io/gh/ralvescosta/ruskit)
 
-**Ruskit** is a collection of useful crates. Every time I started a new project I always needed to configure the same things: *Environment, Logging, Telemetry, Metrics, Custom Errors, RabbitMQ Topology with retry police* and so on. Because of that I decided to create this project to concentrate all these default settings for a web projects.
+**Ruskit** is a collection of useful crates. Every time I started a new project I always needed to configure the same things: *Environment, Logging, Telemetry, Metrics, Custom Errors, RabbitMQ Topology with retry police* and more. Because of that I decided to create this project to concentrate all these default settings for a web projects.
 
 
 :warning::construction: **Work In Progress** :construction::warning:
@@ -17,9 +17,10 @@
     - [httpw](https://github.com/ralvescosta/ruskit/tree/main/httpw)
     - [logging](https://github.com/ralvescosta/ruskit/tree/main/logging)
     - [metrics](https://github.com/ralvescosta/ruskit/tree/main/metrics)
+    - [migrator](https://github.com/ralvescosta/ruskit/tree/main/migrator)
     - [mqtt](https://github.com/ralvescosta/ruskit/tree/main/mqtt)
-    - [postgres](https://github.com/ralvescosta/ruskit/tree/main/postgres)
     - [secrets_manager](https://github.com/ralvescosta/ruskit/tree/main/secrets_manager)
+    - [sql_pool](https://github.com/ralvescosta/ruskit/tree/main/sql_pool)
     - [traces](https://github.com/ralvescosta/ruskit/tree/main/traces)
   - [Requirements](#requirements)
   - [Get Started](#get-started)
@@ -49,7 +50,6 @@ Where rev = "v1.0.0" is the tag name.
   
 ## Todo
 
-- [] AMQP Support to Stream
 - [] Graceful shotdown strategy
   - [] Graceful shotdown for RabbitMQ
   - [] Graceful shotdown for MQTT

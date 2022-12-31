@@ -18,14 +18,16 @@ use tokio::task::JoinError;
 use tracing::{debug, error, warn};
 
 pub struct Dispatches {
+    amqp: Arc<dyn Amqp + Send + Sync>,
     pub queues: Vec<QueueDefinition>,
     pub msgs_types: Vec<String>,
     pub handlers: Vec<Arc<dyn ConsumerHandler + Send + Sync>>,
 }
 
 impl Dispatches {
-    pub fn new() -> Dispatches {
+    pub fn new(amqp: Arc<dyn Amqp + Send + Sync>) -> Dispatches {
         Dispatches {
+            amqp,
             queues: vec![],
             msgs_types: vec![],
             handlers: vec![],
@@ -48,53 +50,50 @@ impl Dispatches {
 
         Ok(())
     }
-}
 
-pub async fn consume_blocking(
-    dispatches: &Dispatches,
-    amqp: Arc<dyn Amqp + Send + Sync>,
-) -> Vec<Result<(), JoinError>> {
-    let mut spawns = vec![];
+    pub async fn consume_blocking(&self) -> Vec<Result<(), JoinError>> {
+        let mut spawns = vec![];
 
-    for i in 0..dispatches.queues.len() {
-        spawns.push(tokio::spawn({
-            let m_amqp = amqp.clone();
-            let msgs_allowed = dispatches.msgs_types.clone();
+        for i in 0..self.queues.len() {
+            spawns.push(tokio::spawn({
+                let m_amqp = self.amqp.clone();
+                let msgs_allowed = self.msgs_types.clone();
 
-            let queue = dispatches.queues[i].clone();
-            let msg_type = dispatches.msgs_types[i].clone();
-            let handler = dispatches.handlers[i].clone();
+                let queue = self.queues[i].clone();
+                let msg_type = self.msgs_types[i].clone();
+                let handler = self.handlers[i].clone();
 
-            let mut consumer = m_amqp
-                .consumer(&queue.name, &msg_type)
-                .await
-                .expect("unexpected error while creating the consumer");
+                let mut consumer = m_amqp
+                    .consumer(&queue.name, &msg_type)
+                    .await
+                    .expect("unexpected error while creating the consumer");
 
-            async move {
-                while let Some(result) = consumer.next().await {
-                    match result {
-                        Ok(delivery) => match consume(
-                            &global::tracer("amqp consumer"),
-                            &queue,
-                            &msg_type,
-                            &msgs_allowed,
-                            &delivery,
-                            m_amqp.clone(),
-                            handler.clone(),
-                        )
-                        .await
-                        {
-                            Err(e) => error!(error = e.to_string(), "errors consume msg"),
-                            _ => {}
-                        },
-                        Err(e) => error!(error = e.to_string(), "error receiving delivery msg"),
-                    };
+                async move {
+                    while let Some(result) = consumer.next().await {
+                        match result {
+                            Ok(delivery) => match consume(
+                                &global::tracer("amqp consumer"),
+                                &queue,
+                                &msg_type,
+                                &msgs_allowed,
+                                &delivery,
+                                m_amqp.clone(),
+                                handler.clone(),
+                            )
+                            .await
+                            {
+                                Err(e) => error!(error = e.to_string(), "errors consume msg"),
+                                _ => {}
+                            },
+                            Err(e) => error!(error = e.to_string(), "error receiving delivery msg"),
+                        };
+                    }
                 }
-            }
-        }));
-    }
+            }));
+        }
 
-    join_all(spawns).await
+        join_all(spawns).await
+    }
 }
 
 async fn consume<'c>(
@@ -292,7 +291,7 @@ mod tests {
 
     #[test]
     fn test_dispatch_declare_successfully() {
-        let mut dispatcher = Dispatches::new();
+        let mut dispatcher = Dispatches::new(Arc::new(MockAmqpImpl::new()));
         let handler = MockedHandler { mock_error: None };
 
         let res = dispatcher.declare(
@@ -309,7 +308,7 @@ mod tests {
 
     #[test]
     fn test_dispatch_declare_error() {
-        let mut dispatcher = Dispatches::new();
+        let mut dispatcher = Dispatches::new(Arc::new(MockAmqpImpl::new()));
         let handler = MockedHandler { mock_error: None };
 
         let res = dispatcher.declare(

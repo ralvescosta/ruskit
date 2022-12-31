@@ -9,9 +9,10 @@ use async_trait::async_trait;
 use env::Config;
 use errors::amqp::AmqpError;
 use lapin::{
+    message::BasicGetMessage,
     options::{
-        BasicConsumeOptions, BasicPublishOptions, ExchangeDeclareOptions, QueueBindOptions,
-        QueueDeclareOptions,
+        BasicConsumeOptions, BasicGetOptions, BasicPublishOptions, ExchangeDeclareOptions,
+        QueueBindOptions, QueueDeclareOptions,
     },
     protocol::basic::AMQPProperties,
     types::{AMQPValue, FieldTable, LongString, ShortString},
@@ -49,6 +50,7 @@ pub trait Amqp {
         queue: &str,
         key: &str,
     ) -> Result<(), AmqpError>;
+    async fn get(&self, queue: &str) -> Result<Option<BasicGetMessage>, AmqpError>;
     async fn consumer(&self, queue: &str, tag: &str) -> Result<Consumer, AmqpError>;
     async fn publish(
         &self,
@@ -172,6 +174,16 @@ impl Amqp for AmqpImpl {
             )
             .await
             .map_err(|_| AmqpError::BindingExchangeToQueueError(exch.to_owned(), queue.to_owned()))
+    }
+
+    async fn get(&self, queue: &str) -> Result<Option<BasicGetMessage>, AmqpError> {
+        let r = self
+            .channel
+            .basic_get(queue, BasicGetOptions { no_ack: false })
+            .await
+            .map_err(|_| AmqpError::BindingConsumerError(queue.to_owned()))?;
+
+        Ok(r)
     }
 
     async fn consumer(&self, queue: &str, tag: &str) -> Result<Consumer, AmqpError> {

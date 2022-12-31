@@ -41,6 +41,9 @@ pub enum AmqpError {
     #[error("failure to publish to dlq")]
     PublishingToDQLError,
 
+    #[error("failure to configure qos `{0}`")]
+    QoSDeclarationError(String),
+
     #[error("consumer declaration error")]
     ConsumerDeclarationError,
 

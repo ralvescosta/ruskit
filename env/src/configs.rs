@@ -7,6 +7,7 @@ pub struct Config {
     pub amqp: AmqpCfg,
     pub otlp: OtlpCfg,
     pub postgres: PostgresCfg,
+    pub sqlite: SqliteCfg,
     pub dynamo: DynamoCfg,
     pub health_readiness: HealthReadinessCfg,
 
@@ -94,6 +95,16 @@ pub struct PostgresCfg {
     pub port: u16,
     ///Default: postgres
     pub db: String,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct SqliteCfg {
+    ///Default: local.db
+    pub file: String,
+    ///Default: postgres
+    pub user: String,
+    /// Default: postgres
+    pub password: String,
 }
 
 #[derive(Debug, Clone, Default)]

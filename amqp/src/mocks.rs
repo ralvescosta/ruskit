@@ -6,6 +6,7 @@ use crate::client::Amqp;
 use async_trait::async_trait;
 use errors::amqp::AmqpError;
 use lapin::{
+    message::BasicGetMessage,
     types::{AMQPValue, FieldTable, ShortString},
     Channel, Connection, Consumer,
 };
@@ -55,6 +56,10 @@ mock! {
         queue: &str,
         key: &str,
     ) -> Result<(), AmqpError> {
+      todo!()
+    }
+
+    async fn get(&self, queue: &str) -> Result<Option<BasicGetMessage>, AmqpError> {
       todo!()
     }
 

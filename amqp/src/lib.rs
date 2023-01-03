@@ -1,6 +1,8 @@
+mod consumer;
+
 pub mod client;
-pub mod consumer;
 pub mod defs;
+pub mod dispatcher;
 #[cfg(test)]
 pub mod mocks;
 #[cfg(feature = "mocks")]

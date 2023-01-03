@@ -26,7 +26,7 @@ impl HttpwServerImpl {
         self
     }
 
-    pub async fn server(&self) -> Result<(), HttpServerError> {
+    pub async fn start(&self) -> Result<(), HttpServerError> {
         HttpServer::new({
             let services = self.services.to_vec();
             move || {
@@ -49,38 +49,7 @@ impl HttpwServerImpl {
                 error = e.to_string(),
                 "error to binding the http server addr"
             );
-            HttpServerError::HttpPortBindError {}
-        })?
-        .run()
-        .await
-        .map_err(|e| {
-            error!(error = e.to_string(), "error to start http server");
             HttpServerError::ServerError {}
-        })?;
-
-        Ok(())
-    }
-
-    pub async fn simple_server(&self) -> Result<(), HttpServerError> {
-        HttpServer::new({
-            let services = self.services.to_vec();
-            move || {
-                let mut app = App::new();
-
-                for svc in services.clone() {
-                    app = app.configure(svc);
-                }
-
-                app
-            }
-        })
-        .bind(&self.addr)
-        .map_err(|e| {
-            error!(
-                error = e.to_string(),
-                "error to binding the http server addr"
-            );
-            HttpServerError::HttpPortBindError {}
         })?
         .run()
         .await

@@ -9,11 +9,11 @@ mocks = ["dep:mockall"]
 [dependencies]
 errors = { path = "../errors" }
 
-async-trait = { version = "0.1.59" }
+async-trait = { version = "0.1.60" }
 tracing = { version = "0.1.37" }
 aws-config = { version = "0.51.0" }
 aws-sdk-secretsmanager = { version = "0.21.0" }
-serde_json = { version = "1.0.89" }
+serde_json = { version = "1.0.91" }
 
 # Used only with feature mock
 mockall = { version = "0.11.3", optional = true }

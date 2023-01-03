@@ -6,11 +6,11 @@ use errors::mqtt::MqttError;
 use futures_util::StreamExt;
 use opentelemetry::{
     global::{self, BoxedTracer},
-    trace::{SpanKind, TraceContextExt},
+    trace::{SpanKind, Status, TraceContextExt},
     Context,
 };
-use paho_mqtt::{Message, TopicFilter};
-use std::sync::Arc;
+use paho_mqtt::Message;
+use std::{borrow::Cow, sync::Arc};
 use tracing::{debug, error, warn};
 
 pub struct MqttDispatcher {
@@ -44,35 +44,7 @@ impl MqttDispatcher {
     }
 
     async fn consume(&self, ctx: &Context, msg: &Message) -> Result<(), MqttError> {
-        let mut p = -1;
-        for (i, tp) in self.topics.clone().into_iter().enumerate() {
-            let filter = TopicFilter::new(tp).map_err(|e| {
-                error!(
-                    error = e.to_string(),
-                    trace.id = traces::trace_id(&ctx),
-                    span.id = traces::span_id(&ctx),
-                    "error to create mqtt topic filter",
-                );
-                MqttError::InternalError {}
-            })?;
-
-            if filter.is_match(msg.topic()) {
-                p = i as i8;
-                break;
-            }
-        }
-
-        if p == -1 {
-            warn!(
-                trace.id = traces::trace_id(&ctx),
-                span.id = traces::span_id(&ctx),
-                "cant find dispatch for this topic"
-            );
-
-            return Err(MqttError::UnregisteredDispatchForThisTopicError(
-                msg.topic().to_owned(),
-            ));
-        }
+        let dispatch_index = self.get_dispatch_index(ctx, msg.topic())?;
 
         let metadata = TopicMessage::new(msg.topic())?;
 
@@ -86,7 +58,7 @@ impl MqttDispatcher {
             msg.topic()
         );
 
-        let dispatch = self.dispatches.get(p as usize).unwrap();
+        let dispatch = self.dispatches.get(dispatch_index).unwrap();
 
         return match dispatch.exec(&ctx, msg.payload(), &metadata).await {
             Ok(_) => {
@@ -105,6 +77,9 @@ impl MqttDispatcher {
                     e
                 );
                 span.record_error(&e);
+                span.set_status(Status::Error {
+                    description: Cow::from("failed to handle the event"),
+                });
                 Err(e)
             }
         };
@@ -128,6 +103,51 @@ impl MqttDispatcher {
         }
 
         Ok(())
+    }
+}
+
+impl MqttDispatcher {
+    fn get_dispatch_index(&self, ctx: &Context, received_topic: &str) -> Result<usize, MqttError> {
+        let mut p: i16 = -1;
+        for handler_topic_index in 0..self.topics.len() {
+            let handler_topic = self.topics[handler_topic_index].clone();
+
+            if received_topic == handler_topic {
+                p = handler_topic_index as i16;
+                break;
+            }
+
+            if received_topic.len() > received_topic.len() {
+                break;
+            }
+
+            let handler_fields: Vec<_> = handler_topic.split('/').collect();
+            let received_fields: Vec<_> = received_topic.split('/').collect();
+
+            for i in 0..handler_fields.len() {
+                if handler_fields[i] == "#" {
+                    p = handler_topic_index as i16;
+                    break;
+                }
+
+                if handler_fields[i] != "+" && handler_fields[i] != received_fields[i] {
+                    break;
+                }
+            }
+        }
+
+        if p == -1 {
+            warn!(
+                trace.id = traces::trace_id(&ctx),
+                span.id = traces::span_id(&ctx),
+                "cant find dispatch for this topic"
+            );
+            return Err(MqttError::UnregisteredDispatchForThisTopicError(
+                received_topic.to_owned(),
+            ));
+        }
+
+        Ok(p as usize)
     }
 }
 

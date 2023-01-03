@@ -4,99 +4,18 @@ use crate::{
     types::{new_span, Metadata},
 };
 use errors::amqp::AmqpError;
-use futures_util::{future::join_all, StreamExt};
 use lapin::{
     message::Delivery,
     options::{BasicAckOptions, BasicNackOptions, BasicPublishOptions},
 };
 use opentelemetry::{
-    global::{self, BoxedTracer},
+    global::BoxedTracer,
     trace::{FutureExt, Span, Status},
 };
-use std::{borrow::Cow, sync::Arc, vec};
-use tokio::task::JoinError;
+use std::{borrow::Cow, sync::Arc};
 use tracing::{debug, error, warn};
 
-pub struct Dispatches {
-    amqp: Arc<dyn Amqp + Send + Sync>,
-    pub queues: Vec<QueueDefinition>,
-    pub msgs_types: Vec<String>,
-    pub handlers: Vec<Arc<dyn ConsumerHandler + Send + Sync>>,
-}
-
-impl Dispatches {
-    pub fn new(amqp: Arc<dyn Amqp + Send + Sync>) -> Dispatches {
-        Dispatches {
-            amqp,
-            queues: vec![],
-            msgs_types: vec![],
-            handlers: vec![],
-        }
-    }
-
-    pub fn declare(
-        &mut self,
-        queue: QueueDefinition,
-        msg_type: String,
-        handler: Arc<dyn ConsumerHandler + Send + Sync>,
-    ) -> Result<(), AmqpError> {
-        if msg_type.is_empty() {
-            return Err(AmqpError::ConsumerDeclarationError {});
-        }
-
-        self.queues.push(queue);
-        self.msgs_types.push(msg_type);
-        self.handlers.push(handler);
-
-        Ok(())
-    }
-
-    pub async fn consume_blocking(&self) -> Vec<Result<(), JoinError>> {
-        let mut spawns = vec![];
-
-        for i in 0..self.queues.len() {
-            spawns.push(tokio::spawn({
-                let m_amqp = self.amqp.clone();
-                let msgs_allowed = self.msgs_types.clone();
-
-                let queue = self.queues[i].clone();
-                let msg_type = self.msgs_types[i].clone();
-                let handler = self.handlers[i].clone();
-
-                let mut consumer = m_amqp
-                    .consumer(&queue.name, &msg_type)
-                    .await
-                    .expect("unexpected error while creating the consumer");
-
-                async move {
-                    while let Some(result) = consumer.next().await {
-                        match result {
-                            Ok(delivery) => match consume(
-                                &global::tracer("amqp consumer"),
-                                &queue,
-                                &msg_type,
-                                &msgs_allowed,
-                                &delivery,
-                                m_amqp.clone(),
-                                handler.clone(),
-                            )
-                            .await
-                            {
-                                Err(e) => error!(error = e.to_string(), "errors consume msg"),
-                                _ => {}
-                            },
-                            Err(e) => error!(error = e.to_string(), "error receiving delivery msg"),
-                        };
-                    }
-                }
-            }));
-        }
-
-        join_all(spawns).await
-    }
-}
-
-async fn consume<'c>(
+pub(crate) async fn consume<'c>(
     tracer: &'c BoxedTracer,
     queue: &'c QueueDefinition,
     msg_type: &'c str,
@@ -117,6 +36,7 @@ async fn consume<'c>(
         queue.name,
     );
 
+    //check if the received msg contains type and if the type match with the expectation
     if metadata.msg_type.is_empty() || metadata.msg_type != msg_type.to_string() {
         let msg = "unexpected or empty type - removing message";
         span.record_error(&AmqpError::ConsumerError(msg.to_string()));
@@ -127,15 +47,16 @@ async fn consume<'c>(
             msg
         );
         match delivery.ack(BasicAckOptions { multiple: false }).await {
-            Ok(_) => {}
             Err(e) => {
                 error!("error whiling nack msg");
                 span.record_error(&e);
             }
-        };
+            _ => {}
+        }
         return Ok(());
-    }
+    };
 
+    //check if the message received is expected for other consumers
     if !msgs_allowed.contains(&metadata.msg_type) {
         let msg = "remove message - reason: unsupported msg type";
         span.record_error(&AmqpError::ConsumerError(msg.to_string()));
@@ -146,25 +67,22 @@ async fn consume<'c>(
             msg
         );
         match delivery.ack(BasicAckOptions { multiple: false }).await {
-            Ok(_) => {}
             Err(e) => {
                 error!("error whiling nack msg");
                 span.record_error(&e);
             }
+            _ => {}
         };
         return Ok(());
     }
 
-    match handler
+    //ack msg and remove from queue if the handler execute correctly
+    if let Ok(_) = handler
         .exec(&ctx, delivery.data.as_slice())
         .with_context(ctx.clone())
         .await
     {
-        Ok(_) => match delivery.ack(BasicAckOptions { multiple: false }).await {
-            Ok(_) => {
-                span.set_status(Status::Ok);
-                return Ok(());
-            }
+        match delivery.ack(BasicAckOptions { multiple: false }).await {
             Err(e) => {
                 error!(
                     trace.id = traces::trace_id(&ctx),
@@ -177,106 +95,153 @@ async fn consume<'c>(
                 });
                 return Err(AmqpError::AckMessageError {});
             }
-        },
-        _ if queue.with_retry => {
-            if metadata.count < queue.retries.unwrap() {
-                warn!(
-                    trace.id = traces::trace_id(&ctx),
-                    span.id = traces::span_id(&ctx),
-                    "error whiling handling msg, requeuing for latter"
-                );
-                match delivery
-                    .nack(BasicNackOptions {
-                        multiple: false,
-                        requeue: false,
-                    })
-                    .await
-                {
-                    Ok(_) => return Ok(()),
-                    Err(e) => {
-                        error!(
-                            trace.id = traces::trace_id(&ctx),
-                            span.id = traces::span_id(&ctx),
-                            "error whiling requeuing"
-                        );
-                        span.record_error(&e);
-                        span.set_status(Status::Error {
-                            description: Cow::from("error to requeuing msg"),
-                        });
-                        return Err(AmqpError::RequeuingMessageError {});
-                    }
-                }
-            } else {
+            _ => {
+                span.set_status(Status::Ok);
+                return Ok(());
+            }
+        }
+    };
+
+    //ack msg and remove from queue if handler failure and there are no fallback configured
+    if !queue.with_retry && !queue.with_dlq {
+        match delivery.ack(BasicAckOptions { multiple: false }).await {
+            Ok(_) => return Ok(()),
+            Err(e) => {
                 error!(
                     trace.id = traces::trace_id(&ctx),
                     span.id = traces::span_id(&ctx),
-                    "too many attempts, sending to dlq"
+                    "error whiling nack msg"
                 );
-                match amqp
-                    .channel()
-                    .basic_publish(
-                        "",
-                        &queue.dlq_name,
-                        BasicPublishOptions::default(),
-                        &delivery.data,
-                        delivery.properties.clone(),
-                    )
-                    .await
-                {
-                    Ok(_) => {
-                        match delivery.ack(BasicAckOptions { multiple: false }).await {
-                            Ok(_) => return Ok(()),
-                            Err(e) => {
-                                error!(
-                                    trace.id = traces::trace_id(&ctx),
-                                    span.id = traces::span_id(&ctx),
-                                    "error whiling ack msg to default queue"
-                                );
-                                span.record_error(&e);
-                                span.set_status(Status::Error {
-                                    description: Cow::from("msg was sent to dlq"),
-                                });
-                                return Err(AmqpError::AckMessageError {});
-                            }
-                        };
-                    }
+                span.record_error(&e);
+                span.set_status(Status::Error {
+                    description: Cow::from("error to nack msg"),
+                });
+                return Err(AmqpError::NackMessageError {});
+            }
+        }
+    }
+
+    //send msg to dlq if handler failure and there is no retry configured
+    if !queue.with_retry && queue.with_dlq {
+        match amqp
+            .channel()
+            .basic_publish(
+                "",
+                &queue.dlq_name,
+                BasicPublishOptions::default(),
+                &delivery.data,
+                delivery.properties.clone(),
+            )
+            .await
+        {
+            Err(e) => {
+                error!(
+                    trace.id = traces::trace_id(&ctx),
+                    span.id = traces::span_id(&ctx),
+                    "error whiling sending to dlq"
+                );
+                span.record_error(&e);
+                span.set_status(Status::Error {
+                    description: Cow::from("msg was sent to dlq"),
+                });
+                return Err(AmqpError::PublishingToDQLError {});
+            }
+            _ => {
+                match delivery.ack(BasicAckOptions { multiple: false }).await {
                     Err(e) => {
                         error!(
                             trace.id = traces::trace_id(&ctx),
                             span.id = traces::span_id(&ctx),
-                            "error whiling sending to dlq"
+                            "error whiling ack msg to default queue"
                         );
                         span.record_error(&e);
                         span.set_status(Status::Error {
                             description: Cow::from("msg was sent to dlq"),
                         });
-                        return Err(AmqpError::PublishingToDQLError {});
+                        return Err(AmqpError::AckMessageError {});
                     }
+                    _ => return Ok(()),
                 };
             }
+        };
+    }
+
+    //send msg to retry when handler failure and the retry count Dont active the max of the retries configured
+    if metadata.count < queue.retries.unwrap() {
+        warn!(
+            trace.id = traces::trace_id(&ctx),
+            span.id = traces::span_id(&ctx),
+            "error whiling handling msg, requeuing for latter"
+        );
+        match delivery
+            .nack(BasicNackOptions {
+                multiple: false,
+                requeue: false,
+            })
+            .await
+        {
+            Ok(_) => return Ok(()),
+            Err(e) => {
+                error!(
+                    trace.id = traces::trace_id(&ctx),
+                    span.id = traces::span_id(&ctx),
+                    "error whiling requeuing"
+                );
+                span.record_error(&e);
+                span.set_status(Status::Error {
+                    description: Cow::from("error to requeuing msg"),
+                });
+                return Err(AmqpError::RequeuingMessageError {});
+            }
+        }
+    }
+
+    //send msg to dlq when count active the max retries
+    error!(
+        trace.id = traces::trace_id(&ctx),
+        span.id = traces::span_id(&ctx),
+        "too many attempts, sending to dlq"
+    );
+
+    match amqp
+        .channel()
+        .basic_publish(
+            "",
+            &queue.dlq_name,
+            BasicPublishOptions::default(),
+            &delivery.data,
+            delivery.properties.clone(),
+        )
+        .await
+    {
+        Err(e) => {
+            error!(
+                trace.id = traces::trace_id(&ctx),
+                span.id = traces::span_id(&ctx),
+                "error whiling sending to dlq"
+            );
+            span.record_error(&e);
+            span.set_status(Status::Error {
+                description: Cow::from("msg was sent to dlq"),
+            });
+            return Err(AmqpError::PublishingToDQLError {});
         }
         _ => {
-            match delivery
-                .nack(BasicNackOptions {
-                    multiple: false,
-                    requeue: false,
-                })
-                .await
-            {
-                Ok(_) => return Ok(()),
+            match delivery.ack(BasicAckOptions { multiple: false }).await {
                 Err(e) => {
                     error!(
                         trace.id = traces::trace_id(&ctx),
                         span.id = traces::span_id(&ctx),
-                        "error whiling nack msg"
+                        "error whiling ack msg to default queue"
                     );
                     span.record_error(&e);
                     span.set_status(Status::Error {
-                        description: Cow::from("error to nack msg"),
+                        description: Cow::from("msg was sent to dlq"),
                     });
-                    return Err(AmqpError::NackMessageError {});
+                    return Err(AmqpError::AckMessageError {});
                 }
-            }
+                _ => return Ok(()),
+            };
         }
     }
 }
@@ -287,41 +252,7 @@ mod tests {
     use crate::mocks::MockAmqpImpl;
     use async_trait::async_trait;
     use lapin::{acker::Acker, protocol::basic::AMQPProperties, types::ShortString};
-    use opentelemetry::Context;
-
-    #[test]
-    fn test_dispatch_declare_successfully() {
-        let mut dispatcher = Dispatches::new(Arc::new(MockAmqpImpl::new()));
-        let handler = MockedHandler { mock_error: None };
-
-        let res = dispatcher.declare(
-            QueueDefinition::name("queue"),
-            "msg_type".to_owned(),
-            Arc::new(handler),
-        );
-
-        assert!(res.is_ok());
-        assert_eq!(dispatcher.handlers.len(), 1);
-        assert_eq!(dispatcher.msgs_types.len(), 1);
-        assert_eq!(dispatcher.queues.len(), 1);
-    }
-
-    #[test]
-    fn test_dispatch_declare_error() {
-        let mut dispatcher = Dispatches::new(Arc::new(MockAmqpImpl::new()));
-        let handler = MockedHandler { mock_error: None };
-
-        let res = dispatcher.declare(
-            QueueDefinition::name("queue"),
-            "".to_owned(),
-            Arc::new(handler),
-        );
-
-        assert!(res.is_err());
-        assert_eq!(dispatcher.handlers.len(), 0);
-        assert_eq!(dispatcher.msgs_types.len(), 0);
-        assert_eq!(dispatcher.queues.len(), 0);
-    }
+    use opentelemetry::{global, Context};
 
     #[tokio::test]
     async fn test_consume_msg_correctly() {
@@ -435,9 +366,6 @@ mod tests {
 
         assert!(res.is_ok())
     }
-    pub struct MockedHandler {
-        pub mock_error: Option<AmqpError>,
-    }
 
     #[tokio::test]
     async fn test_consume_msg_with_handler_error_without_retry() {
@@ -468,6 +396,10 @@ mod tests {
         .await;
 
         assert!(res.is_ok())
+    }
+
+    pub struct MockedHandler {
+        pub mock_error: Option<AmqpError>,
     }
 
     #[async_trait]

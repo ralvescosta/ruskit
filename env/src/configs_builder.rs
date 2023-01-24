@@ -97,10 +97,7 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn laze_build<T>(mut self, cfg: &mut Configs<T>) -> Self
-    where
-        T: DynamicConfig,
-    {
+    pub fn laze_load(mut self) -> (AppConfig, Self) {
         let env = Environment::from_rust_env();
 
         match env {
@@ -127,7 +124,7 @@ impl ConfigBuilder {
             .unwrap_or_default();
         let log_level = env::var(LOG_LEVEL_ENV_KEY).unwrap_or("debug".to_owned());
 
-        cfg.app = AppConfig {
+        let app_cfg = AppConfig {
             enable_external_creates_logging: false,
             env,
             host,
@@ -137,9 +134,9 @@ impl ConfigBuilder {
             secret_key,
         };
 
-        self.app_cfg = cfg.app.clone();
+        self.app_cfg = app_cfg.clone();
 
-        self
+        (app_cfg, self)
     }
 
     pub async fn build<T>(&mut self) -> Result<Configs<T>, ConfigsError>

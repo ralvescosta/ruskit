@@ -1,32 +1,29 @@
+use crate::AwsSecretClient;
 use aws_sdk_secretsmanager as secretsmanager;
 use errors::secrets_manager::SecretsManagerError;
 use secretsmanager::Client;
 use serde_json::Value;
 use tracing::error;
 
-use crate::AwsSecretClient;
-
+#[derive(Default)]
 pub struct AwsSecretClientBuilder {
     env: String,
-    app_ctx: String,
+    secret_key: String,
 }
 
 impl AwsSecretClientBuilder {
     pub fn new() -> AwsSecretClientBuilder {
-        AwsSecretClientBuilder {
-            env: String::new(),
-            app_ctx: String::new(),
-        }
+        AwsSecretClientBuilder::default()
     }
 
-    pub fn setup(mut self, env: String, app_ctx: String) -> Self {
+    pub fn setup(mut self, env: String, secret_key: String) -> Self {
         self.env = env;
-        self.app_ctx = app_ctx;
+        self.secret_key = secret_key;
         self
     }
 
     fn secret_id(&self) -> String {
-        format!("{}/{}", self.env, self.app_ctx)
+        format!("{}/{}", self.env, self.secret_key)
     }
 
     pub async fn build(&self) -> Result<AwsSecretClient, SecretsManagerError> {
@@ -41,13 +38,16 @@ impl AwsSecretClientBuilder {
             .send()
             .await
             .map_err(|e| {
-                error!(error = e.to_string(), "failure to get key from aws");
-                SecretsManagerError::AwsSecretWasNotFound {}
+                error!(
+                    error = e.to_string(),
+                    "failure send request to secret manager"
+                );
+                SecretsManagerError::RequestFailure {}
             })?;
 
         let Some(string) = res.secret_string() else {
             error!("secret was not found");
-            return Err(SecretsManagerError::InternalError{});
+            return Err(SecretsManagerError::AwsSecretWasNotFound{});
         };
 
         let v: Value = serde_json::from_str(string).map_err(|e| {

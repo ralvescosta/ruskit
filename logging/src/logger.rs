@@ -1,4 +1,4 @@
-use env::{Config, Environment};
+use env::{AppConfig, Environment};
 use errors::logging::LoggingError;
 use tracing_bunyan_formatter::BunyanFormattingLayer;
 use tracing_log::LogTracer;
@@ -11,13 +11,13 @@ use tracing_subscriber::{
     layer::SubscriberExt,
 };
 
-pub fn setup(cfg: &Config) -> Result<(), LoggingError> {
+pub fn setup(cfg: &AppConfig) -> Result<(), LoggingError> {
     LogTracer::init().map_err(|_| LoggingError::InternalError {})?;
 
     let level_filter = get_log_level_filter(cfg);
 
     let mut target_filters = Targets::new().with_default(level_filter);
-    if !cfg.app.enable_external_creates_logging {
+    if !cfg.enable_external_creates_logging {
         target_filters = Targets::new()
             .with_default(level_filter)
             .with_target("lapin::channels", LevelFilter::WARN)
@@ -37,11 +37,11 @@ pub fn setup(cfg: &Config) -> Result<(), LoggingError> {
     let mut fmt_pretty: Option<Layer<_, Pretty, Format<Pretty>>> = None;
     let mut fmt_json = None;
 
-    if cfg.app.env == Environment::Local {
+    if cfg.env == Environment::Local {
         fmt_pretty = Some(Layer::new().pretty());
     } else {
         fmt_json = Some(BunyanFormattingLayer::new(
-            cfg.app.name.to_owned(),
+            cfg.name.to_owned(),
             std::io::stdout,
         ));
     }
@@ -57,8 +57,8 @@ pub fn setup(cfg: &Config) -> Result<(), LoggingError> {
     Ok(())
 }
 
-fn get_log_level_filter(cfg: &Config) -> LevelFilter {
-    match cfg.app.log_level.as_str() {
+fn get_log_level_filter(cfg: &AppConfig) -> LevelFilter {
+    match cfg.log_level.as_str() {
         "debug" | "Debug" | "DEBUG" => LevelFilter::DEBUG,
         "info" | "Info" | "INFO" => LevelFilter::INFO,
         "warn" | "Warn" | "WARN" => LevelFilter::WARN,
@@ -74,50 +74,50 @@ mod tests {
 
     #[test]
     fn setup_successfully() {
-        let res = setup(&Config::default());
+        let res = setup(&AppConfig::default());
         assert!(res.is_ok());
     }
 
     #[test]
     fn get_log_level_successfully() {
-        let mut cfg = Config::default();
+        let mut cfg = AppConfig::default();
 
-        cfg.app.log_level = "debug".to_owned();
+        cfg.log_level = "debug".to_owned();
         assert_eq!(get_log_level_filter(&cfg), LevelFilter::DEBUG);
-        cfg.app.log_level = "Debug".to_owned();
+        cfg.log_level = "Debug".to_owned();
         assert_eq!(get_log_level_filter(&cfg), LevelFilter::DEBUG);
-        cfg.app.log_level = "DEBUG".to_owned();
+        cfg.log_level = "DEBUG".to_owned();
         assert_eq!(get_log_level_filter(&cfg), LevelFilter::DEBUG);
 
-        cfg.app.log_level = "info".to_owned();
+        cfg.log_level = "info".to_owned();
         assert_eq!(get_log_level_filter(&cfg), LevelFilter::INFO);
-        cfg.app.log_level = "Info".to_owned();
+        cfg.log_level = "Info".to_owned();
         assert_eq!(get_log_level_filter(&cfg), LevelFilter::INFO);
-        cfg.app.log_level = "INFO".to_owned();
+        cfg.log_level = "INFO".to_owned();
         assert_eq!(get_log_level_filter(&cfg), LevelFilter::INFO);
 
-        cfg.app.log_level = "warn".to_owned();
+        cfg.log_level = "warn".to_owned();
         assert_eq!(get_log_level_filter(&cfg), LevelFilter::WARN);
-        cfg.app.log_level = "Warn".to_owned();
+        cfg.log_level = "Warn".to_owned();
         assert_eq!(get_log_level_filter(&cfg), LevelFilter::WARN);
-        cfg.app.log_level = "WARN".to_owned();
+        cfg.log_level = "WARN".to_owned();
         assert_eq!(get_log_level_filter(&cfg), LevelFilter::WARN);
 
-        cfg.app.log_level = "error".to_owned();
+        cfg.log_level = "error".to_owned();
         assert_eq!(get_log_level_filter(&cfg), LevelFilter::ERROR);
-        cfg.app.log_level = "Error".to_owned();
+        cfg.log_level = "Error".to_owned();
         assert_eq!(get_log_level_filter(&cfg), LevelFilter::ERROR);
-        cfg.app.log_level = "ERROR".to_owned();
+        cfg.log_level = "ERROR".to_owned();
         assert_eq!(get_log_level_filter(&cfg), LevelFilter::ERROR);
 
-        cfg.app.log_level = "trace".to_owned();
+        cfg.log_level = "trace".to_owned();
         assert_eq!(get_log_level_filter(&cfg), LevelFilter::TRACE);
-        cfg.app.log_level = "Trace".to_owned();
+        cfg.log_level = "Trace".to_owned();
         assert_eq!(get_log_level_filter(&cfg), LevelFilter::TRACE);
-        cfg.app.log_level = "TRACE".to_owned();
+        cfg.log_level = "TRACE".to_owned();
         assert_eq!(get_log_level_filter(&cfg), LevelFilter::TRACE);
 
-        cfg.app.log_level = "UNKNOWN".to_owned();
+        cfg.log_level = "UNKNOWN".to_owned();
         assert_eq!(get_log_level_filter(&cfg), LevelFilter::OFF);
     }
 }

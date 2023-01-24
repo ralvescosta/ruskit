@@ -4,7 +4,7 @@ pub mod amqp;
 pub mod jaeger;
 pub mod otlp;
 
-use env::{Config, Environment};
+use env::{Configs, DynamicConfig, Environment};
 use opentelemetry::trace::TraceContextExt;
 use opentelemetry::{
     global::BoxedTracer,
@@ -14,7 +14,10 @@ use opentelemetry::{
 };
 use std::borrow::Cow;
 
-fn get_sampler(cfg: &Config) -> Sampler {
+fn get_sampler<T>(cfg: &Configs<T>) -> Sampler
+where
+    T: DynamicConfig,
+{
     if cfg.app.env == Environment::Local {
         return Sampler::AlwaysOn;
     }

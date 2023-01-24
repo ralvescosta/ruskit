@@ -1,7 +1,7 @@
 use super::types::AppConfig;
 use crate::middlewares;
 use actix_web::{middleware as actix_middleware, web, App, HttpServer};
-use env::Config;
+use env::AppConfig as AppEnv;
 use errors::http_server::HttpServerError;
 use std::sync::Arc;
 use tracing::error;
@@ -12,7 +12,7 @@ pub struct HttpwServerImpl {
 }
 
 impl HttpwServerImpl {
-    pub fn new(cfg: &Config) -> Arc<HttpwServerImpl> {
+    pub fn new(cfg: &AppEnv) -> Arc<HttpwServerImpl> {
         Arc::new(HttpwServerImpl {
             services: vec![],
             addr: cfg.app_addr(),

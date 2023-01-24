@@ -5,7 +5,7 @@ use crate::HealthReadinessImpl;
 use crate::{mqtt::MqttHealthChecker, HealthChecker};
 use actix_web::{middleware as actix_middleware, web, App, HttpServer};
 use deadpool_postgres::Pool;
-use env::Config;
+use env::HealthReadinessConfig;
 use errors::health_readiness::HealthReadinessError;
 use httpw::middlewares;
 use lapin::Connection;
@@ -20,11 +20,11 @@ pub struct HealthReadinessServer {
 }
 
 impl HealthReadinessServer {
-    pub fn new(cfg: &Config) -> HealthReadinessServer {
+    pub fn new(cfg: &HealthReadinessConfig) -> HealthReadinessServer {
         HealthReadinessServer {
             checkers: vec![],
             addr: cfg.health_readiness_addr(),
-            enable: cfg.health_readiness.enable,
+            enable: cfg.enable,
         }
     }
 

@@ -1,5 +1,5 @@
 use crate::get_sampler;
-use env::Config;
+use env::{Configs, DynamicConfig};
 use opentelemetry::{
     global, runtime,
     sdk::{
@@ -14,7 +14,10 @@ use std::{error::Error, time::Duration, vec};
 use tonic::metadata::*;
 use tracing::{debug, error};
 
-pub fn setup(cfg: &Config) -> Result<(), Box<dyn Error>> {
+pub fn setup<T>(cfg: &Configs<T>) -> Result<(), Box<dyn Error>>
+where
+    T: DynamicConfig,
+{
     if !cfg.otlp.enable_traces {
         debug!("traces::setup skipping trace export setup");
         return Ok(());

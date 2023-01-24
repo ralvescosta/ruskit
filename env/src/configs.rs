@@ -8,6 +8,7 @@ pub struct Config {
     pub otlp: OtlpCfg,
     pub postgres: PostgresCfg,
     pub sqlite: SqliteCfg,
+    pub aws: AwsCfg,
     pub dynamo: DynamoCfg,
     pub health_readiness: HealthReadinessCfg,
 
@@ -20,7 +21,7 @@ pub struct AppCfg {
     ///Default: APP_NAME
     pub name: String,
     ///Default: context
-    pub ctx: String,
+    pub secret_key: String,
     ///Default: Environment::Local
     pub env: Environment,
     ///Default: 0.0.0.0
@@ -108,13 +109,25 @@ pub struct SqliteCfg {
 }
 
 #[derive(Debug, Clone, Default)]
+pub struct AwsCfg {
+    ///Default: us-east-1
+    pub region: String,
+    ///Default: local
+    pub access_key_id: String,
+    ///Default: local
+    pub secret_access_key: String,
+    ///Default:
+    pub session_token: String,
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct DynamoCfg {
     ///Default: localhost
-    pub host: String,
-    ///Default: dynamo
-    pub user: String,
-    ///Default: dynamo
-    pub password: String,
+    pub endpoint: String,
+    ///Default: us-east-1
+    pub region: String,
+    ///Default: table
+    pub table: String,
 }
 
 #[derive(Debug, Clone, Default)]

@@ -1,4 +1,4 @@
-use env::Config;
+use env::{Configs, DynamicConfig};
 use opentelemetry::{
     global, runtime,
     sdk::{
@@ -11,7 +11,10 @@ use std::{error::Error, time::Duration};
 use tonic::metadata::MetadataMap;
 use tracing::{debug, error};
 
-pub fn setup(cfg: &Config) -> Result<(), Box<dyn Error>> {
+pub fn setup<T>(cfg: &Configs<T>) -> Result<(), Box<dyn Error>>
+where
+    T: DynamicConfig,
+{
     if !cfg.otlp.enable_metrics {
         debug!("metrics::setup skipping metrics export setup");
         return Ok(());

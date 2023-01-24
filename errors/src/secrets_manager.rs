@@ -5,6 +5,9 @@ pub enum SecretsManagerError {
     #[error("internal error")]
     InternalError,
 
+    #[error("failure to send request")]
+    RequestFailure,
+
     #[error("secret not found")]
     SecretNotFound,
 

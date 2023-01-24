@@ -66,4 +66,7 @@ pub enum AmqpError {
 
     #[error("error to deserialization iot multiple message timer - IoTMultipleMessageTimerDeserializationError: `{0}`")]
     IoTMultipleMessageTimerDeserializationError(String),
+
+    #[error("error to deserialization iot generic message - IoTGenericMessageDeserializationError: `{0}`")]
+    IoTGenericMessageDeserializationError(String),
 }

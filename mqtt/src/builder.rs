@@ -3,7 +3,7 @@ use env::Config;
 use errors::mqtt::MqttError;
 use paho_mqtt::{
     AsyncClient, ConnectOptions, ConnectOptionsBuilder, CreateOptions, CreateOptionsBuilder,
-    SslOptionsBuilder, SslVersion, MQTT_VERSION_3_1_1,
+    SslOptionsBuilder, SslVersion,
 };
 use std::{sync::Arc, time::Duration};
 use tracing::error;
@@ -96,7 +96,6 @@ impl MqttClientBuilder {
     fn conn_opts_for_self_hosted_without_password(&self) -> ConnectOptions {
         ConnectOptionsBuilder::new()
             .keep_alive_interval(Duration::from_secs(60))
-            .mqtt_version(MQTT_VERSION_3_1_1)
             .clean_session(true)
             .finalize()
     }
@@ -104,7 +103,6 @@ impl MqttClientBuilder {
     fn conn_opts_for_self_hosted_with_password(&self) -> ConnectOptions {
         ConnectOptionsBuilder::new()
             .keep_alive_interval(Duration::from_secs(60))
-            .mqtt_version(MQTT_VERSION_3_1_1)
             .clean_session(true)
             .user_name(&self.cfg.mqtt.user)
             .password(&self.cfg.mqtt.password)
@@ -114,7 +112,6 @@ impl MqttClientBuilder {
     fn conn_opts_aws_iot_core(&self) -> ConnectOptions {
         ConnectOptionsBuilder::new()
             .keep_alive_interval(Duration::from_secs(60))
-            .mqtt_version(MQTT_VERSION_3_1_1)
             .clean_session(false)
             .ssl_options(
                 SslOptionsBuilder::new()

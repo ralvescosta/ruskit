@@ -133,6 +133,10 @@ impl MqttDispatcher {
                 if handler_fields[i] != "+" && handler_fields[i] != received_fields[i] {
                     break;
                 }
+
+                if handler_fields[i] == "+" && i == handler_fields.len() - 1 {
+                    p = handler_topic_index as i16;
+                }
             }
         }
 

@@ -31,7 +31,7 @@
 - The mqtt crate use the paho client crate, because of that we need to install some Linux utilities to allow us to work with the paho client crate.
 
 ```
-sudo apt install libssl-dev build-essential cmake pkg-config llvm-dev libclang-dev clang mosquitto-dev libmosquitto-dev
+sudo apt install libssl-dev build-essential cmake pkg-config llvm-dev libclang-dev clang libmosquitto-dev sqlite3
 ```
 
 

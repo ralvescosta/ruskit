@@ -14,18 +14,3 @@ members = [
     "sql_pool",
     "traces",
 ]
-
-default-members  = [
-    "amqp",
-    "env",
-    "errors",
-    "health_readiness",
-    "httpw",
-    "logging",
-    "metrics",
-    "migrator",
-    "mqtt",
-    "secrets_manager",
-    "sql_pool",
-    "traces",
-]

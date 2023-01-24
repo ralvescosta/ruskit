@@ -54,7 +54,7 @@ impl Dispatcher {
 
                 let queue = self.queues[i].clone();
                 let msg_type = self.msgs_types[i].clone();
-                let handler = self.handlers[i].clone();
+                let handlers = self.handlers.clone();
 
                 let mut consumer = m_amqp
                     .consumer(&queue.name, &msg_type)
@@ -67,11 +67,10 @@ impl Dispatcher {
                             Ok(delivery) => match consume(
                                 &global::tracer("amqp consumer"),
                                 &queue,
-                                &msg_type,
                                 &msgs_allowed,
+                                &handlers,
                                 &delivery,
                                 m_amqp.clone(),
-                                handler.clone(),
                             )
                             .await
                             {

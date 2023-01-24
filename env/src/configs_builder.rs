@@ -1,5 +1,5 @@
 use crate::{
-    configs::AppCfg,
+    configs::{AppConfig, Configs, DynamicConfig},
     def::{
         AMQP_HOST_ENV_KEY, AMQP_PASSWORD_ENV_KEY, AMQP_PORT_ENV_KEY, AMQP_USER_ENV_KEY,
         AMQP_VHOST_ENV_KEY, APP_NAME_ENV_KEY, APP_PORT_ENV_KEY, AWS_ACCESS_KEY_ID_ENV_KEY,
@@ -7,13 +7,12 @@ use crate::{
         DYNAMO_ENDPOINT_ENV_KEY, DYNAMO_TABLE_ENV_KEY, ENABLE_HEALTH_READINESS_ENV_KEY,
         ENABLE_METRICS_ENV_KEY, ENABLE_TRACES_ENV_KEY, HEALTH_READINESS_PORT_ENV_KEY,
         HOST_NAME_ENV_KEY, LOG_LEVEL_ENV_KEY, MQTT_HOST_ENV_KEY, MQTT_PASSWORD_ENV_KEY,
-        MQTT_PORT_ENV_KEY, MQTT_USER_ENV_KEY, MULTIPLE_MESSAGE_TIMER_ENV_KEY,
-        OTLP_ACCESS_KEY_ENV_KEY, OTLP_EXPORT_TIMEOUT_ENV_KEY, OTLP_HOST_ENV_KEY,
-        OTLP_SERVICE_TYPE_ENV_KEY, POSTGRES_DB_ENV_KEY, POSTGRES_HOST_ENV_KEY,
+        MQTT_PORT_ENV_KEY, MQTT_USER_ENV_KEY, OTLP_ACCESS_KEY_ENV_KEY, OTLP_EXPORT_TIMEOUT_ENV_KEY,
+        OTLP_HOST_ENV_KEY, OTLP_SERVICE_TYPE_ENV_KEY, POSTGRES_DB_ENV_KEY, POSTGRES_HOST_ENV_KEY,
         POSTGRES_PASSWORD_ENV_KEY, POSTGRES_PORT_ENV_KEY, POSTGRES_USER_ENV_KEY,
         SECRET_KEY_ENV_KEY, SECRET_PREFIX, SECRET_PREFIX_TO_DECODE, SQLITE_FILE_NAME_ENV_KEY,
     },
-    Config, Environment,
+    Environment,
 };
 use dotenvy::from_filename;
 use errors::configs::ConfigsError;
@@ -32,7 +31,7 @@ pub enum SecretClientKind {
 pub struct ConfigBuilder {
     secret_client_kind: SecretClientKind,
     client: Option<Arc<dyn SecretClient>>,
-    app_cfg: AppCfg,
+    app_cfg: AppConfig,
     mqtt: bool,
     amqp: bool,
     postgres: bool,
@@ -98,7 +97,10 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn laze_build(mut self, cfg: &mut Config) -> Self {
+    pub fn laze_build<T>(mut self, cfg: &mut Configs<T>) -> Self
+    where
+        T: DynamicConfig,
+    {
         let env = Environment::from_rust_env();
 
         match env {
@@ -125,7 +127,7 @@ impl ConfigBuilder {
             .unwrap_or_default();
         let log_level = env::var(LOG_LEVEL_ENV_KEY).unwrap_or("debug".to_owned());
 
-        cfg.app = AppCfg {
+        cfg.app = AppConfig {
             enable_external_creates_logging: false,
             env,
             host,
@@ -140,7 +142,10 @@ impl ConfigBuilder {
         self
     }
 
-    pub async fn build(&mut self) -> Result<Config, ConfigsError> {
+    pub async fn build<T>(&mut self) -> Result<Configs<T>, ConfigsError>
+    where
+        T: DynamicConfig,
+    {
         let client = self.get_secret_client().await?;
         self.client = Some(client);
 
@@ -174,8 +179,11 @@ impl ConfigBuilder {
         Ok(c)
     }
 
-    fn config(&self) -> Config {
-        let mut cfg = Config::default();
+    fn config<T>(&self) -> Configs<T>
+    where
+        T: DynamicConfig,
+    {
+        let mut cfg = Configs::default();
 
         for (key, value) in env::vars() {
             match key.as_str() {
@@ -284,9 +292,6 @@ impl ConfigBuilder {
                 ENABLE_HEALTH_READINESS_ENV_KEY if self.health => {
                     cfg.health_readiness.enable = self.get_bool_from_secret(value);
                 }
-                MULTIPLE_MESSAGE_TIMER_ENV_KEY => {
-                    cfg.multiple_message_timer = self.get_i32_from_secret(value, 15000);
-                }
                 SQLITE_FILE_NAME_ENV_KEY if self.sqlite => {
                     cfg.sqlite.file = self.get_string_from_secret(value, "local.db".to_owned());
                 }
@@ -341,7 +346,7 @@ impl ConfigBuilder {
         })
     }
 
-    fn get_i32_from_secret(&self, key: String, default: i32) -> i32 {
+    fn _get_i32_from_secret(&self, key: String, default: i32) -> i32 {
         if !key.starts_with(SECRET_PREFIX) {
             return key.parse().unwrap_or(default);
         }

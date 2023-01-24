@@ -1,6 +1,9 @@
-use env::Config;
+use env::{Configs, DynamicConfig};
 use std::error::Error;
 
-pub fn setup(_cfg: &Config) -> Result<(), Box<dyn Error>> {
+pub fn setup<T>(_cfg: &Configs<T>) -> Result<(), Box<dyn Error>>
+where
+    T: DynamicConfig,
+{
     Ok(())
 }

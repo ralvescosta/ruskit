@@ -1,5 +1,5 @@
 use crate::{types::BrokerKind, MqttClientImpl};
-use env::Config;
+use env::{AppConfig, Configs, DynamicConfig, MQTTConfig};
 use errors::mqtt::MqttError;
 use paho_mqtt::{
     AsyncClient, ConnectOptions, ConnectOptionsBuilder, CreateOptions, CreateOptionsBuilder,
@@ -9,20 +9,26 @@ use std::{sync::Arc, time::Duration};
 use tracing::error;
 
 pub struct MqttClientBuilder {
-    cfg: Config,
+    mqtt_cfg: MQTTConfig,
+    app_cfg: AppConfig,
     broker_kind: BrokerKind,
 }
 
 impl MqttClientBuilder {
     pub fn new() -> MqttClientBuilder {
         MqttClientBuilder {
-            cfg: Config::default(),
+            mqtt_cfg: MQTTConfig::default(),
+            app_cfg: AppConfig::default(),
             broker_kind: BrokerKind::SelfHostedWithPassword,
         }
     }
 
-    pub fn cfg(mut self, cfg: Config) -> Self {
-        self.cfg = cfg;
+    pub fn cfg<T>(mut self, cfgs: &Configs<T>) -> Self
+    where
+        T: DynamicConfig,
+    {
+        self.mqtt_cfg = cfgs.mqtt.clone();
+        self.app_cfg = self.app_cfg.clone();
         return self;
     }
 
@@ -77,9 +83,9 @@ impl MqttClientBuilder {
         CreateOptionsBuilder::new()
             .server_uri(&format!(
                 "tcp://{}:{}",
-                self.cfg.mqtt.host, self.cfg.mqtt.port
+                self.mqtt_cfg.host, self.mqtt_cfg.port
             ))
-            .client_id(&self.cfg.app.name)
+            .client_id(&self.app_cfg.name)
             .finalize()
     }
 
@@ -87,9 +93,9 @@ impl MqttClientBuilder {
         CreateOptionsBuilder::new()
             .server_uri(&format!(
                 "ssl://{}:{}",
-                self.cfg.mqtt.host, self.cfg.mqtt.port
+                self.mqtt_cfg.host, self.mqtt_cfg.port
             ))
-            .client_id(&self.cfg.app.name)
+            .client_id(&self.app_cfg.name)
             .finalize()
     }
 
@@ -104,8 +110,8 @@ impl MqttClientBuilder {
         ConnectOptionsBuilder::new()
             .keep_alive_interval(Duration::from_secs(60))
             .clean_session(true)
-            .user_name(&self.cfg.mqtt.user)
-            .password(&self.cfg.mqtt.password)
+            .user_name(&self.mqtt_cfg.user)
+            .password(&self.mqtt_cfg.password)
             .finalize()
     }
 
@@ -116,11 +122,11 @@ impl MqttClientBuilder {
             .ssl_options(
                 SslOptionsBuilder::new()
                     .alpn_protos(&["x-amzn-mqtt-ca"])
-                    .trust_store(&self.cfg.mqtt.root_ca_path)
+                    .trust_store(&self.mqtt_cfg.root_ca_path)
                     .unwrap()
-                    .key_store(&self.cfg.mqtt.cert_path)
+                    .key_store(&self.mqtt_cfg.cert_path)
                     .unwrap()
-                    .private_key(&self.cfg.mqtt.private_key_path)
+                    .private_key(&self.mqtt_cfg.private_key_path)
                     .unwrap()
                     .ssl_version(SslVersion::Tls_1_2)
                     .verify(true)

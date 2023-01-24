@@ -6,7 +6,7 @@ use super::{
     types::{AmqpPayload, AmqpTracePropagator},
 };
 use async_trait::async_trait;
-use env::Config;
+use env::{Configs, DynamicConfig};
 use errors::amqp::AmqpError;
 use lapin::{
     message::BasicGetMessage,
@@ -69,7 +69,10 @@ pub struct AmqpImpl {
 }
 
 impl AmqpImpl {
-    pub async fn new(cfg: &Config) -> Result<Arc<dyn Amqp + Send + Sync>, AmqpError> {
+    pub async fn new<T>(cfg: &Configs<T>) -> Result<Arc<dyn Amqp + Send + Sync>, AmqpError>
+    where
+        T: DynamicConfig,
+    {
         debug!("creating amqp connection...");
         let options = ConnectionProperties::default()
             .with_connection_name(LongString::from(cfg.app.name.clone()));

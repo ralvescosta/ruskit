@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use deadpool_postgres::{tokio_postgres::error::SqlState, Object, Pool};
 use errors::migrator::MigrationError;
 use std::{fs, sync::Arc};
-use tracing::{error, log::warn};
+use tracing::{debug, error};
 
 pub struct PostgresDriver {
     pool: Arc<Pool>,
@@ -24,7 +24,7 @@ impl MigratorDriver for PostgresDriver {
 
         let query = "SELECT migrate FROM migrations LIMIT 1";
         let Err(err) = conn.prepare(query).await else {
-            warn!("migration table already created");
+            debug!("migration table already created");
             self.commit(&conn).await?;
             return Ok(());
         };

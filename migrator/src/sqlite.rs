@@ -4,7 +4,7 @@ use errors::migrator::MigrationError;
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::{rusqlite::ErrorCode, SqliteConnectionManager};
 use std::{fs, sync::Arc};
-use tracing::{error, warn};
+use tracing::{debug, error, warn};
 
 pub struct SqliteDriver {
     pool: Arc<Pool<SqliteConnectionManager>>,
@@ -25,7 +25,7 @@ impl MigratorDriver for SqliteDriver {
 
         let query = "SELECT migrate FROM migrations limit 1";
         let Err(err) = conn.prepare(query) else {
-            warn!("migration table already created");
+            debug!("migration table already created");
             self.commit(&conn)?;
             return Ok(());
         };
@@ -66,7 +66,7 @@ impl MigratorDriver for SqliteDriver {
         path: Option<&String>,
         _migration: Option<&String>,
     ) -> Result<(), MigrationError> {
-        let mut migrations_path = "./migrations/sql/";
+        let mut migrations_path = "./bins/migrations/sql/";
 
         if path.is_some() {
             migrations_path = path.unwrap().as_str();

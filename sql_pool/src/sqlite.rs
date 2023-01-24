@@ -1,15 +1,17 @@
+use deadpool_sqlite::{Config, Pool, Runtime};
 use errors::sql_pool::SqlPoolError;
-use r2d2::Pool;
-use r2d2_sqlite::SqliteConnectionManager;
 use tracing::error;
 
-pub fn conn_pool(cfg: &env::Config) -> Result<Pool<SqliteConnectionManager>, SqlPoolError> {
-    let manager = SqliteConnectionManager::file(&cfg.sqlite.file);
+pub fn conn_pool(cfg: &env::Config) -> Result<Pool, SqlPoolError> {
+    let cfg = Config::new(cfg.sqlite.file.clone());
 
-    let pool = r2d2::Pool::new(manager).map_err(|e| {
-        error!(error = e.to_string(), "bad sqlite connection");
-        SqlPoolError::SqliteConnectionErr(e.to_string())
-    })?;
+    let pool = match cfg.create_pool(Runtime::Tokio1) {
+        Err(e) => {
+            error!(error = e.to_string(), "error to create sqlite conn pool");
+            Err(SqlPoolError::SqliteConnectionErr(e.to_string()))
+        }
+        Ok(p) => Ok(p),
+    }?;
 
     Ok(pool)
 }

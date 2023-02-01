@@ -102,51 +102,59 @@ impl MigratorDriver for SqliteDriver {
                 MigrationError::InternalError {}
             })?;
 
-            let mut statement = match conn.prepare(&query) {
-                Err(err) => {
-                    error!(
-                        error = err.to_string(),
-                        migrate = file_name,
-                        "error to execute prepare migrate query"
-                    );
-                    // self.rollback(&conn)?;
-                    Err(MigrationError::PrepareStatementErr {})
-                }
-                Ok(s) => Ok(s),
-            }?;
+            match conn
+                .interact(move |conn| {
+                    let mut statement = match conn.prepare(&query) {
+                        Err(err) => {
+                            error!(
+                                error = err.to_string(),
+                                migrate = file_name,
+                                "error to execute prepare migrate query"
+                            );
+                            Err(MigrationError::PrepareStatementErr {})
+                        }
+                        Ok(s) => Ok(s),
+                    }?;
 
-            match statement.execute([]) {
-                Err(err) => {
-                    error!(error = err.to_string(), "error to execute migrate query");
-                    // self.rollback(&conn)?;
-                    Err(MigrationError::MigrateQueryErr {})
-                }
-                _ => Ok(()),
-            }?;
+                    match statement.execute([]) {
+                        Err(err) => {
+                            error!(error = err.to_string(), "error to execute migrate query");
+                            Err(MigrationError::MigrateQueryErr {})
+                        }
+                        _ => Ok(()),
+                    }?;
 
-            let mut statement = match conn.prepare("INSERT INTO migrations (migrate) values (?)") {
-                Err(err) => {
-                    error!(
-                        error = err.to_string(),
-                        "error to inset migrate in migrations table"
-                    );
-                    // self.rollback(&conn)?;
-                    Err(MigrationError::InsertErr {})
-                }
-                Ok(s) => Ok(s),
-            }?;
+                    let mut statement =
+                        match conn.prepare("INSERT INTO migrations (migrate) values (?)") {
+                            Err(err) => {
+                                error!(
+                                    error = err.to_string(),
+                                    "error to inset migrate in migrations table"
+                                );
+                                Err(MigrationError::InsertErr {})
+                            }
+                            Ok(s) => Ok(s),
+                        }?;
 
-            match statement.execute([file_name]) {
-                Err(err) => {
-                    error!(
-                        error = err.to_string(),
-                        "error to inset migrate in migrations table"
-                    );
-                    // self.rollback(&conn)?;
-                    Err(MigrationError::InsertErr {})
+                    match statement.execute([file_name]) {
+                        Err(err) => {
+                            error!(
+                                error = err.to_string(),
+                                "error to inset migrate in migrations table"
+                            );
+                            Err(MigrationError::InsertErr {})
+                        }
+                        _ => Ok(()),
+                    }
+                })
+                .await
+            {
+                Err(_) => {
+                    self.rollback(&conn).await?;
+                    break;
                 }
-                _ => Ok(()),
-            }?;
+                _ => {}
+            };
         }
 
         self.commit(&conn).await?;

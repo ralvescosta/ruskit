@@ -5,7 +5,7 @@ edition = "2021"
 
 [features]
 postgres = ["dep:deadpool-postgres"]
-# sqlite = ["dep:deadpool-sqlite"]
+sqlite = ["dep:deadpool-sqlite"]
 
 [dependencies]
 env = { path = "../env" }
@@ -16,4 +16,4 @@ async-trait = { version = "0.1.63" }
 tracing = { version = "0.1.37" }
 
 deadpool-postgres = { version = "0.10.2", optional = true }
-deadpool-sqlite = { version = "0.5.0" }
+deadpool-sqlite = { version = "0.5.0", optional = true }

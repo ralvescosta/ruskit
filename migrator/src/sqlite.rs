@@ -1,17 +1,16 @@
 use crate::service::MigratorDriver;
 use async_trait::async_trait;
+use deadpool_sqlite::{rusqlite::ErrorCode, Object, Pool};
 use errors::migrator::MigrationError;
-use r2d2::{Pool, PooledConnection};
-use r2d2_sqlite::{rusqlite::ErrorCode, SqliteConnectionManager};
 use std::{fs, sync::Arc};
 use tracing::{debug, error, warn};
 
 pub struct SqliteDriver {
-    pool: Arc<Pool<SqliteConnectionManager>>,
+    pool: Arc<Pool>,
 }
 
 impl SqliteDriver {
-    pub fn new(pool: Arc<Pool<SqliteConnectionManager>>) -> SqliteDriver {
+    pub fn new(pool: Arc<Pool>) -> SqliteDriver {
         SqliteDriver { pool }
     }
 }
@@ -19,24 +18,24 @@ impl SqliteDriver {
 #[async_trait]
 impl MigratorDriver for SqliteDriver {
     async fn migration_table(&self) -> Result<(), MigrationError> {
-        let conn = self.get_conn()?;
+        let conn = self.get_conn().await?;
 
-        self.begin(&conn)?;
+        self.begin(&conn).await?;
 
-        let query = "SELECT migrate FROM migrations limit 1";
-        let Err(err) = conn.prepare(query) else {
-            debug!("migration table already created");
-            self.commit(&conn)?;
-            return Ok(());
-        };
+        match conn
+            .interact(|conn| {
+                let query = "SELECT migrate FROM migrations limit 1";
+                let Err(err) = conn.prepare(query) else {
+                debug!("migration table already created");
+                return Ok(());
+            };
 
-        if err.sqlite_error_code().unwrap_or(ErrorCode::NotFound) != ErrorCode::Unknown {
-            error!(error = err.to_string(), "unexpected error");
-            self.rollback(&conn)?;
-            return Err(MigrationError::InternalError {});
-        }
+                if err.sqlite_error_code().unwrap_or(ErrorCode::NotFound) != ErrorCode::Unknown {
+                    error!(error = err.to_string(), "unexpected error");
+                    return Err(MigrationError::InternalError {});
+                }
 
-        let query = "
+                let query = "
             CREATE TABLE migrations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 migrate TEXT,
@@ -44,21 +43,29 @@ impl MigratorDriver for SqliteDriver {
                 rollback_at TIMESTAMPZ
             )";
 
-        let Ok(mut statement) = conn.prepare(query) else {
-            error!("error to prepare create migrations table query");
-            self.rollback(&conn)?;
-            return Err(MigrationError::CreateMigrationsTableErr {});
-        };
+                let Ok(mut statement) = conn.prepare(query) else {
+                error!("error to prepare create migrations table query");
+                return Err(MigrationError::CreateMigrationsTableErr {});
+            };
 
-        let Ok(_) = statement.execute([]) else {
-            error!("error to execute create migrations table query");
-            self.rollback(&conn)?;
-            return Err(MigrationError::CreateMigrationsTableErr {});
-        };
+                let Ok(_) = statement.execute([]) else {
+                error!("error to execute create migrations table query");
+                return Err(MigrationError::CreateMigrationsTableErr {});
+            };
 
-        self.commit(&conn)?;
-
-        Ok(())
+                Ok(())
+            })
+            .await
+        {
+            Err(_) => {
+                self.rollback(&conn).await?;
+                return Err(MigrationError::InternalError {});
+            }
+            _ => {
+                self.commit(&conn).await?;
+                Ok(())
+            }
+        }
     }
 
     async fn up(
@@ -72,9 +79,9 @@ impl MigratorDriver for SqliteDriver {
             migrations_path = path.unwrap().as_str();
         }
 
-        let conn = self.get_conn()?;
+        let conn = self.get_conn().await?;
 
-        self.begin(&conn)?;
+        self.begin(&conn).await?;
 
         for res_dir_entry in fs::read_dir(migrations_path).unwrap() {
             let dir_entry = res_dir_entry.unwrap();
@@ -86,7 +93,7 @@ impl MigratorDriver for SqliteDriver {
                 continue;
             }
 
-            if self.migrate_executed_already(&conn, &file_name)? {
+            if self.migrate_executed_already(&conn, &file_name).await? {
                 continue;
             }
 
@@ -95,54 +102,62 @@ impl MigratorDriver for SqliteDriver {
                 MigrationError::InternalError {}
             })?;
 
-            let mut statement = match conn.prepare(&query) {
-                Err(err) => {
-                    error!(
-                        error = err.to_string(),
-                        migrate = file_name,
-                        "error to execute prepare migrate query"
-                    );
-                    self.rollback(&conn)?;
-                    Err(MigrationError::PrepareStatementErr {})
-                }
-                Ok(s) => Ok(s),
-            }?;
+            match conn
+                .interact(move |conn| {
+                    let mut statement = match conn.prepare(&query) {
+                        Err(err) => {
+                            error!(
+                                error = err.to_string(),
+                                migrate = file_name,
+                                "error to execute prepare migrate query"
+                            );
+                            Err(MigrationError::PrepareStatementErr {})
+                        }
+                        Ok(s) => Ok(s),
+                    }?;
 
-            match statement.execute([]) {
-                Err(err) => {
-                    error!(error = err.to_string(), "error to execute migrate query");
-                    self.rollback(&conn)?;
-                    Err(MigrationError::MigrateQueryErr {})
-                }
-                _ => Ok(()),
-            }?;
+                    match statement.execute([]) {
+                        Err(err) => {
+                            error!(error = err.to_string(), "error to execute migrate query");
+                            Err(MigrationError::MigrateQueryErr {})
+                        }
+                        _ => Ok(()),
+                    }?;
 
-            let mut statement = match conn.prepare("INSERT INTO migrations (migrate) values (?)") {
-                Err(err) => {
-                    error!(
-                        error = err.to_string(),
-                        "error to inset migrate in migrations table"
-                    );
-                    self.rollback(&conn)?;
-                    Err(MigrationError::InsertErr {})
-                }
-                Ok(s) => Ok(s),
-            }?;
+                    let mut statement =
+                        match conn.prepare("INSERT INTO migrations (migrate) values (?)") {
+                            Err(err) => {
+                                error!(
+                                    error = err.to_string(),
+                                    "error to inset migrate in migrations table"
+                                );
+                                Err(MigrationError::InsertErr {})
+                            }
+                            Ok(s) => Ok(s),
+                        }?;
 
-            match statement.execute([file_name]) {
-                Err(err) => {
-                    error!(
-                        error = err.to_string(),
-                        "error to inset migrate in migrations table"
-                    );
-                    self.rollback(&conn)?;
-                    Err(MigrationError::InsertErr {})
+                    match statement.execute([file_name]) {
+                        Err(err) => {
+                            error!(
+                                error = err.to_string(),
+                                "error to inset migrate in migrations table"
+                            );
+                            Err(MigrationError::InsertErr {})
+                        }
+                        _ => Ok(()),
+                    }
+                })
+                .await
+            {
+                Err(_) => {
+                    self.rollback(&conn).await?;
+                    break;
                 }
-                _ => Ok(()),
-            }?;
+                _ => {}
+            };
         }
 
-        self.commit(&conn)?;
+        self.commit(&conn).await?;
 
         Ok(())
     }
@@ -157,8 +172,8 @@ impl MigratorDriver for SqliteDriver {
 }
 
 impl SqliteDriver {
-    fn get_conn(&self) -> Result<PooledConnection<SqliteConnectionManager>, MigrationError> {
-        match self.pool.get() {
+    async fn get_conn(&self) -> Result<Object, MigrationError> {
+        match self.pool.get().await {
             Err(err) => {
                 error!(
                     error = err.to_string(),
@@ -170,80 +185,113 @@ impl SqliteDriver {
         }
     }
 
-    fn begin(
-        &self,
-        conn: &PooledConnection<SqliteConnectionManager>,
-    ) -> Result<(), MigrationError> {
-        conn.prepare("BEGIN TRANSACTION migrations;")
-            .map_err(|e| {
-                error!(error = e.to_string(), "error prepare begin transaction");
-                MigrationError::InternalError {}
-            })?
-            .execute([])
-            .map_err(|e| {
-                error!(error = e.to_string(), "error query begin transaction");
-                MigrationError::InternalError {}
-            })?;
+    async fn begin(&self, conn: &Object) -> Result<(), MigrationError> {
+        conn.interact(|conn| {
+            let mut statement = match conn.prepare("BEGIN TRANSACTION migrations;") {
+                Err(e) => {
+                    error!(error = e.to_string(), "error prepare begin transaction");
+                    Err(MigrationError::InternalError {})
+                }
+                Ok(s) => Ok(s),
+            }?;
 
-        Ok(())
+            match statement.execute([]) {
+                Err(e) => {
+                    error!(error = e.to_string(), "error query begin transaction");
+                    Err(MigrationError::InternalError {})
+                }
+                _ => Ok(()),
+            }
+        })
+        .await
+        .map_err(|e| {
+            error!(error = e.to_string(), "unsuspected error");
+            MigrationError::InternalError {}
+        })?
     }
 
-    fn commit(
-        &self,
-        conn: &PooledConnection<SqliteConnectionManager>,
-    ) -> Result<(), MigrationError> {
-        conn.prepare("COMMIT TRANSACTION migrations;")
-            .map_err(|e| {
-                error!(error = e.to_string(), "error prepare commit transaction");
-                MigrationError::InternalError {}
-            })?
-            .execute([])
-            .map_err(|e| {
-                error!(error = e.to_string(), "error query commit transaction");
-                MigrationError::InternalError {}
-            })?;
+    async fn commit(&self, conn: &Object) -> Result<(), MigrationError> {
+        conn.interact(|conn| {
+            let mut statement = match conn.prepare("COMMIT TRANSACTION migrations;") {
+                Err(e) => {
+                    error!(error = e.to_string(), "error prepare commit transaction");
+                    Err(MigrationError::InternalError {})
+                }
+                Ok(s) => Ok(s),
+            }?;
 
-        Ok(())
+            match statement.execute([]) {
+                Err(e) => {
+                    error!(error = e.to_string(), "error query commit transaction");
+                    Err(MigrationError::InternalError {})
+                }
+                _ => Ok(()),
+            }
+        })
+        .await
+        .map_err(|e| {
+            error!(error = e.to_string(), "unsuspected error");
+            MigrationError::InternalError {}
+        })?
     }
 
-    fn rollback(
-        &self,
-        conn: &PooledConnection<SqliteConnectionManager>,
-    ) -> Result<(), MigrationError> {
-        conn.prepare("ROLLBACK TRANSACTION migrations;")
-            .map_err(|e| {
-                error!(error = e.to_string(), "error prepare rollback transaction");
-                MigrationError::InternalError {}
-            })?
-            .execute([])
-            .map_err(|e| {
-                error!(error = e.to_string(), "error query rollback transaction");
-                MigrationError::InternalError {}
-            })?;
+    async fn rollback(&self, conn: &Object) -> Result<(), MigrationError> {
+        conn.interact(|conn| {
+            let mut statement = match conn.prepare("ROLLBACK TRANSACTION migrations;") {
+                Err(e) => {
+                    error!(error = e.to_string(), "error prepare rollback transaction");
+                    Err(MigrationError::InternalError {})
+                }
+                Ok(s) => Ok(s),
+            }?;
 
-        Ok(())
+            match statement.execute([]) {
+                Err(e) => {
+                    error!(error = e.to_string(), "error query rollback transaction");
+                    Err(MigrationError::InternalError {})
+                }
+                _ => Ok(()),
+            }
+        })
+        .await
+        .map_err(|e| {
+            error!(error = e.to_string(), "unsuspected error");
+            MigrationError::InternalError {}
+        })?
     }
 
-    fn migrate_executed_already(
+    async fn migrate_executed_already(
         &self,
-        conn: &PooledConnection<SqliteConnectionManager>,
+        conn: &Object,
         file_name: &String,
     ) -> Result<bool, MigrationError> {
-        let res: Result<String, _> = conn.query_row(
-            "SELECT migrate FROM migrations WHERE migrate = ?",
-            [file_name],
-            |v| v.get(0),
-        );
+        let file_name = file_name.clone();
+        conn.interact(move |conn| {
+            let mut statement =
+                match conn.prepare("SELECT migrate FROM migrations WHERE migrate = ?;") {
+                    Err(e) => {
+                        error!(error = e.to_string(), "error prepare rollback transaction");
+                        Err(MigrationError::InternalError {})
+                    }
+                    Ok(s) => Ok(s),
+                }?;
 
-        match res {
-            Err(e) => {
-                if e.sqlite_error_code().unwrap_or(ErrorCode::NotFound) != ErrorCode::NotFound {
-                    error!(error = e.to_string(), "unsuspected error");
-                    return Err(MigrationError::InternalError {});
+            match statement.execute([&file_name]) {
+                Err(e) => {
+                    if e.sqlite_error_code().unwrap_or(ErrorCode::NotFound) != ErrorCode::NotFound {
+                        error!(error = e.to_string(), "error query rollback transaction");
+                        return Err(MigrationError::InternalError {});
+                    }
+
+                    Ok(false)
                 }
-                Ok(false)
+                _ => Ok(true),
             }
-            _ => Ok(true),
-        }
+        })
+        .await
+        .map_err(|e| {
+            error!(error = e.to_string(), "unsuspected error");
+            MigrationError::InternalError {}
+        })?
     }
 }

@@ -1,6 +1,4 @@
-///deprecated
-pub mod amqp;
-
+pub mod grpc;
 pub mod jaeger;
 pub mod otlp;
 

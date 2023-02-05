@@ -13,13 +13,16 @@ pub struct Configs<T: DynamicConfig> {
     pub health_readiness: HealthReadinessConfig,
 
     pub dynamic: T,
+
+    ///Default: 15000
+    pub multiple_message_timer: i32,
 }
 
 pub trait DynamicConfig: Default {
     fn load(&self);
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Empty;
 impl DynamicConfig for Empty {
     fn load(&self) {}

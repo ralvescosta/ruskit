@@ -12,7 +12,7 @@ env = { path = "../env" }
 logging = { path = "../logging" }
 errors = { path = "../errors" }
 
-async-trait = { version = "0.1.63" }
+async-trait = { version = "0.1.64" }
 tracing = { version = "0.1.37" }
 
 deadpool-postgres = { version = "0.10.2", optional = true }

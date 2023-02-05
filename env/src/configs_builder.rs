@@ -2,9 +2,9 @@ use crate::{
     configs::{AppConfig, Configs, DynamicConfig},
     def::{
         AMQP_HOST_ENV_KEY, AMQP_PASSWORD_ENV_KEY, AMQP_PORT_ENV_KEY, AMQP_USER_ENV_KEY,
-        AMQP_VHOST_ENV_KEY, APP_NAME_ENV_KEY, APP_PORT_ENV_KEY, AWS_ACCESS_KEY_ID_ENV_KEY,
-        AWS_DEFAULT_REGION, AWS_REGION_ENV_KEY_ENV_KEY, AWS_SECRET_ACCESS_KEY,
-        DYNAMO_ENDPOINT_ENV_KEY, DYNAMO_TABLE_ENV_KEY, ENABLE_HEALTH_READINESS_ENV_KEY,
+        AMQP_VHOST_ENV_KEY, APP_NAME_ENV_KEY, APP_PORT_ENV_KEY, AWS_DEFAULT_REGION,
+        CUSTOM_AWS_ACCESS_KEY_ID_ENV_KEY, CUSTOM_AWS_SECRET_ACCESS_KEY, DYNAMO_ENDPOINT_ENV_KEY,
+        DYNAMO_REGION_ENV_KEY, DYNAMO_TABLE_ENV_KEY, ENABLE_HEALTH_READINESS_ENV_KEY,
         ENABLE_METRICS_ENV_KEY, ENABLE_TRACES_ENV_KEY, HEALTH_READINESS_PORT_ENV_KEY,
         HOST_NAME_ENV_KEY, LOG_LEVEL_ENV_KEY, MQTT_HOST_ENV_KEY, MQTT_PASSWORD_ENV_KEY,
         MQTT_PORT_ENV_KEY, MQTT_USER_ENV_KEY, OTLP_ACCESS_KEY_ENV_KEY, OTLP_EXPORT_TIMEOUT_ENV_KEY,
@@ -117,7 +117,7 @@ impl ConfigBuilder {
 
         let name = env::var(APP_NAME_ENV_KEY).unwrap_or_default();
         let secret_key = env::var(SECRET_KEY_ENV_KEY).unwrap_or_default();
-        let host = env::var(APP_PORT_ENV_KEY).unwrap_or_default();
+        let host = env::var(HOST_NAME_ENV_KEY).unwrap_or_default();
         let port = env::var(APP_PORT_ENV_KEY)
             .unwrap_or("3000".to_owned())
             .parse()
@@ -181,6 +181,7 @@ impl ConfigBuilder {
         T: DynamicConfig,
     {
         let mut cfg = Configs::default();
+        cfg.app = self.app_cfg.clone();
 
         for (key, value) in env::vars() {
             match key.as_str() {
@@ -271,15 +272,14 @@ impl ConfigBuilder {
                 DYNAMO_TABLE_ENV_KEY if self.dynamo => {
                     cfg.dynamo.table = self.get_string_from_secret(value, "table".to_owned());
                 }
-                AWS_REGION_ENV_KEY_ENV_KEY => {
+                DYNAMO_REGION_ENV_KEY if self.dynamo => {
                     let region = self.get_string_from_secret(value, AWS_DEFAULT_REGION.to_owned());
                     cfg.dynamo.region = region.clone();
-                    cfg.aws.region = region;
                 }
-                AWS_ACCESS_KEY_ID_ENV_KEY if self.aws => {
+                CUSTOM_AWS_ACCESS_KEY_ID_ENV_KEY if self.aws => {
                     cfg.aws.access_key_id = self.get_string_from_secret(value, "key".to_owned());
                 }
-                AWS_SECRET_ACCESS_KEY if self.aws => {
+                CUSTOM_AWS_SECRET_ACCESS_KEY if self.aws => {
                     cfg.aws.secret_access_key =
                         self.get_string_from_secret(value, "secret".to_owned());
                 }

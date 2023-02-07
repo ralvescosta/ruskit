@@ -3,32 +3,42 @@ use crate::middlewares;
 use actix_web::{middleware as actix_middleware, web, App, HttpServer};
 use env::AppConfig as AppEnv;
 use errors::http_server::HttpServerError;
-use std::sync::Arc;
 use tracing::error;
 
 pub struct HttpwServerImpl {
-    services: Vec<AppConfig>,
+    services_without_auth: Vec<AppConfig>,
+    services_with_auth: Vec<AppConfig>,
+    with_auth: bool,
     addr: String,
 }
 
 impl HttpwServerImpl {
-    pub fn new(cfg: &AppEnv) -> Arc<HttpwServerImpl> {
-        Arc::new(HttpwServerImpl {
-            services: vec![],
+    pub fn new(cfg: &AppEnv) -> HttpwServerImpl {
+        HttpwServerImpl {
+            services_without_auth: vec![],
+            services_with_auth: vec![],
+            with_auth: false,
             addr: cfg.app_addr(),
-        })
+        }
     }
 }
 
 impl HttpwServerImpl {
     pub fn register(mut self, service: AppConfig) -> Self {
-        self.services.push(service);
+        if self.with_auth {
+            self.services_with_auth.push(service);
+        } else {
+            self.services_without_auth.push(service);
+        }
         self
     }
 
     pub async fn start(&self) -> Result<(), HttpServerError> {
         HttpServer::new({
-            let services = self.services.to_vec();
+            let with_auth = self.with_auth;
+            let services_without_auth = self.services_without_auth.to_vec();
+            let services_with_auth = self.services_with_auth.to_vec();
+
             move || {
                 let mut app = App::new()
                     .wrap(actix_middleware::Compress::default())
@@ -36,7 +46,15 @@ impl HttpwServerImpl {
                     .wrap(middlewares::cors::config())
                     .wrap(actix_middleware::Logger::default());
 
-                for svc in services.clone() {
+                for svc in services_without_auth.clone() {
+                    app = app.configure(svc);
+                }
+
+                if with_auth {
+                    //apply auth strategy
+                }
+
+                for svc in services_with_auth.clone() {
                     app = app.configure(svc);
                 }
 

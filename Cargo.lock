@@ -508,6 +508,7 @@ dependencies = [
  "opentelemetry",
  "reqwest",
  "serde",
+ "tokio",
  "tracing",
 ]
 

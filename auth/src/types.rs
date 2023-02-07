@@ -4,9 +4,9 @@ use opentelemetry::Context;
 
 #[async_trait]
 pub trait AuthMiddleware {
-    async fn authenticate(&mut self, ctx: &Context, token: &str) -> Result<bool, ()>;
+    async fn authenticate(&self, ctx: &Context, token: &str) -> Result<bool, ()>;
     async fn authorize(
-        &mut self,
+        &self,
         ctx: &Context,
         token: &str,
         required_scope: Scopes,

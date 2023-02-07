@@ -11,10 +11,11 @@ use std::{
     borrow::Cow,
     time::{Duration, SystemTime},
 };
+use tokio::sync::Mutex;
 use tracing::error;
 
 pub struct Auth0Middleware {
-    jwks: Option<JWKS>,
+    jwks: Mutex<Option<JWKS>>,
     jwks_retrieved_at: SystemTime,
     authority: String,
     tracer: BoxedTracer,
@@ -23,9 +24,9 @@ pub struct Auth0Middleware {
 impl Auth0Middleware {
     pub fn new(cfg: &Configs<Empty>) -> Auth0Middleware {
         Auth0Middleware {
-            jwks: None,
+            jwks: Mutex::new(None),
             jwks_retrieved_at: SystemTime::now(),
-            authority: String::new(),
+            authority: String::new(), //get from the config
             tracer: global::tracer("auth0_middleware"),
         }
     }
@@ -33,7 +34,7 @@ impl Auth0Middleware {
 
 #[async_trait]
 impl AuthMiddleware for Auth0Middleware {
-    async fn authenticate(&mut self, ctx: &Context, token: &str) -> Result<bool, ()> {
+    async fn authenticate(&self, ctx: &Context, token: &str) -> Result<bool, ()> {
         let mut span = self.tracer.start_with_context("authenticate", ctx);
 
         let jwks = self.retrieve_jwks(&mut span).await?;
@@ -76,7 +77,7 @@ impl AuthMiddleware for Auth0Middleware {
     }
 
     async fn authorize(
-        &mut self,
+        &self,
         ctx: &Context,
         token: &str,
         required_scope: Scopes,
@@ -90,11 +91,13 @@ impl AuthMiddleware for Auth0Middleware {
 }
 
 impl Auth0Middleware {
-    async fn retrieve_jwks(&mut self, span: &mut BoxedSpan) -> Result<JWKS, ()> {
-        if self.jwks.is_none() {
-            let jwks = self.get_jwks(span).await?;
-            self.jwks = Some(jwks.clone());
-            return Ok(jwks);
+    async fn retrieve_jwks(&self, span: &mut BoxedSpan) -> Result<JWKS, ()> {
+        let mut jwks = self.jwks.lock().await;
+
+        if jwks.is_none() {
+            let new = self.get_jwks(span).await?;
+            *jwks = Some(new.clone());
+            return Ok(new);
         }
 
         let duration = match SystemTime::now().duration_since(self.jwks_retrieved_at.clone()) {
@@ -115,12 +118,12 @@ impl Auth0Middleware {
         }?;
 
         if duration.cmp(&Duration::new(3600, 0)).is_ge() {
-            let jwks = self.get_jwks(span).await?;
-            self.jwks = Some(jwks.clone());
-            return Ok(jwks);
+            let new = self.get_jwks(span).await?;
+            *jwks = Some(new.clone());
+            return Ok(new);
         }
 
-        Ok(self.jwks.clone().unwrap())
+        Ok(jwks.clone().unwrap())
     }
 
     async fn get_jwks(&self, span: &mut BoxedSpan) -> Result<JWKS, ()> {

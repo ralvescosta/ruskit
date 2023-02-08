@@ -6,12 +6,12 @@ use actix_web_httpauth::extractors::AuthenticationError;
 use auth::AuthMiddleware;
 use opentelemetry::Context;
 
-async fn validator(
+pub async fn validator(
     req: ServiceRequest,
     credentials: BearerAuth,
 ) -> Result<ServiceRequest, (Error, ServiceRequest)> {
     let auth_mid = req
-        .app_data::<Arc<dyn AuthMiddleware>>()
+        .app_data::<Arc<dyn AuthMiddleware + Send + Sync>>()
         .map(|data| data.clone())
         .unwrap();
 

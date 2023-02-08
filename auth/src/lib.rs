@@ -1,5 +1,6 @@
 pub mod auth0_middleware;
 mod defs;
+pub mod dummy_middleware;
 mod old;
 mod types;
 

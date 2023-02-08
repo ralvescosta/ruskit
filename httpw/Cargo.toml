@@ -4,10 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-errors = { path = '../errors' }
 env = { path = '../env' }
 auth = { path = "../auth" }
-# health-readiness = { path = '../health_readiness' }
 
 thiserror = { version = "1.0.37" }
 actix-web = { version = "4.3.0" }

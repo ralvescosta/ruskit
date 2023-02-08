@@ -1703,7 +1703,6 @@ dependencies = [
  "actix-web-httpauth",
  "auth",
  "env",
- "errors",
  "opentelemetry",
  "serde",
  "thiserror",

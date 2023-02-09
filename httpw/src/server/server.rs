@@ -1,19 +1,11 @@
-use std::sync::Arc;
-
 use super::types::RouteConfig;
-use crate::{authentication::token_validation, errors::HttpServerError, middlewares};
-use actix_web::{
-    middleware as actix_middleware,
-    web::{self, ServiceConfig},
-    App, FromRequest, Handler, HttpServer, Responder,
-};
-use auth::{dummy_middleware::DummyMiddleware, AuthMiddleware};
+use crate::{errors::HttpServerError, middlewares};
+use actix_web::{middleware as actix_middleware, web, App, HttpServer};
 use env::AppConfig as AppEnv;
 use tracing::error;
 
 pub struct HttpwServerImpl {
     services: Vec<RouteConfig>,
-    auth_strategy: Arc<dyn AuthMiddleware + Send + Sync>,
     addr: String,
 }
 
@@ -21,7 +13,6 @@ impl HttpwServerImpl {
     pub fn new(cfg: &AppEnv) -> HttpwServerImpl {
         HttpwServerImpl {
             services: vec![],
-            auth_strategy: DummyMiddleware::new(),
             addr: cfg.app_addr(),
         }
     }
@@ -33,24 +24,15 @@ impl HttpwServerImpl {
         self
     }
 
-    pub fn auth_strategy(mut self, strategy: Arc<dyn AuthMiddleware + Send + Sync>) -> Self {
-        self.auth_strategy = strategy.clone();
-        self
-    }
-
     pub async fn start(&self) -> Result<(), HttpServerError> {
         HttpServer::new({
             let services = self.services.to_vec();
-            let auth_strategy = self.auth_strategy.clone();
 
             move || {
                 let mut app = App::new()
                     .wrap(actix_middleware::Compress::default())
                     .wrap(middlewares::headers::config())
-                    .wrap(middlewares::cors::config())
-                    .app_data(web::Data::<Arc<dyn AuthMiddleware>>::new(
-                        auth_strategy.clone(),
-                    ));
+                    .wrap(middlewares::cors::config());
 
                 for svc in services.clone() {
                     app = app.configure(svc);

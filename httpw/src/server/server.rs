@@ -1,17 +1,18 @@
 use std::sync::Arc;
 
-use super::types::AppConfig;
+use super::types::RouteConfig;
 use crate::{authentication::token_validation, errors::HttpServerError, middlewares};
-use actix_web::{middleware as actix_middleware, web, App, HttpServer};
-use actix_web_httpauth::middleware::HttpAuthentication;
+use actix_web::{
+    middleware as actix_middleware,
+    web::{self, ServiceConfig},
+    App, FromRequest, Handler, HttpServer, Responder,
+};
 use auth::{dummy_middleware::DummyMiddleware, AuthMiddleware};
 use env::AppConfig as AppEnv;
 use tracing::error;
 
 pub struct HttpwServerImpl {
-    services_without_auth: Vec<AppConfig>,
-    services_with_auth: Vec<AppConfig>,
-    with_auth: bool,
+    services: Vec<RouteConfig>,
     auth_strategy: Arc<dyn AuthMiddleware + Send + Sync>,
     addr: String,
 }
@@ -19,9 +20,7 @@ pub struct HttpwServerImpl {
 impl HttpwServerImpl {
     pub fn new(cfg: &AppEnv) -> HttpwServerImpl {
         HttpwServerImpl {
-            services_without_auth: vec![],
-            services_with_auth: vec![],
-            with_auth: false,
+            services: vec![],
             auth_strategy: DummyMiddleware::new(),
             addr: cfg.app_addr(),
         }
@@ -29,26 +28,19 @@ impl HttpwServerImpl {
 }
 
 impl HttpwServerImpl {
-    pub fn register(mut self, service: AppConfig) -> Self {
-        if self.with_auth {
-            self.services_with_auth.push(service);
-        } else {
-            self.services_without_auth.push(service);
-        }
+    pub fn register(mut self, service: RouteConfig) -> Self {
+        self.services.push(service);
         self
     }
 
     pub fn auth_strategy(mut self, strategy: Arc<dyn AuthMiddleware + Send + Sync>) -> Self {
-        self.with_auth = true;
         self.auth_strategy = strategy.clone();
         self
     }
 
     pub async fn start(&self) -> Result<(), HttpServerError> {
         HttpServer::new({
-            let with_auth = self.with_auth;
-            let services_without_auth = self.services_without_auth.to_vec();
-            let services_with_auth = self.services_with_auth.to_vec();
+            let services = self.services.to_vec();
             let auth_strategy = self.auth_strategy.clone();
 
             move || {
@@ -60,16 +52,7 @@ impl HttpwServerImpl {
                         auth_strategy.clone(),
                     ));
 
-                for svc in services_without_auth.clone() {
-                    app = app.configure(svc);
-                }
-
-                if with_auth {
-                    // let auth_mid = HttpAuthentication::bearer(token_validation::validator);
-                    // app = app.wrap(actix_middleware::Logger::default());
-                }
-
-                for svc in services_with_auth.clone() {
+                for svc in services.clone() {
                     app = app.configure(svc);
                 }
 

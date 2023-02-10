@@ -1,1 +1,3 @@
-pub mod error;
+mod error;
+
+pub use error::HttpErrorViewModel;

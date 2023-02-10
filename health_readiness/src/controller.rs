@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use actix_web::{error::HttpError, get, HttpResponse, web, http::StatusCode};
-use httpw::viewmodels::error::HttpErrorViewModel;
+use actix_web::{error::HttpError, get, http::StatusCode, web, HttpResponse};
+use httpw::viewmodels::HttpErrorViewModel;
 
 use crate::HealthReadinessService;
 

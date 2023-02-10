@@ -1,19 +1,23 @@
 use super::types::RouteConfig;
 use crate::{errors::HttpServerError, middlewares};
 use actix_web::{middleware as actix_middleware, web, App, HttpServer};
-use env::AppConfig as AppEnv;
+use auth::jwt_manager::JwtManager;
+use env::AppConfig;
+use std::sync::Arc;
 use tracing::error;
 
 pub struct HttpwServerImpl {
     services: Vec<RouteConfig>,
+    jwt_manager: Option<Arc<dyn JwtManager + Send + Sync>>,
     addr: String,
 }
 
 impl HttpwServerImpl {
-    pub fn new(cfg: &AppEnv) -> HttpwServerImpl {
+    pub fn new(cfg: &AppConfig) -> HttpwServerImpl {
         HttpwServerImpl {
             services: vec![],
             addr: cfg.app_addr(),
+            jwt_manager: None,
         }
     }
 }
@@ -24,15 +28,27 @@ impl HttpwServerImpl {
         self
     }
 
+    pub fn jwt_manager(mut self, manager: Arc<dyn JwtManager + Send + Sync>) -> Self {
+        self.jwt_manager = Some(manager);
+        self
+    }
+
     pub async fn start(&self) -> Result<(), HttpServerError> {
         HttpServer::new({
             let services = self.services.to_vec();
+            let jwt_manager = self.jwt_manager.clone();
 
             move || {
                 let mut app = App::new()
                     .wrap(actix_middleware::Compress::default())
                     .wrap(middlewares::headers::config())
                     .wrap(middlewares::cors::config());
+
+                if let Some(jwt_manager) = jwt_manager.clone() {
+                    app = app.app_data(web::Data::<Arc<dyn JwtManager + Send + Sync>>::new(
+                        jwt_manager,
+                    ));
+                }
 
                 for svc in services.clone() {
                     app = app.configure(svc);

@@ -1,7 +1,6 @@
-use crate::{defs::Scopes, types::AuthMiddleware};
+use super::{JwtManager, TokenClaims};
 use alcoholic_jwt::{token_kid, validate, Validation, JWKS};
 use async_trait::async_trait;
-use env::{Configs, Empty};
 use opentelemetry::{
     global::{self, BoxedSpan, BoxedTracer},
     trace::{Span, Status, Tracer},
@@ -9,32 +8,33 @@ use opentelemetry::{
 };
 use std::{
     borrow::Cow,
+    sync::Arc,
     time::{Duration, SystemTime},
 };
 use tokio::sync::Mutex;
 use tracing::error;
 
-pub struct Auth0Middleware {
+pub struct Auth0JwtManager {
     jwks: Mutex<Option<JWKS>>,
     jwks_retrieved_at: SystemTime,
     authority: String,
     tracer: BoxedTracer,
 }
 
-impl Auth0Middleware {
-    pub fn new(cfg: &Configs<Empty>) -> Auth0Middleware {
-        Auth0Middleware {
+impl Auth0JwtManager {
+    pub fn new() -> Arc<Auth0JwtManager> {
+        Arc::new(Auth0JwtManager {
             jwks: Mutex::new(None),
             jwks_retrieved_at: SystemTime::now(),
             authority: String::new(), //get from the config
             tracer: global::tracer("auth0_middleware"),
-        }
+        })
     }
 }
 
 #[async_trait]
-impl AuthMiddleware for Auth0Middleware {
-    async fn authenticate(&self, ctx: &Context, token: &str) -> Result<bool, ()> {
+impl JwtManager for Auth0JwtManager {
+    async fn verify(&self, ctx: &Context, token: &str) -> Result<TokenClaims, ()> {
         let mut span = self.tracer.start_with_context("authenticate", ctx);
 
         let jwks = self.retrieve_jwks(&mut span).await?;
@@ -70,27 +70,40 @@ impl AuthMiddleware for Auth0Middleware {
             Validation::SubjectPresent,
         ];
 
-        let jwk = jwks.find(&kid).expect("Specified key not found in set");
-        let res = validate(token, jwk, validations);
+        let jwk = match jwks.find(&kid) {
+            Some(jwk) => Ok(jwk),
+            _ => {
+                error!("specified jwk key was not founded in set");
 
-        Ok(res.is_ok())
-    }
+                span.set_status(Status::Error {
+                    description: Cow::from("specified jwk key was not founded in set"),
+                });
 
-    async fn authorize(
-        &self,
-        ctx: &Context,
-        token: &str,
-        required_scope: Scopes,
-    ) -> Result<bool, ()> {
-        let mut span = self.tracer.start_with_context("authenticate", ctx);
+                Err(())
+            }
+        }?;
 
-        let jwks = self.retrieve_jwks(&mut span).await?;
+        let claims = match validate(token, jwk, validations) {
+            Ok(res) => Ok(res.claims),
+            Err(err) => {
+                error!(error = err.to_string(), "invalid jwt token");
 
-        Ok(true)
+                span.record_error(&err);
+                span.set_status(Status::Error {
+                    description: Cow::from("invalid jwt token"),
+                });
+
+                Err(())
+            }
+        }?;
+
+        span.set_status(Status::Ok);
+
+        Ok(TokenClaims::default())
     }
 }
 
-impl Auth0Middleware {
+impl Auth0JwtManager {
     async fn retrieve_jwks(&self, span: &mut BoxedSpan) -> Result<JWKS, ()> {
         let mut jwks = self.jwks.lock().await;
 
@@ -127,19 +140,20 @@ impl Auth0Middleware {
     }
 
     async fn get_jwks(&self, span: &mut BoxedSpan) -> Result<JWKS, ()> {
-        let res = match reqwest::get("").await {
-            Err(err) => {
-                error!(error = err.to_string(), "error to get jwks from auth0 api");
+        let res =
+            match reqwest::get(&format!("{}{}", self.authority, ".well-known/jwks.json")).await {
+                Err(err) => {
+                    error!(error = err.to_string(), "error to get jwks from auth0 api");
 
-                span.record_error(&err);
-                span.set_status(Status::Error {
-                    description: Cow::from("error to get jwks from auth0 api"),
-                });
+                    span.record_error(&err);
+                    span.set_status(Status::Error {
+                        description: Cow::from("error to get jwks from auth0 api"),
+                    });
 
-                Err(())
-            }
-            Ok(r) => Ok(r),
-        }?;
+                    Err(())
+                }
+                Ok(r) => Ok(r),
+            }?;
 
         let val = match res.json::<JWKS>().await {
             Err(err) => {

@@ -1,8 +1,5 @@
-pub mod auth0_middleware;
 mod defs;
-pub mod dummy_middleware;
-mod old;
+pub mod jwt_manager;
 mod types;
 
 pub use defs::{PlatformScopes, Scopes, ThingsScopes, UsersScopes};
-pub use types::AuthMiddleware;

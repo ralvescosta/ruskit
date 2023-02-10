@@ -4,7 +4,7 @@ use actix_web::{
     HttpRequest, HttpResponse,
 };
 
-use crate::viewmodels::error::HttpErrorViewModel;
+use crate::viewmodels::HttpErrorViewModel;
 
 pub fn handler() -> JsonConfig {
     JsonConfig::default().error_handler(|err: JsonPayloadError, _req: &HttpRequest| {
@@ -12,7 +12,7 @@ pub fn handler() -> JsonConfig {
             format!("JSON error: {:?}", err),
             HttpResponse::BadRequest().json(HttpErrorViewModel {
                 status_code: 400,
-                message: String::from("Wrong body format"),
+                message: String::from("wrong body format"),
                 details: format!("{}", err),
             }),
         )

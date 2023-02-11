@@ -18,6 +18,7 @@ pub struct Auth0JwtManager {
     jwks: Mutex<Option<JWKS>>,
     jwks_retrieved_at: SystemTime,
     authority: String,
+    app_domain: String,
     tracer: BoxedTracer,
 }
 
@@ -26,7 +27,8 @@ impl Auth0JwtManager {
         Arc::new(Auth0JwtManager {
             jwks: Mutex::new(None),
             jwks_retrieved_at: SystemTime::now(),
-            authority: String::new(), //get from the config
+            authority: String::from("https://proteu.hedro.com.br"), //get from the config
+            app_domain: String::from("hdr-stg.us.auth0.com"),
             tracer: global::tracer("auth0_middleware"),
         })
     }
@@ -99,6 +101,12 @@ impl JwtManager for Auth0JwtManager {
 
         span.set_status(Status::Ok);
 
+        let t1 = claims.get("iss");
+        let t2 = claims.get("sub");
+        let t3 = claims.get("aud");
+        let t4 = claims.get("iat");
+        let t5 = claims.get("exp");
+
         Ok(TokenClaims::default())
     }
 }
@@ -140,20 +148,24 @@ impl Auth0JwtManager {
     }
 
     async fn get_jwks(&self, span: &mut BoxedSpan) -> Result<JWKS, ()> {
-        let res =
-            match reqwest::get(&format!("{}{}", self.authority, ".well-known/jwks.json")).await {
-                Err(err) => {
-                    error!(error = err.to_string(), "error to get jwks from auth0 api");
+        let res = match reqwest::get(&format!(
+            "https://{}/{}",
+            self.app_domain, ".well-known/jwks.json"
+        ))
+        .await
+        {
+            Err(err) => {
+                error!(error = err.to_string(), "error to get jwks from auth0 api");
 
-                    span.record_error(&err);
-                    span.set_status(Status::Error {
-                        description: Cow::from("error to get jwks from auth0 api"),
-                    });
+                span.record_error(&err);
+                span.set_status(Status::Error {
+                    description: Cow::from("error to get jwks from auth0 api"),
+                });
 
-                    Err(())
-                }
-                Ok(r) => Ok(r),
-            }?;
+                Err(())
+            }
+            Ok(r) => Ok(r),
+        }?;
 
         let val = match res.json::<JWKS>().await {
             Err(err) => {

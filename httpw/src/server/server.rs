@@ -1,6 +1,10 @@
 use super::types::RouteConfig;
 use crate::{errors::HttpServerError, middlewares};
-use actix_web::{middleware as actix_middleware, web, App, HttpServer};
+use actix_web::{
+    middleware as actix_middleware,
+    web::{self, Data},
+    App, HttpServer,
+};
 use auth::jwt_manager::JwtManager;
 use env::AppConfig;
 use std::sync::Arc;
@@ -45,8 +49,10 @@ impl HttpwServerImpl {
                     .wrap(middlewares::cors::config());
 
                 if let Some(jwt_manager) = jwt_manager.clone() {
-                    app = app.app_data(web::Data::<Arc<dyn JwtManager + Send + Sync>>::new(
-                        jwt_manager,
+                    app = app.app_data::<Data<Arc<dyn JwtManager + Send + Sync>>>(web::Data::<
+                        Arc<dyn JwtManager + Send + Sync>,
+                    >::new(
+                        jwt_manager.clone(),
                     ));
                 }
 

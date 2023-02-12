@@ -8,6 +8,7 @@ pub const SECRET_KEY_ENV_KEY: &str = "SECRET_KEY";
 pub const HOST_NAME_ENV_KEY: &str = "HOST_NAME";
 pub const APP_PORT_ENV_KEY: &str = "APP_PORT";
 pub const LOG_LEVEL_ENV_KEY: &str = "LOG_LEVEL";
+pub const AUTH_AUTHORITY_ENV_KEY: &str = "AUTH_AUTHORITY";
 pub const MQTT_HOST_ENV_KEY: &str = "MQTT_HOST";
 pub const MQTT_PORT_ENV_KEY: &str = "MQTT_PORT";
 pub const MQTT_USER_ENV_KEY: &str = "MQTT_USER";

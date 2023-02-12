@@ -44,6 +44,8 @@ pub struct AppConfig {
     pub log_level: String,
     ///Default: false
     pub enable_external_creates_logging: bool,
+    ///Default:
+    pub auth_authority: String,
 }
 
 impl AppConfig {

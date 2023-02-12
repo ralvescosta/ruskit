@@ -1,11 +1,13 @@
 use super::{JwtManager, TokenClaims};
 use alcoholic_jwt::{token_kid, validate, Validation, JWKS};
 use async_trait::async_trait;
+use env::AppConfig;
 use opentelemetry::{
     global::{self, BoxedSpan, BoxedTracer},
     trace::{Span, Status, Tracer},
     Context,
 };
+use serde_json::Value;
 use std::{
     borrow::Cow,
     sync::Arc,
@@ -18,17 +20,15 @@ pub struct Auth0JwtManager {
     jwks: Mutex<Option<JWKS>>,
     jwks_retrieved_at: SystemTime,
     authority: String,
-    app_domain: String,
     tracer: BoxedTracer,
 }
 
 impl Auth0JwtManager {
-    pub fn new() -> Arc<Auth0JwtManager> {
+    pub fn new(cfg: &AppConfig) -> Arc<Auth0JwtManager> {
         Arc::new(Auth0JwtManager {
             jwks: Mutex::new(None),
             jwks_retrieved_at: SystemTime::now(),
-            authority: String::from("https://proteu.hedro.com.br"), //get from the config
-            app_domain: String::from("hdr-stg.us.auth0.com"),
+            authority: cfg.auth_authority.clone(),
             tracer: global::tracer("auth0_middleware"),
         })
     }
@@ -45,11 +45,9 @@ impl JwtManager for Auth0JwtManager {
             Ok(res) => {
                 if res.is_none() {
                     error!("token with no kid");
-
                     span.set_status(Status::Error {
                         description: Cow::from("token with no kid"),
                     });
-
                     return Err(());
                 }
 
@@ -57,12 +55,10 @@ impl JwtManager for Auth0JwtManager {
             }
             Err(err) => {
                 error!(error = err.to_string(), "error retrieving the token kid");
-
                 span.record_error(&err);
                 span.set_status(Status::Error {
                     description: Cow::from("error retrieving the token kid"),
                 });
-
                 Err(())
             }
         }?;
@@ -76,11 +72,9 @@ impl JwtManager for Auth0JwtManager {
             Some(jwk) => Ok(jwk),
             _ => {
                 error!("specified jwk key was not founded in set");
-
                 span.set_status(Status::Error {
                     description: Cow::from("specified jwk key was not founded in set"),
                 });
-
                 Err(())
             }
         }?;
@@ -89,25 +83,24 @@ impl JwtManager for Auth0JwtManager {
             Ok(res) => Ok(res.claims),
             Err(err) => {
                 error!(error = err.to_string(), "invalid jwt token");
-
                 span.record_error(&err);
                 span.set_status(Status::Error {
                     description: Cow::from("invalid jwt token"),
                 });
-
                 Err(())
             }
         }?;
 
         span.set_status(Status::Ok);
 
-        let t1 = claims.get("iss");
-        let t2 = claims.get("sub");
-        let t3 = claims.get("aud");
-        let t4 = claims.get("iat");
-        let t5 = claims.get("exp");
-
-        Ok(TokenClaims::default())
+        Ok(TokenClaims {
+            iss: self.get_claim_as_string("iss", &claims, &mut span)?,
+            sub: self.get_claim_as_string("sub", &claims, &mut span)?,
+            aud: self.get_claim_as_vec("aud", &claims, &mut span)?,
+            iat: self.get_claim_as_u64("iat", &claims, &mut span)?,
+            exp: self.get_claim_as_u64("exp", &claims, &mut span)?,
+            scope: self.get_claim_as_string("scope", &claims, &mut span)?,
+        })
     }
 }
 
@@ -128,12 +121,10 @@ impl Auth0JwtManager {
                     error = err.to_string(),
                     "error comparing the jwks caching time"
                 );
-
                 span.record_error(&err);
                 span.set_status(Status::Error {
                     description: Cow::from("error comparing the jwks caching time"),
                 });
-
                 Err(())
             }
         }?;
@@ -148,39 +139,110 @@ impl Auth0JwtManager {
     }
 
     async fn get_jwks(&self, span: &mut BoxedSpan) -> Result<JWKS, ()> {
-        let res = match reqwest::get(&format!(
-            "https://{}/{}",
-            self.app_domain, ".well-known/jwks.json"
-        ))
-        .await
-        {
-            Err(err) => {
-                error!(error = err.to_string(), "error to get jwks from auth0 api");
-
-                span.record_error(&err);
-                span.set_status(Status::Error {
-                    description: Cow::from("error to get jwks from auth0 api"),
-                });
-
-                Err(())
-            }
-            Ok(r) => Ok(r),
-        }?;
+        let res =
+            match reqwest::get(&format!("{}{}", self.authority, ".well-known/jwks.json")).await {
+                Err(err) => {
+                    error!(error = err.to_string(), "error to get jwks from auth0 api");
+                    span.record_error(&err);
+                    span.set_status(Status::Error {
+                        description: Cow::from("error to get jwks from auth0 api"),
+                    });
+                    Err(())
+                }
+                Ok(r) => Ok(r),
+            }?;
 
         let val = match res.json::<JWKS>().await {
             Err(err) => {
                 error!(error = err.to_string(), "error deserializing the jwks");
-
                 span.record_error(&err);
                 span.set_status(Status::Error {
                     description: Cow::from("error deserializing the jwks"),
                 });
-
                 Err(())
             }
             Ok(v) => Ok(v),
         }?;
 
         return Ok(val);
+    }
+
+    fn get_claim_as_string(
+        &self,
+        key: &str,
+        claims: &Value,
+        span: &mut BoxedSpan,
+    ) -> Result<String, ()> {
+        match claims.get(key) {
+            Some(fv) => match fv.as_str() {
+                Some(value) => Ok(value.to_owned()),
+                _ => {
+                    error!(claim = key, "invalid jwt claim");
+                    span.set_status(Status::Error {
+                        description: Cow::from("invalid jwt claim"),
+                    });
+                    Err(())
+                }
+            },
+            _ => {
+                error!(claim = key, "invalid jwt claim");
+                span.set_status(Status::Error {
+                    description: Cow::from("invalid jwt claim"),
+                });
+                Err(())
+            }
+        }
+    }
+
+    fn get_claim_as_u64(&self, key: &str, claims: &Value, span: &mut BoxedSpan) -> Result<u64, ()> {
+        match claims.get(key) {
+            Some(fv) => match fv.as_u64() {
+                Some(value) => Ok(value),
+                _ => {
+                    error!(claim = key, "invalid jwt claim");
+                    span.set_status(Status::Error {
+                        description: Cow::from("invalid jwt claim"),
+                    });
+                    Err(())
+                }
+            },
+            _ => {
+                error!(claim = key, "invalid jwt claim");
+                span.set_status(Status::Error {
+                    description: Cow::from("invalid jwt claim"),
+                });
+                Err(())
+            }
+        }
+    }
+
+    fn get_claim_as_vec(
+        &self,
+        key: &str,
+        claims: &Value,
+        span: &mut BoxedSpan,
+    ) -> Result<Vec<String>, ()> {
+        match claims.get(key) {
+            Some(fv) => match fv.as_array() {
+                Some(value) => Ok(value
+                    .iter()
+                    .map(|v| v.as_str().unwrap().to_owned())
+                    .collect::<Vec<String>>()),
+                _ => {
+                    error!(claim = key, "invalid jwt claim");
+                    span.set_status(Status::Error {
+                        description: Cow::from("invalid jwt claim"),
+                    });
+                    Err(())
+                }
+            },
+            _ => {
+                error!(claim = key, "invalid jwt claim");
+                span.set_status(Status::Error {
+                    description: Cow::from("invalid jwt claim"),
+                });
+                Err(())
+            }
+        }
     }
 }

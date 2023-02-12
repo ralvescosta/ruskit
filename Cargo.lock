@@ -489,6 +489,7 @@ version = "0.1.0"
 dependencies = [
  "alcoholic_jwt",
  "async-trait",
+ "env",
  "opentelemetry",
  "reqwest",
  "serde",

@@ -138,6 +138,11 @@ impl MqttDispatcher {
                     p = handler_topic_index as i16;
                 }
             }
+
+            if handler_fields.len() == received_fields.len() {
+                p = handler_topic_index as i16;
+                break;
+            }
         }
 
         if p == -1 {
@@ -172,7 +177,7 @@ mod tests {
     fn test_declare() {
         let mut dispatch = MqttDispatcher::new();
 
-        let res = dispatch.declare("/some/topic", Arc::new(MockDispatch::new()));
+        let res = dispatch.declare("some/topic", Arc::new(MockDispatch::new()));
         assert!(res.is_ok());
 
         let res = dispatch.declare("", Arc::new(MockDispatch::new()));
@@ -183,10 +188,23 @@ mod tests {
     async fn test_consume() {
         let mut dispatch = MqttDispatcher::new();
 
-        let res = dispatch.declare("/some/topic/#", Arc::new(MockDispatch::new()));
+        let res = dispatch.declare("some/topic/#", Arc::new(MockDispatch::new()));
         assert!(res.is_ok());
 
-        let msg = Message::new("/some/topic/sub", vec![], 0);
+        let msg = Message::new("some/topic/sub/1", vec![], 0);
+
+        let res = dispatch.consume(&Context::new(), &msg).await;
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_consume_with_plus_wildcard() {
+        let mut dispatch = MqttDispatcher::new();
+
+        let res = dispatch.declare("some/+/+/sub", Arc::new(MockDispatch::new()));
+        assert!(res.is_ok());
+
+        let msg = Message::new("some/topic/with/sub", vec![], 0);
 
         let res = dispatch.consume(&Context::new(), &msg).await;
         assert!(res.is_ok());
@@ -210,9 +228,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_consume_with_unregistered_consumer() {
-        let dispatch = MqttDispatcher::new();
+        let mut dispatch = MqttDispatcher::new();
 
-        let msg = Message::new("/some/topic/sub", vec![], 0);
+        let res = dispatch.declare("other/topic/#", Arc::new(MockDispatch::new()));
+        assert!(res.is_ok());
+
+        let msg = Message::new("some/topic/sub", vec![], 0);
 
         let res = dispatch.consume(&Context::new(), &msg).await;
         assert!(res.is_err());

@@ -1,3 +1,3 @@
 mod jwt;
 
-pub use jwt::{JwtAuthenticateExtractor, TokenClaims};
+pub use jwt::JwtAuthenticateExtractor;

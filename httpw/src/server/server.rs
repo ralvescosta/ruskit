@@ -16,6 +16,7 @@ pub struct HttpwServerImpl {
     services: Vec<RouteConfig>,
     jwt_manager: Option<Arc<dyn JwtManager + Send + Sync>>,
     addr: String,
+    // openapi_file_path: Option<String>,
 }
 
 impl HttpwServerImpl {
@@ -24,6 +25,7 @@ impl HttpwServerImpl {
             services: vec![],
             addr: cfg.app_addr(),
             jwt_manager: None,
+            // openapi_file_path: None,
         }
     }
 }
@@ -39,10 +41,16 @@ impl HttpwServerImpl {
         self
     }
 
+    // pub fn openapi_file_path(mut self, file_path: String) -> Self {
+    //     self.openapi_file_path = Some(file_path);
+    //     self
+    // }
+
     pub async fn start(&self) -> Result<(), HttpServerError> {
         HttpServer::new({
             let services = self.services.to_vec();
             let jwt_manager = self.jwt_manager.clone();
+            // let openapi_file = self.openapi_file_path.clone();
 
             move || {
                 let meter = global::meter("actix_web");
@@ -65,6 +73,17 @@ impl HttpwServerImpl {
                 for svc in services.clone() {
                     app = app.configure(svc);
                 }
+
+                // if let Some(_openapi) = openapi_file.clone() {
+                // let spec = swagger_ui::swagger_spec_file!("../../swagger-ui/examples/openapi.json");
+                // let config = swagger_ui::Config::default();
+                //
+                // let app =  app.service(
+                //   scope("/v1/doc")
+                //     .configure(actix_web_swagger_ui::swagger(spec, config))
+                // );
+                //
+                // }
 
                 app.route("/health", web::get().to(health_handler))
                     .default_service(web::to(middlewares::not_found::not_found))

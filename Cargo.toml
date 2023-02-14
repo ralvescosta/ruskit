@@ -13,4 +13,5 @@ members = [
     "secrets_manager",
     "sql_pool",
     "traces",
+    "auth",
 ]

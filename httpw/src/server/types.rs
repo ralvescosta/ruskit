@@ -1,3 +1,3 @@
 use actix_web::web::ServiceConfig;
 
-pub type AppConfig = fn(cfg: &mut ServiceConfig);
+pub type RouteConfig = fn(cfg: &mut ServiceConfig);

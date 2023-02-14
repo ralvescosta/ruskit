@@ -1,5 +1,4 @@
 use super::types::RouteConfig;
-use crate::middlewares;
 use crate::{errors::HttpServerError, middlewares};
 use actix_web::{
     middleware as actix_middleware,
@@ -8,36 +7,43 @@ use actix_web::{
 };
 use actix_web_opentelemetry::{RequestMetricsBuilder, RequestTracing};
 use auth::jwt_manager::JwtManager;
-use env::AppConfig as AppEnv;
 use env::AppConfig;
-use errors::http_server::HttpServerError;
 use opentelemetry::global;
 use std::sync::Arc;
 use tracing::error;
 
 pub struct HttpwServerImpl {
-    services: Vec<AppConfig>,
+    services: Vec<RouteConfig>,
+    jwt_manager: Option<Arc<dyn JwtManager + Send + Sync>>,
     addr: String,
 }
 
 impl HttpwServerImpl {
-    pub fn new(cfg: &AppEnv) -> Arc<HttpwServerImpl> {
-        Arc::new(HttpwServerImpl {
+    pub fn new(cfg: &AppConfig) -> HttpwServerImpl {
+        HttpwServerImpl {
             services: vec![],
             addr: cfg.app_addr(),
-        })
+            jwt_manager: None,
+        }
     }
 }
 
 impl HttpwServerImpl {
-    pub fn register(mut self, service: AppConfig) -> Self {
+    pub fn register(mut self, service: RouteConfig) -> Self {
         self.services.push(service);
+        self
+    }
+
+    pub fn jwt_manager(mut self, manager: Arc<dyn JwtManager + Send + Sync>) -> Self {
+        self.jwt_manager = Some(manager);
         self
     }
 
     pub async fn start(&self) -> Result<(), HttpServerError> {
         HttpServer::new({
             let services = self.services.to_vec();
+            let jwt_manager = self.jwt_manager.clone();
+
             move || {
                 let meter = global::meter("actix_web");
 
@@ -71,13 +77,13 @@ impl HttpwServerImpl {
                 error = e.to_string(),
                 "error to binding the http server addr"
             );
-            HttpServerError::ServerError {}
+            HttpServerError::PortBidingError {}
         })?
         .run()
         .await
         .map_err(|e| {
             error!(error = e.to_string(), "error to start http server");
-            HttpServerError::ServerError {}
+            HttpServerError::ServerStartupError {}
         })?;
 
         global::shutdown_tracer_provider();

@@ -4,14 +4,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-errors = { path = '../errors' }
 env = { path = '../env' }
-# health-readiness = { path = '../health_readiness' }
+auth = { path = "../auth" }
 
 thiserror = { version = "1.0.37" }
 actix-web = { version = "4.3.0" }
 actix-cors = { version = "0.6.3" }
 serde = { version = "1.0.152", features = ["derive"] }
+serde_json = { version = "1.0.93" }
 tracing = { version = "0.1.37" }
 opentelemetry = { version = "0.18.0" }
 actix-web-opentelemetry = { version = "0.13.0", features = ["metrics"] }

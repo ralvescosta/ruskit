@@ -1,8 +1,17 @@
-use super::types::AppConfig;
+use super::types::RouteConfig;
 use crate::middlewares;
-use actix_web::{middleware as actix_middleware, web, App, HttpServer};
+use crate::{errors::HttpServerError, middlewares};
+use actix_web::{
+    middleware as actix_middleware,
+    web::{self, Data},
+    App, HttpResponse, HttpServer, Responder,
+};
+use actix_web_opentelemetry::{RequestMetricsBuilder, RequestTracing};
+use auth::jwt_manager::JwtManager;
 use env::AppConfig as AppEnv;
+use env::AppConfig;
 use errors::http_server::HttpServerError;
+use opentelemetry::global;
 use std::sync::Arc;
 use tracing::error;
 
@@ -30,17 +39,30 @@ impl HttpwServerImpl {
         HttpServer::new({
             let services = self.services.to_vec();
             move || {
+                let meter = global::meter("actix_web");
+
                 let mut app = App::new()
                     .wrap(actix_middleware::Compress::default())
                     .wrap(middlewares::headers::config())
                     .wrap(middlewares::cors::config())
-                    .wrap(actix_middleware::Logger::default());
+                    .wrap(RequestTracing::new())
+                    .wrap(RequestMetricsBuilder::new().build(meter));
+
+                if let Some(jwt_manager) = jwt_manager.clone() {
+                    app = app.app_data::<Data<Arc<dyn JwtManager + Send + Sync>>>(web::Data::<
+                        Arc<dyn JwtManager + Send + Sync>,
+                    >::new(
+                        jwt_manager.clone(),
+                    ));
+                }
 
                 for svc in services.clone() {
                     app = app.configure(svc);
                 }
 
-                app.default_service(web::to(middlewares::not_found::not_found))
+                app.route("/health", web::get().to(health_handler))
+                    .default_service(web::to(middlewares::not_found::not_found))
+                    .wrap(actix_middleware::Logger::default())
             }
         })
         .bind(&self.addr)
@@ -58,6 +80,12 @@ impl HttpwServerImpl {
             HttpServerError::ServerError {}
         })?;
 
+        global::shutdown_tracer_provider();
+
         Ok(())
     }
+}
+
+async fn health_handler() -> impl Responder {
+    HttpResponse::Ok().body("health")
 }

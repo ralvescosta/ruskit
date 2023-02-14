@@ -199,6 +199,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "actix-web-opentelemetry"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aaa592a5b9b3d96101434bca1024c6da6c23630163aec485428e613cd7100dcf"
+dependencies = [
+ "actix-http",
+ "actix-web",
+ "futures-util",
+ "opentelemetry",
+ "opentelemetry-semantic-conventions",
+ "serde",
+]
+
+[[package]]
 name = "adler"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1643,6 +1657,11 @@ version = "0.1.0"
 dependencies = [
  "actix-cors",
  "actix-web",
+<<<<<<< Updated upstream
+=======
+ "actix-web-opentelemetry",
+ "auth",
+>>>>>>> Stashed changes
  "env",
  "errors",
  "serde",
@@ -2157,6 +2176,15 @@ dependencies = [
  "prost",
  "tonic",
  "tonic-build",
+]
+
+[[package]]
+name = "opentelemetry-semantic-conventions"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b02e0230abb0ab6636d18e2ba8fa02903ea63772281340ccac18e0af3ec9eeb"
+dependencies = [
+ "opentelemetry",
 ]
 
 [[package]]

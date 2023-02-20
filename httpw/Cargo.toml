@@ -15,3 +15,5 @@ serde_json = { version = "1.0.93" }
 tracing = { version = "0.1.37" }
 opentelemetry = { version = "0.18.0" }
 actix-web-opentelemetry = { version = "0.13.0", features = ["metrics"] }
+utoipa = { version = "3.0.2", features = ["actix_extras"] }
+utoipa-swagger-ui = { version = "3.0.2", features = ["actix-web"] }

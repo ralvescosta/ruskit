@@ -1,9 +1,9 @@
 use crate::{
     client::Amqp,
     consumer::consume,
+    errors::AmqpError,
     topology::{ConsumerHandler, QueueDefinition},
 };
-use errors::amqp::AmqpError;
 use futures_util::{future::join_all, StreamExt};
 use opentelemetry::global;
 use std::sync::Arc;

@@ -1,5 +1,5 @@
+use crate::errors::MigrationError;
 use async_trait::async_trait;
-use errors::migrator::MigrationError;
 use std::sync::Arc;
 
 #[async_trait]

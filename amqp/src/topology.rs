@@ -1,10 +1,8 @@
-use std::{collections::BTreeMap, sync::Arc};
-
-use crate::{client::Amqp, defs};
+use crate::{client::Amqp, defs, errors::AmqpError};
 use async_trait::async_trait;
-use errors::amqp::AmqpError;
 use lapin::types::{AMQPValue, FieldTable, LongInt, LongString, ShortString};
 use opentelemetry::Context;
+use std::{collections::BTreeMap, sync::Arc};
 use tracing::debug;
 
 #[derive(Debug, Clone, Default)]

@@ -1,5 +1,6 @@
 mod controller;
 mod dynamodb;
+pub mod errors;
 mod mqtt;
 mod postgres;
 mod rabbitmq;

@@ -6,5 +6,5 @@ pub enum ConfigsError {
     InternalError,
 
     #[error("error to load secrets from secret manager - `{0}`")]
-    SecretLoadingError(String)
+    SecretLoadingError(String),
 }

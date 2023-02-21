@@ -1,8 +1,8 @@
-use std::fmt;
-
 use serde::Serialize;
+use std::fmt;
+use utoipa::ToSchema;
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default, Serialize, ToSchema)]
 pub struct HttpErrorViewModel {
     pub status_code: u16,
     pub message: String,

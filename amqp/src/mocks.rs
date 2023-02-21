@@ -2,9 +2,8 @@ use super::{
     topology::ExchangeKind as MyExchangeKind,
     types::{AmqpPayload, PublishParams},
 };
-use crate::client::Amqp;
+use crate::{client::Amqp, errors::AmqpError};
 use async_trait::async_trait;
-use errors::amqp::AmqpError;
 use lapin::{
     message::BasicGetMessage,
     types::{AMQPValue, FieldTable, ShortString},

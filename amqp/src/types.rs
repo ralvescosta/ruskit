@@ -1,5 +1,5 @@
 use super::defs;
-use errors::amqp::AmqpError;
+use crate::errors::AmqpError;
 use lapin::{
     protocol::basic::AMQPProperties,
     types::{AMQPValue, FieldTable, LongInt, ShortString},

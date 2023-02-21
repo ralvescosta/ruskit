@@ -1,6 +1,5 @@
-use crate::HealthChecker;
+use crate::{errors::HealthReadinessError, HealthChecker};
 use deadpool_postgres::Pool;
-use errors::health_readiness::HealthReadinessError;
 use std::sync::Arc;
 use tracing::error;
 

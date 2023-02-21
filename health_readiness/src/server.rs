@@ -1,12 +1,11 @@
-use crate::controller;
-use crate::postgres::PostgresHealthChecker;
-use crate::rabbitmq::RabbitMqHealthChecker;
-use crate::HealthReadinessImpl;
-use crate::{mqtt::MqttHealthChecker, HealthChecker};
+use crate::{
+    controller, errors::HealthReadinessError, mqtt::MqttHealthChecker,
+    postgres::PostgresHealthChecker, rabbitmq::RabbitMqHealthChecker, HealthChecker,
+    HealthReadinessImpl,
+};
 use actix_web::{middleware as actix_middleware, web, App, HttpServer};
 use deadpool_postgres::Pool;
 use env::HealthReadinessConfig;
-use errors::health_readiness::HealthReadinessError;
 use httpw::middlewares;
 use lapin::Connection;
 use paho_mqtt::AsyncClient;

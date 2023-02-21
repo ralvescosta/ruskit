@@ -2,6 +2,7 @@ mod aws_client;
 mod aws_client_builder;
 mod dummy_client;
 
+pub mod errors;
 #[cfg(test)]
 pub mod mocks;
 #[cfg(feature = "mocks")]

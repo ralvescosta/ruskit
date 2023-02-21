@@ -1,6 +1,5 @@
-use crate::AwsSecretClient;
+use crate::{errors::SecretsManagerError, AwsSecretClient};
 use aws_sdk_secretsmanager as secretsmanager;
-use errors::secrets_manager::SecretsManagerError;
 use secretsmanager::Client;
 use serde_json::Value;
 use tracing::error;

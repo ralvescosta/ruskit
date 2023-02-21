@@ -7,7 +7,6 @@ edition = "2021"
 mocks = ["dep:mockall"]
 
 [dependencies]
-errors = { path = "../errors" }
 env = { path = "../env" }
 traces = { path = "../traces" }
 
@@ -20,6 +19,7 @@ serde_json = { version = "1.0.91" }
 serde = { version = "1.0.152", features = ["derive"] }
 tokio = { version = "1.25.0", features = ["default"] }
 futures-util = { version = "0.3.26"}
+thiserror = { version = "1.0.38" }
 
 # Used only with feature mock
 mockall = { version = "0.11.3", optional = true }

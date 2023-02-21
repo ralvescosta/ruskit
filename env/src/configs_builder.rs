@@ -13,10 +13,10 @@ use crate::{
         POSTGRES_PORT_ENV_KEY, POSTGRES_USER_ENV_KEY, SECRET_KEY_ENV_KEY, SECRET_PREFIX,
         SECRET_PREFIX_TO_DECODE, SQLITE_FILE_NAME_ENV_KEY,
     },
+    errors::ConfigsError,
     Environment,
 };
 use dotenvy::from_filename;
-use errors::configs::ConfigsError;
 use secrets_manager::{AwsSecretClientBuilder, DummyClient, SecretClient};
 use std::{env, sync::Arc};
 use tracing::error;

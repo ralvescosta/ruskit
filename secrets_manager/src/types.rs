@@ -1,5 +1,5 @@
+use crate::errors::SecretsManagerError;
 use async_trait::async_trait;
-use errors::secrets_manager::SecretsManagerError;
 
 #[async_trait]
 pub trait SecretClient {

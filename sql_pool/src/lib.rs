@@ -1,3 +1,4 @@
+pub mod errors;
 #[cfg(feature = "postgres")]
 pub mod postgres;
 #[cfg(feature = "sqlite")]

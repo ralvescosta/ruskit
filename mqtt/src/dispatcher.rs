@@ -1,8 +1,8 @@
 use crate::{
     client::MqttClient,
+    errors::MqttError,
     types::{Controller, TopicMessage},
 };
-use errors::mqtt::MqttError;
 use futures_util::StreamExt;
 use opentelemetry::{
     global::{self, BoxedTracer},
@@ -165,8 +165,8 @@ mod tests {
     use std::vec;
 
     use super::*;
+    use crate::errors::MqttError;
     use async_trait::async_trait;
-    use errors::mqtt::MqttError;
 
     #[test]
     fn test_new() {

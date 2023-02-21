@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-errors = { path = "../errors" }
 secrets-manager = { path = "../secrets_manager" }
 
 dotenvy = { version = "0.15.6" }
 base64 = { version = "0.13.1" }
 tracing = { version = "0.1.37" }
+thiserror = { version = "1.0.38" }

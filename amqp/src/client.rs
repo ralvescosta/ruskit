@@ -1,13 +1,11 @@
-use crate::types::PublishParams;
-
 use super::{
     defs,
     topology::ExchangeKind as MyExchangeKind,
     types::{AmqpPayload, AmqpTracePropagator},
 };
+use crate::{errors::AmqpError, types::PublishParams};
 use async_trait::async_trait;
 use env::{Configs, DynamicConfig};
-use errors::amqp::AmqpError;
 use lapin::{
     message::BasicGetMessage,
     options::{

@@ -1,6 +1,5 @@
-use crate::types::MqttPayload;
+use crate::{errors::MqttError, types::MqttPayload};
 use async_trait::async_trait;
-use errors::mqtt::MqttError;
 use paho_mqtt::{AsyncClient, AsyncReceiver, Message, MessageBuilder};
 use std::sync::Arc;
 use tracing::{debug, error};

@@ -1,3 +1,4 @@
+pub mod errors;
 #[cfg(feature = "postgres")]
 mod postgres;
 mod service;

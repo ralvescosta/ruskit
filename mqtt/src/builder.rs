@@ -1,6 +1,5 @@
-use crate::{types::BrokerKind, MqttClientImpl};
+use crate::{errors::MqttError, types::BrokerKind, MqttClientImpl};
 use env::{AppConfig, Configs, DynamicConfig, MQTTConfig};
-use errors::mqtt::MqttError;
 use paho_mqtt::{
     AsyncClient, ConnectOptions, ConnectOptionsBuilder, CreateOptions, CreateOptionsBuilder,
     SslOptionsBuilder, SslVersion,

@@ -3,7 +3,6 @@
 members = [
     "amqp",
     "env",
-    "errors",
     "health_readiness",
     "httpw",
     "logging",

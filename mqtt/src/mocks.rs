@@ -1,10 +1,8 @@
-use std::sync::Arc;
-
-use crate::{client::MqttClient, types::MqttPayload};
+use crate::{client::MqttClient, errors::MqttError, types::MqttPayload};
 use async_trait::async_trait;
-use errors::mqtt::MqttError;
 use mockall::*;
 use paho_mqtt::{AsyncClient, AsyncReceiver, Message};
+use std::sync::Arc;
 
 mock! {
   pub MqttClientImpl{}

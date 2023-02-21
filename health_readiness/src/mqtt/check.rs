@@ -1,5 +1,4 @@
-use crate::HealthChecker;
-use errors::health_readiness::HealthReadinessError;
+use crate::{errors::HealthReadinessError, HealthChecker};
 use paho_mqtt::AsyncClient;
 use std::sync::Arc;
 use tracing::debug;

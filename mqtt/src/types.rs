@@ -1,5 +1,5 @@
+use crate::errors::MqttError;
 use async_trait::async_trait;
-use errors::mqtt::MqttError;
 use opentelemetry::Context;
 use serde::{Deserialize, Serialize};
 use tracing::error;

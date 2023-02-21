@@ -1,4 +1,4 @@
-use errors::health_readiness::HealthReadinessError;
+use crate::errors::HealthReadinessError;
 use std::sync::Arc;
 use tracing::error;
 

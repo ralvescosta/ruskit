@@ -1,5 +1,4 @@
-use crate::HealthChecker;
-use errors::health_readiness::HealthReadinessError;
+use crate::{errors::HealthReadinessError, HealthChecker};
 use lapin::Connection;
 use std::sync::Arc;
 

@@ -1,7 +1,6 @@
-use crate::service::MigratorDriver;
+use crate::{errors::MigrationError, service::MigratorDriver};
 use async_trait::async_trait;
 use deadpool_sqlite::{rusqlite::ErrorCode, Object, Pool};
-use errors::migrator::MigrationError;
 use std::{fs, sync::Arc};
 use tracing::{debug, error, warn};
 

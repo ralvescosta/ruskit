@@ -2,6 +2,7 @@ mod configs;
 mod configs_builder;
 pub mod def;
 mod environment;
+pub mod errors;
 
 pub use configs::{
     AppConfig, AwsConfig, Configs, DynamicConfig, DynamoConfig, Empty, HealthReadinessConfig,

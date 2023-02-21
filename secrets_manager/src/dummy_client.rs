@@ -1,5 +1,4 @@
-use crate::SecretClient;
-use errors::secrets_manager::SecretsManagerError;
+use crate::{errors::SecretsManagerError, SecretClient};
 
 pub struct DummyClient;
 

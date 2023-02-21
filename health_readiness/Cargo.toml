@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-errors = { path = "../errors" }
 httpw = { path = "../httpw" }
 env = { path = "../env" }
 
@@ -14,4 +13,5 @@ deadpool-postgres = { version = "0.10.5" }
 lapin = { version = "2.1.1" }
 paho-mqtt = { version = "0.12.0" }
 actix-web = { version = "4.3.0" }
+thiserror = { version = "1.0.38" }
 

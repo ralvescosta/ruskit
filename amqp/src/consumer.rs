@@ -1,9 +1,9 @@
 use crate::{
     client::Amqp,
+    errors::AmqpError,
     topology::{ConsumerHandler, QueueDefinition},
     types::{new_span, Metadata},
 };
-use errors::amqp::AmqpError;
 use lapin::{
     message::Delivery,
     options::{BasicAckOptions, BasicNackOptions, BasicPublishOptions},

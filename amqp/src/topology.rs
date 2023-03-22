@@ -3,8 +3,13 @@ use crate::{
     exchange::{ExchangeBinding, ExchangeDefinition},
     queue::{QueueBinding, QueueDefinition},
 };
-use lapin::Channel;
+use lapin::{types::FieldTable, Channel};
 use std::{collections::HashMap, sync::Arc};
+use tracing::{debug, error};
+
+pub const AMQP_HEADERS_DEAD_LETTER_EXCHANGE: &str = "x-dead-letter-exchange";
+pub const AMQP_HEADERS_DEAD_LETTER_ROUTING_KEY: &str = "x-dead-letter-routing-key";
+pub const AMQP_HEADERS_DELAYED_EXCHANGE_TYPE: &str = "x-delayed-type";
 
 pub trait Topology<'tp> {
     fn exchange(self, def: &'tp ExchangeDefinition) -> Self;
@@ -61,7 +66,48 @@ impl<'tp> Topology<'tp> for AmqpTopology<'tp> {
 }
 
 impl<'tp> AmqpTopology<'tp> {
-    fn install_exchange(&self) {}
+    async fn install_exchange(&self) -> Result<(), AmqpError> {
+        for exch in self.exchanges.clone() {
+            debug!("creating exchange: {}", exch.name);
 
-    fn install_queue(&self) {}
+            match self
+                .channel
+                .exchange_declare(
+                    exch.name,
+                    exch.kind.clone().try_into().unwrap(),
+                    lapin::options::ExchangeDeclareOptions {
+                        passive: exch.passive,
+                        durable: exch.durable,
+                        auto_delete: exch.delete,
+                        internal: exch.internal,
+                        nowait: exch.no_wait,
+                    },
+                    FieldTable::from(exch.params.clone()),
+                )
+                .await
+            {
+                Err(err) => {
+                    error!(
+                        error = err.to_string(),
+                        name = exch.name,
+                        "error to declare the exchange"
+                    );
+                    Err(AmqpError::DeclareExchangeError(err.to_string()))
+                }
+                _ => Ok(()),
+            }?;
+
+            debug!("exchange: {} was created", exch.name);
+        }
+
+        Ok(())
+    }
+
+    fn install_queue(&self) {
+        for (name, def) in self.queues.clone() {
+            debug!("creating queue: {}", name);
+
+            debug!("queue: {} was created", name);
+        }
+    }
 }

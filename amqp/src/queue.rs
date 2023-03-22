@@ -4,6 +4,8 @@ pub struct QueueDefinition<'qe> {
     pub(crate) durable: bool,
     pub(crate) delete: bool,
     pub(crate) exclusive: bool,
+    pub(crate) passive: bool,
+    pub(crate) no_wait: bool,
     pub(crate) ttl: Option<i32>,
     pub(crate) dlq_name: Option<String>,
     pub(crate) retry_name: Option<String>,
@@ -18,6 +20,8 @@ impl<'qe> QueueDefinition<'qe> {
             durable: false,
             delete: false,
             exclusive: false,
+            passive: false,
+            no_wait: false,
             ttl: None,
             dlq_name: None,
             retry_name: None,
@@ -61,4 +65,16 @@ impl<'qe> QueueDefinition<'qe> {
 
 pub struct QueueBinding<'qeb> {
     pub(crate) queue_name: &'qeb str,
+    pub(crate) exchange_name: &'qeb str,
+    pub(crate) routing_key: &'qeb str,
+}
+
+impl<'qeb> QueueBinding<'qeb> {
+    pub fn new() -> QueueBinding<'qeb> {
+        QueueBinding {
+            queue_name: "",
+            exchange_name: "",
+            routing_key: "",
+        }
+    }
 }

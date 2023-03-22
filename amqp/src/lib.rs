@@ -18,7 +18,8 @@ async fn oi() {
     AmqpTopology::new(channel)
         .exchange(&exchange::ExchangeDefinition::new("oi"))
         .queue(&queue::QueueDefinition::new("oi"))
-        .queue_binding(&queue::QueueBinding { queue_name: "oi" })
+        .queue_binding(&queue::QueueBinding::new())
         .install()
+        .await
         .expect("");
 }

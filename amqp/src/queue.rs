@@ -1,6 +1,6 @@
 #[derive(Debug, Clone)]
-pub struct QueueDefinition<'qe> {
-    pub(crate) name: &'qe str,
+pub struct QueueDefinition {
+    pub(crate) name: &'static str,
     pub(crate) durable: bool,
     pub(crate) delete: bool,
     pub(crate) exclusive: bool,
@@ -13,8 +13,8 @@ pub struct QueueDefinition<'qe> {
     pub(crate) retries: Option<i32>,
 }
 
-impl<'qe> QueueDefinition<'qe> {
-    pub fn new(name: &'qe str) -> QueueDefinition<'qe> {
+impl QueueDefinition {
+    pub fn new(name: &'static str) -> QueueDefinition {
         QueueDefinition {
             name,
             durable: false,

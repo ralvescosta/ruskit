@@ -31,7 +31,7 @@ pub trait Topology<'tp> {
 
 pub struct AmqpTopology<'tp> {
     channel: Arc<Channel>,
-    pub(crate) queues: HashMap<&'tp str, &'tp QueueDefinition<'tp>>,
+    pub(crate) queues: HashMap<&'tp str, &'tp QueueDefinition>,
     pub(crate) queues_binding: HashMap<&'tp str, &'tp QueueBinding<'tp>>,
     pub(crate) exchanges: Vec<&'tp ExchangeDefinition<'tp>>,
     pub(crate) exchanges_binding: Vec<&'tp ExchangeBinding>,
@@ -169,7 +169,7 @@ impl<'tp> AmqpTopology<'tp> {
 
     async fn declare_retry(
         &self,
-        def: &QueueDefinition<'tp>,
+        def: &QueueDefinition,
         queue_args: &mut BTreeMap<ShortString, AMQPValue>,
     ) -> Result<(), AmqpError> {
         let mut args = BTreeMap::new();
@@ -225,7 +225,7 @@ impl<'tp> AmqpTopology<'tp> {
 
     async fn declare_dql(
         &self,
-        def: &QueueDefinition<'tp>,
+        def: &QueueDefinition,
         queue_args: &mut BTreeMap<ShortString, AMQPValue>,
     ) -> Result<(), AmqpError> {
         let dlq_name = def.dlq_name.clone().unwrap();

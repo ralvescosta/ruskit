@@ -2,6 +2,7 @@
 
 members = [
     "amqp",
+    "amqp_t",
     "env",
     "health_readiness",
     "httpw",

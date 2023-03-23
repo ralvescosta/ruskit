@@ -1,147 +1,119 @@
-use crate::{
-    client::Amqp,
-    consumer::consume,
-    errors::AmqpError,
-    topology::{ConsumerHandler, QueueDefinition},
-};
-use futures_util::{future::join_all, StreamExt};
-use opentelemetry::global;
-use std::sync::Arc;
+use crate::{errors::AmqpError, queue::QueueDefinition};
+use async_trait::async_trait;
+use futures_util::StreamExt;
+use lapin::{options::BasicConsumeOptions, types::FieldTable, Channel};
+use opentelemetry::Context;
+use std::{collections::HashMap, fmt::Debug, sync::Arc};
 use tokio::task::JoinError;
 use tracing::error;
 
-pub struct Dispatcher {
-    amqp: Arc<dyn Amqp + Send + Sync>,
-    pub(crate) queues: Vec<QueueDefinition>,
-    pub(crate) msgs_types: Vec<String>,
-    pub(crate) handlers: Vec<Arc<dyn ConsumerHandler + Send + Sync>>,
+#[async_trait]
+pub trait ConsumerHandler {
+    async fn exec(&self, ctx: &Context, data: &[u8]) -> Result<(), AmqpError>;
 }
 
-impl Dispatcher {
-    pub fn new(amqp: Arc<dyn Amqp + Send + Sync>) -> Dispatcher {
-        Dispatcher {
-            amqp,
-            queues: vec![],
-            msgs_types: vec![],
-            handlers: vec![],
-        }
+pub struct DispatcherDefinition<'dd> {
+    pub(crate) queue: &'dd str,
+    pub(crate) msg_type: &'dd str,
+    pub(crate) queue_def: &'dd QueueDefinition<'dd>,
+    pub(crate) handler: Arc<dyn ConsumerHandler>,
+}
+
+pub trait Dispatcher<'ad> {
+    fn register<T>(self, queue: &'ad str, msg: T, handler: Arc<dyn ConsumerHandler>) -> Self
+    where
+        T: Debug + Default;
+    fn queue_definition(self, def: &'ad QueueDefinition) -> Self;
+    fn queues_definition(self, queues_def: HashMap<&'ad str, &'ad QueueDefinition<'ad>>) -> Self;
+}
+
+pub struct AmqpDispatcher<'ad> {
+    channel: Arc<Channel>,
+    pub(crate) queues_def: HashMap<&'ad str, &'ad QueueDefinition<'ad>>,
+    pub(crate) dispatchers_def: Vec<DispatcherDefinition<'ad>>,
+}
+
+impl<'ad> AmqpDispatcher<'ad> {
+    pub fn new(channel: Arc<Channel>) -> AmqpDispatcher<'ad> {
+        return AmqpDispatcher {
+            channel,
+            queues_def: HashMap::default(),
+            dispatchers_def: vec![],
+        };
+    }
+}
+
+impl<'ad> Dispatcher<'ad> for AmqpDispatcher<'ad> {
+    fn register<T>(mut self, queue: &'ad str, msg: T, handler: Arc<dyn ConsumerHandler>) -> Self
+    where
+        T: Debug + Default,
+    {
+        let queue_def = match self.queues_def.get(queue) {
+            Some(d) => d.to_owned(),
+            _ => {
+                panic!("")
+            }
+        };
+
+        let msg_type = format!("{:?}", msg);
+
+        self.dispatchers_def.push(DispatcherDefinition {
+            queue,
+            msg_type: "",
+            queue_def,
+            handler,
+        });
+
+        self
     }
 
-    pub fn declare(
-        &mut self,
-        queue: QueueDefinition,
-        msg_type: String,
-        handler: Arc<dyn ConsumerHandler + Send + Sync>,
-    ) -> Result<(), AmqpError> {
-        if msg_type.is_empty() {
-            return Err(AmqpError::ConsumerDeclarationError {});
-        }
-
-        self.queues.push(queue);
-        self.msgs_types.push(msg_type);
-        self.handlers.push(handler);
-
-        Ok(())
+    fn queue_definition(mut self, def: &'ad QueueDefinition) -> Self {
+        self.queues_def.insert(def.name, def);
+        self
     }
 
+    fn queues_definition(
+        mut self,
+        queues_def: HashMap<&'ad str, &'ad QueueDefinition<'ad>>,
+    ) -> Self {
+        self.queues_def = queues_def;
+        self
+    }
+}
+
+impl<'ad> AmqpDispatcher<'ad> {
     pub async fn consume_blocking(&self) -> Vec<Result<(), JoinError>> {
         let mut spawns = vec![];
 
-        for i in 0..self.queues.len() {
+        for def in &self.dispatchers_def {
             spawns.push(tokio::spawn({
-                let m_amqp = self.amqp.clone();
-                let msgs_allowed = self.msgs_types.clone();
-
-                let queue = self.queues[i].clone();
-                let msg_type = self.msgs_types[i].clone();
-                let handlers = self.handlers.clone();
-
-                let mut consumer = m_amqp
-                    .consumer(&queue.name, &msg_type)
+                let mut consumer = self
+                    .channel
+                    .basic_consume(
+                        def.queue,
+                        def.msg_type,
+                        BasicConsumeOptions {
+                            no_local: true,
+                            no_ack: true,
+                            exclusive: false,
+                            nowait: false,
+                        },
+                        FieldTable::default(),
+                    )
                     .await
-                    .expect("unexpected error while creating the consumer");
+                    .expect("");
 
                 async move {
                     while let Some(result) = consumer.next().await {
                         match result {
-                            Ok(delivery) => match consume(
-                                &global::tracer("amqp consumer"),
-                                &queue,
-                                &msgs_allowed,
-                                &handlers,
-                                &delivery,
-                                m_amqp.clone(),
-                            )
-                            .await
-                            {
-                                Err(e) => error!(error = e.to_string(), "errors consume msg"),
-                                _ => {}
-                            },
-                            Err(e) => error!(error = e.to_string(), "error receiving delivery msg"),
-                        };
+                            Ok(delivery) => {}
+                            Err(err) => error!(error = err.to_string(), "errors consume msg"),
+                        }
                     }
                 }
             }));
         }
 
-        join_all(spawns).await
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use async_trait::async_trait;
-    use opentelemetry::Context;
-
-    use super::*;
-    use crate::mocks::MockAmqpImpl;
-
-    #[test]
-    fn test_dispatch_declare_successfully() {
-        let mut dispatcher = Dispatcher::new(Arc::new(MockAmqpImpl::new()));
-        let handler = MockedHandler { mock_error: None };
-
-        let res = dispatcher.declare(
-            QueueDefinition::name("queue"),
-            "msg_type".to_owned(),
-            Arc::new(handler),
-        );
-
-        assert!(res.is_ok());
-        assert_eq!(dispatcher.handlers.len(), 1);
-        assert_eq!(dispatcher.msgs_types.len(), 1);
-        assert_eq!(dispatcher.queues.len(), 1);
-    }
-
-    #[test]
-    fn test_dispatch_declare_error() {
-        let mut dispatcher = Dispatcher::new(Arc::new(MockAmqpImpl::new()));
-        let handler = MockedHandler { mock_error: None };
-
-        let res = dispatcher.declare(
-            QueueDefinition::name("queue"),
-            "".to_owned(),
-            Arc::new(handler),
-        );
-
-        assert!(res.is_err());
-        assert_eq!(dispatcher.handlers.len(), 0);
-        assert_eq!(dispatcher.msgs_types.len(), 0);
-        assert_eq!(dispatcher.queues.len(), 0);
-    }
-
-    struct MockedHandler {
-        pub mock_error: Option<AmqpError>,
-    }
-
-    #[async_trait]
-    impl ConsumerHandler for MockedHandler {
-        async fn exec(&self, _ctx: &Context, _data: &[u8]) -> Result<(), AmqpError> {
-            if self.mock_error.is_none() {
-                return Ok(());
-            }
-
-            Err(AmqpError::InternalError {})
-        }
+        vec![]
     }
 }

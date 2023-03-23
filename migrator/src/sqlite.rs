@@ -67,15 +67,11 @@ impl MigratorDriver for SqliteDriver {
         }
     }
 
-    async fn up(
-        &self,
-        path: Option<&String>,
-        _migration: Option<&String>,
-    ) -> Result<(), MigrationError> {
+    async fn up(&self, path: Option<&str>, _migration: Option<&str>) -> Result<(), MigrationError> {
         let mut migrations_path = "./bins/migrations/sql/";
 
         if path.is_some() {
-            migrations_path = path.unwrap().as_str();
+            migrations_path = path.unwrap();
         }
 
         let conn = self.get_conn().await?;
@@ -163,8 +159,8 @@ impl MigratorDriver for SqliteDriver {
 
     async fn down(
         &self,
-        _path: Option<&String>,
-        _migration: Option<&String>,
+        _path: Option<&str>,
+        _migration: Option<&str>,
     ) -> Result<(), MigrationError> {
         Ok(())
     }

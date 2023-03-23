@@ -10,17 +10,29 @@ pub mod topology;
 
 use channel::new_amqp_channel;
 use env::{Configs, Empty};
+use opentelemetry::Context;
+use publisher::{AmqpPublisher, Publisher};
+use serde::Serialize;
 use topology::{AmqpTopology, Topology};
 
 async fn oi() {
     let cfg = Configs::<Empty>::default();
     let channel = new_amqp_channel(&cfg).await.unwrap();
 
-    AmqpTopology::new(channel)
+    AmqpTopology::new(channel.clone())
         .exchange(&exchange::ExchangeDefinition::new("oi"))
         .queue(&queue::QueueDefinition::new("oi"))
         .queue_binding(&queue::QueueBinding::new())
         .install()
         .await
         .expect("");
+
+    #[derive(Debug, Serialize)]
+    struct Message {}
+
+    let publisher = AmqpPublisher::new(channel);
+
+    publisher
+        .simple_publish(&Context::default(), "target", &Message {}, None)
+        .await;
 }

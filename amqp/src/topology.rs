@@ -30,7 +30,7 @@ pub trait Topology<'tp> {
 }
 
 pub struct AmqpTopology<'tp> {
-    pub(crate) channel: Arc<Channel>,
+    channel: Arc<Channel>,
     pub(crate) queues: HashMap<&'tp str, &'tp QueueDefinition<'tp>>,
     pub(crate) queues_binding: HashMap<&'tp str, &'tp QueueBinding<'tp>>,
     pub(crate) exchanges: Vec<&'tp ExchangeDefinition<'tp>>,

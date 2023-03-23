@@ -61,14 +61,12 @@ impl<'ad> Dispatcher<'ad> for AmqpDispatcher<'ad> {
         let queue_def = match self.queues_def.get(queue) {
             Some(d) => d.to_owned().to_owned(),
             _ => {
-                panic!("")
+                panic!("cannot get queue definition")
             }
         };
 
-        let msg_type = format!("{:?}", msg);
-
         self.dispatchers_def.insert(
-            msg_type.clone(),
+            format!("{:?}", msg),
             DispatcherDefinition {
                 queue: queue.to_owned(),
                 queue_def,

@@ -70,11 +70,21 @@ pub struct QueueBinding<'qeb> {
 }
 
 impl<'qeb> QueueBinding<'qeb> {
-    pub fn new() -> QueueBinding<'qeb> {
+    pub fn new(queue: &'qeb str) -> QueueBinding<'qeb> {
         QueueBinding {
-            queue_name: "",
+            queue_name: queue,
             exchange_name: "",
             routing_key: "",
         }
+    }
+
+    pub fn exchange(mut self, exchange: &'qeb str) -> Self {
+        self.exchange_name = exchange;
+        self
+    }
+
+    pub fn routing_key(mut self, key: &'qeb str) -> Self {
+        self.routing_key = key;
+        self
     }
 }

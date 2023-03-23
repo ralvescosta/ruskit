@@ -33,7 +33,7 @@ async fn main() {
     AmqpTopology::new(channel.clone())
         .exchange(&exchange::ExchangeDefinition::new("oi"))
         .queue(&queue::QueueDefinition::new("oi"))
-        .queue_binding(&queue::QueueBinding::new())
+        .queue_binding(&queue::QueueBinding::new("queue").exchange("exchange"))
         .install()
         .await
         .expect("");

@@ -7,9 +7,8 @@ use lapin::{
     Channel,
 };
 use opentelemetry::{
-    global::{BoxedSpan, BoxedTracer},
-    trace::{FutureExt, Span, Status},
-    Context,
+    global::BoxedTracer,
+    trace::{Span, Status},
 };
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 use tracing::{debug, error, warn};

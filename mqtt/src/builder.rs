@@ -1,11 +1,19 @@
-use crate::{client::MQTTClientImpl, errors::MQTTError, types::BrokerKind};
+use crate::errors::MQTTError;
 use env::{AppConfig, Configs, DynamicConfig, MQTTConfig};
 use paho_mqtt::{
-    AsyncClient, ConnectOptions, ConnectOptionsBuilder, CreateOptions, CreateOptionsBuilder,
-    SslOptionsBuilder, SslVersion,
+    AsyncClient, AsyncReceiver, ConnectOptions, ConnectOptionsBuilder, CreateOptions,
+    CreateOptionsBuilder, Message, SslOptionsBuilder, SslVersion,
 };
 use std::{sync::Arc, time::Duration};
 use tracing::error;
+
+#[derive(Clone, Default)]
+pub enum BrokerKind {
+    #[default]
+    SelfHostedWithPassword,
+    SelfHostedWithoutPassword,
+    AWSIoTCore,
+}
 
 pub struct MQTTClientBuilder {
     mqtt_cfg: MQTTConfig,
@@ -46,7 +54,9 @@ impl MQTTClientBuilder {
         return self;
     }
 
-    pub async fn build(self) -> Result<MQTTClientImpl, MQTTError> {
+    pub async fn build(
+        self,
+    ) -> Result<(Arc<AsyncClient>, AsyncReceiver<Option<Message>>), MQTTError> {
         let crate_opts = match self.broker_kind {
             BrokerKind::AWSIoTCore => self.crate_opts_aws_iot_core(),
             _ => self.crate_opts_self_hosted(),
@@ -72,10 +82,7 @@ impl MQTTClientBuilder {
             MQTTError::ConnectionError {}
         })?;
 
-        return Ok(MQTTClientImpl {
-            client: Arc::new(client),
-            stream,
-        });
+        return Ok((Arc::new(client), stream));
     }
 
     fn crate_opts_self_hosted(&self) -> CreateOptions {

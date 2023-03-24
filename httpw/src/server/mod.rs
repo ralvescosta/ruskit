@@ -1,5 +1,3 @@
 mod server;
-mod types;
 
-pub use server::HttpwServerImpl;
-pub use types::RouteConfig;
+pub use server::{HTTPServer, RouteConfig};

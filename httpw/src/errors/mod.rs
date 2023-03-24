@@ -2,4 +2,4 @@ mod http;
 mod server;
 
 pub use http::HttpError;
-pub use server::HttpServerError;
+pub use server::HTTPServerError;

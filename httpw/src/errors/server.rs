@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum HttpServerError {
+pub enum HTTPServerError {
     #[error("http port binding error")]
     PortBidingError,
 

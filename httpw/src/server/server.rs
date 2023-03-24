@@ -1,10 +1,10 @@
-use super::types::RouteConfig;
-use crate::{errors::HttpServerError, middlewares};
+use crate::{errors::HTTPServerError, middlewares};
+use actix_web::web::ServiceConfig;
 use actix_web::{
     http::KeepAlive,
     middleware as actix_middleware,
     web::{self, Data},
-    App, HttpResponse, HttpServer, Responder,
+    App, HttpResponse, HttpServer as ActixHttpServer, Responder,
 };
 use actix_web_opentelemetry::{RequestMetricsBuilder, RequestTracing};
 use auth::jwt_manager::JwtManager;
@@ -15,16 +15,18 @@ use tracing::error;
 use utoipa::openapi::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-pub struct HttpwServerImpl {
+pub type RouteConfig = fn(cfg: &mut ServiceConfig);
+
+pub struct HTTPServer {
     services: Vec<RouteConfig>,
     jwt_manager: Option<Arc<dyn JwtManager + Send + Sync>>,
     addr: String,
     openapi: Option<OpenApi>,
 }
 
-impl HttpwServerImpl {
-    pub fn new(cfg: &AppConfig) -> HttpwServerImpl {
-        HttpwServerImpl {
+impl HTTPServer {
+    pub fn new(cfg: &AppConfig) -> HTTPServer {
+        HTTPServer {
             services: vec![],
             addr: cfg.app_addr(),
             jwt_manager: None,
@@ -33,7 +35,7 @@ impl HttpwServerImpl {
     }
 }
 
-impl HttpwServerImpl {
+impl HTTPServer {
     pub fn register(mut self, service: RouteConfig) -> Self {
         self.services.push(service);
         self
@@ -49,8 +51,8 @@ impl HttpwServerImpl {
         self
     }
 
-    pub async fn start(&self) -> Result<(), HttpServerError> {
-        HttpServer::new({
+    pub async fn start(&self) -> Result<(), HTTPServerError> {
+        ActixHttpServer::new({
             let services = self.services.to_vec();
             let jwt_manager = self.jwt_manager.clone();
             let openapi = self.openapi.clone();
@@ -97,13 +99,13 @@ impl HttpwServerImpl {
                 error = e.to_string(),
                 "error to binding the http server addr"
             );
-            HttpServerError::PortBidingError {}
+            HTTPServerError::PortBidingError {}
         })?
         .run()
         .await
         .map_err(|e| {
             error!(error = e.to_string(), "error to start http server");
-            HttpServerError::ServerStartupError {}
+            HTTPServerError::ServerStartupError {}
         })?;
 
         global::shutdown_tracer_provider();

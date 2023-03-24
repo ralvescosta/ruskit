@@ -20,11 +20,11 @@ pub struct DispatcherDefinition {
 }
 
 #[async_trait]
-pub trait Dispatcher<'d>: Send + Sync {
-    fn register<T>(
+pub trait Dispatcher: Send + Sync {
+    fn register<'dp, T>(
         self,
-        def: &'d QueueDefinition,
-        msg: &'d T,
+        def: &'dp QueueDefinition,
+        msg: &'dp T,
         handler: Arc<dyn ConsumerHandler>,
     ) -> Self
     where
@@ -48,11 +48,11 @@ impl AmqpDispatcher {
 }
 
 #[async_trait]
-impl<'ad> Dispatcher<'ad> for AmqpDispatcher {
-    fn register<T>(
+impl<'ad> Dispatcher for AmqpDispatcher {
+    fn register<'dp, T>(
         mut self,
-        def: &'ad QueueDefinition,
-        msg: &'ad T,
+        def: &'dp QueueDefinition,
+        msg: &'dp T,
         handler: Arc<dyn ConsumerHandler>,
     ) -> Self
     where

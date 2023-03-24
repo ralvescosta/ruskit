@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 secrets-manager = { path = "../secrets_manager" }
 
-dotenvy = { version = "0.15.6" }
-base64 = { version = "0.13.1" }
+dotenvy = { version = "0.15.7" }
+base64 = { version = "0.21.0" }
 tracing = { version = "0.1.37" }
-thiserror = { version = "1.0.38" }
+thiserror = { version = "1.0.40" }

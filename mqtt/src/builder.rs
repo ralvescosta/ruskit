@@ -1,4 +1,4 @@
-use crate::{errors::MqttError, types::BrokerKind, MqttClientImpl};
+use crate::{client::MQTTClientImpl, errors::MQTTError, types::BrokerKind};
 use env::{AppConfig, Configs, DynamicConfig, MQTTConfig};
 use paho_mqtt::{
     AsyncClient, ConnectOptions, ConnectOptionsBuilder, CreateOptions, CreateOptionsBuilder,
@@ -7,15 +7,15 @@ use paho_mqtt::{
 use std::{sync::Arc, time::Duration};
 use tracing::error;
 
-pub struct MqttClientBuilder {
+pub struct MQTTClientBuilder {
     mqtt_cfg: MQTTConfig,
     app_cfg: AppConfig,
     broker_kind: BrokerKind,
 }
 
-impl MqttClientBuilder {
-    pub fn new() -> MqttClientBuilder {
-        MqttClientBuilder {
+impl MQTTClientBuilder {
+    pub fn new() -> MQTTClientBuilder {
+        MQTTClientBuilder {
             mqtt_cfg: MQTTConfig::default(),
             app_cfg: AppConfig::default(),
             broker_kind: BrokerKind::SelfHostedWithPassword,
@@ -46,7 +46,7 @@ impl MqttClientBuilder {
         return self;
     }
 
-    pub async fn build(self) -> Result<MqttClientImpl, MqttError> {
+    pub async fn build(self) -> Result<MQTTClientImpl, MQTTError> {
         let crate_opts = match self.broker_kind {
             BrokerKind::AWSIoTCore => self.crate_opts_aws_iot_core(),
             _ => self.crate_opts_self_hosted(),
@@ -62,17 +62,17 @@ impl MqttClientBuilder {
 
         let mut client = AsyncClient::new(crate_opts).map_err(|e| {
             error!(error = e.to_string(), "error to create mqtt client");
-            MqttError::ConnectionError {}
+            MQTTError::ConnectionError {}
         })?;
 
         let stream = client.get_stream(2048);
 
         client.connect(conn_opts.clone()).await.map_err(|e| {
             error!(error = e.to_string(), "error to create mqtt client");
-            MqttError::ConnectionError {}
+            MQTTError::ConnectionError {}
         })?;
 
-        return Ok(MqttClientImpl {
+        return Ok(MQTTClientImpl {
             client: Arc::new(client),
             stream,
         });

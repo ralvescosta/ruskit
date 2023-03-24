@@ -1,6 +1,6 @@
 use crate::{
-    client::MqttClient,
-    errors::MqttError,
+    client::MQTTClient,
+    errors::MQTTError,
     types::{Controller, TopicMessage},
 };
 use futures_util::StreamExt;
@@ -32,9 +32,9 @@ impl MqttDispatcher {
         &mut self,
         topic: &str,
         dispatch: Arc<dyn Controller + Send + Sync>,
-    ) -> Result<(), MqttError> {
+    ) -> Result<(), MQTTError> {
         if topic.is_empty() {
-            return Err(MqttError::DispatcherError {});
+            return Err(MQTTError::DispatcherError {});
         }
 
         self.topics.push(topic.to_owned());
@@ -43,7 +43,7 @@ impl MqttDispatcher {
         Ok(())
     }
 
-    async fn consume(&self, ctx: &Context, msg: &Message) -> Result<(), MqttError> {
+    async fn consume(&self, ctx: &Context, msg: &Message) -> Result<(), MQTTError> {
         let dispatch_index = self.get_dispatch_index(ctx, msg.topic())?;
 
         let metadata = TopicMessage::new(msg.topic())?;
@@ -85,7 +85,7 @@ impl MqttDispatcher {
         };
     }
 
-    pub async fn consume_blocking(&self, mut client: Box<dyn MqttClient>) -> Result<(), MqttError> {
+    pub async fn consume_blocking(&self, mut client: Box<dyn MQTTClient>) -> Result<(), MQTTError> {
         for topic in self.topics.clone() {
             client.subscribe(&topic, 1).await?;
         }
@@ -107,7 +107,7 @@ impl MqttDispatcher {
 }
 
 impl MqttDispatcher {
-    fn get_dispatch_index(&self, ctx: &Context, received_topic: &str) -> Result<usize, MqttError> {
+    fn get_dispatch_index(&self, ctx: &Context, received_topic: &str) -> Result<usize, MQTTError> {
         let mut p: i16 = -1;
         for handler_topic_index in 0..self.topics.len() {
             let handler_topic = self.topics[handler_topic_index].clone();
@@ -151,7 +151,7 @@ impl MqttDispatcher {
                 span.id = traces::span_id(&ctx),
                 "cant find dispatch for this topic"
             );
-            return Err(MqttError::UnregisteredDispatchForThisTopicError(
+            return Err(MQTTError::UnregisteredDispatchForThisTopicError(
                 received_topic.to_owned(),
             ));
         }
@@ -165,7 +165,7 @@ mod tests {
     use std::vec;
 
     use super::*;
-    use crate::errors::MqttError;
+    use crate::errors::MQTTError;
     use async_trait::async_trait;
 
     #[test]
@@ -215,7 +215,7 @@ mod tests {
         let mut dispatch = MqttDispatcher::new();
 
         let mut mock = MockDispatch::new();
-        mock.set_error(MqttError::InternalError {});
+        mock.set_error(MQTTError::InternalError {});
 
         let res = dispatch.declare("/some/topic/#", Arc::new(mock));
         assert!(res.is_ok());
@@ -240,7 +240,7 @@ mod tests {
     }
 
     struct MockDispatch {
-        error: Option<MqttError>,
+        error: Option<MQTTError>,
     }
 
     impl MockDispatch {
@@ -248,7 +248,7 @@ mod tests {
             MockDispatch { error: None }
         }
 
-        pub fn set_error(&mut self, err: MqttError) {
+        pub fn set_error(&mut self, err: MQTTError) {
             self.error = Some(err)
         }
     }
@@ -260,7 +260,7 @@ mod tests {
             _ctx: &Context,
             _msgs: &[u8],
             _topic: &TopicMessage,
-        ) -> Result<(), MqttError> {
+        ) -> Result<(), MQTTError> {
             if self.error.is_some() {
                 return Err(self.error.clone().unwrap());
             }

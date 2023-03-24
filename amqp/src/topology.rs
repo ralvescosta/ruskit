@@ -21,7 +21,6 @@ pub const AMQP_HEADERS_DELAYED_EXCHANGE_TYPE: &str = "x-delayed-type";
 pub const AMQP_HEADERS_MESSAGE_TTL: &str = "x-message-ttl";
 
 #[async_trait]
-// #[cfg_attr(test, automock)]
 pub trait Topology<'tp> {
     fn exchange(self, def: &'tp ExchangeDefinition) -> Self;
     fn queue(self, def: &'tp QueueDefinition) -> Self;

@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq, Eq, Clone)]
-pub enum MqttError {
+pub enum MQTTError {
     #[error("mqtt internal error")]
     InternalError,
 

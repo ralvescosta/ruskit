@@ -1,18 +1,24 @@
-use crate::{errors::SecretsManagerError, AwsSecretClient};
+use crate::{errors::SecretsManagerError, AWSSecretClient};
 use aws_sdk_secretsmanager as secretsmanager;
+#[cfg(test)]
+use mockall::*;
+#[cfg(mock)]
+use mockall::*;
 use secretsmanager::Client;
 use serde_json::Value;
 use tracing::error;
 
 #[derive(Default)]
-pub struct AwsSecretClientBuilder {
+pub struct AWSSecretClientBuilder {
     env: String,
     secret_key: String,
 }
 
-impl AwsSecretClientBuilder {
-    pub fn new() -> AwsSecretClientBuilder {
-        AwsSecretClientBuilder::default()
+#[cfg_attr(test, automock)]
+#[cfg_attr(mock, automock)]
+impl AWSSecretClientBuilder {
+    pub fn new() -> AWSSecretClientBuilder {
+        AWSSecretClientBuilder::default()
     }
 
     pub fn setup(mut self, env: String, secret_key: String) -> Self {
@@ -25,7 +31,7 @@ impl AwsSecretClientBuilder {
         format!("{}/{}", self.env, self.secret_key)
     }
 
-    pub async fn build(&self) -> Result<AwsSecretClient, SecretsManagerError> {
+    pub async fn build(&self) -> Result<AWSSecretClient, SecretsManagerError> {
         let config = aws_config::load_from_env().await;
         let client = Client::new(&config);
 
@@ -54,6 +60,6 @@ impl AwsSecretClientBuilder {
             SecretsManagerError::InternalError {}
         })?;
 
-        Ok(AwsSecretClient { secrets: v })
+        Ok(AWSSecretClient { secrets: v })
     }
 }

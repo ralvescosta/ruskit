@@ -1,12 +1,18 @@
 use crate::{errors::SecretsManagerError, SecretClient};
+#[cfg(test)]
+use mockall::*;
+#[cfg(mock)]
+use mockall::*;
 use serde_json::Value;
 use tracing::error;
 
-pub struct AwsSecretClient {
+pub struct AWSSecretClient {
     pub(crate) secrets: Value,
 }
 
-impl SecretClient for AwsSecretClient {
+#[cfg_attr(test, automock)]
+#[cfg_attr(mock, automock)]
+impl SecretClient for AWSSecretClient {
     fn get_by_key(&self, key: &str) -> Result<String, SecretsManagerError> {
         let key = key.strip_prefix("!").unwrap_or_default();
         let value = self.secrets[key].clone();

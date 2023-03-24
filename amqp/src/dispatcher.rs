@@ -8,7 +8,7 @@ use tokio::task::JoinError;
 use tracing::error;
 
 #[async_trait]
-pub trait ConsumerHandler {
+pub trait ConsumerHandler: Send + Sync {
     async fn exec(&self, ctx: &Context, data: &[u8]) -> Result<(), AmqpError>;
 }
 
@@ -16,18 +16,21 @@ pub trait ConsumerHandler {
 pub struct DispatcherDefinition {
     pub(crate) queue: String,
     pub(crate) queue_def: QueueDefinition,
-    pub(crate) handler: Arc<dyn ConsumerHandler + Send + Sync>,
+    pub(crate) handler: Arc<dyn ConsumerHandler>,
 }
 
-pub trait Dispatcher<'d> {
+#[async_trait]
+pub trait Dispatcher<'d>: Send + Sync {
     fn register<T>(
         self,
         def: &'d QueueDefinition,
         msg: &'d T,
-        handler: Arc<dyn ConsumerHandler + Send + Sync>,
+        handler: Arc<dyn ConsumerHandler>,
     ) -> Self
     where
-        T: Display;
+        T: Display + 'static;
+
+    async fn consume_blocking(&self) -> Vec<Result<(), JoinError>>;
 }
 
 pub struct AmqpDispatcher {
@@ -44,12 +47,13 @@ impl AmqpDispatcher {
     }
 }
 
+#[async_trait]
 impl<'ad> Dispatcher<'ad> for AmqpDispatcher {
     fn register<T>(
         mut self,
         def: &'ad QueueDefinition,
         msg: &'ad T,
-        handler: Arc<dyn ConsumerHandler + Send + Sync>,
+        handler: Arc<dyn ConsumerHandler>,
     ) -> Self
     where
         T: Display,
@@ -65,10 +69,8 @@ impl<'ad> Dispatcher<'ad> for AmqpDispatcher {
 
         self
     }
-}
 
-impl AmqpDispatcher {
-    pub async fn consume_blocking(&self) -> Vec<Result<(), JoinError>> {
+    async fn consume_blocking(&self) -> Vec<Result<(), JoinError>> {
         let mut spawns = vec![];
 
         for (msg_type, def) in self.dispatchers_def.clone() {

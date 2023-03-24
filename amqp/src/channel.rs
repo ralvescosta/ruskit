@@ -4,7 +4,9 @@ use lapin::{types::LongString, Channel, Connection, ConnectionProperties};
 use std::sync::Arc;
 use tracing::{debug, error};
 
-pub async fn new_amqp_channel<T>(cfg: &Configs<T>) -> Result<Arc<Channel>, AmqpError>
+pub async fn new_amqp_channel<T>(
+    cfg: &Configs<T>,
+) -> Result<(Arc<Connection>, Arc<Channel>), AmqpError>
 where
     T: DynamicConfig,
 {
@@ -26,7 +28,7 @@ where
     match conn.create_channel().await {
         Ok(c) => {
             debug!("channel created");
-            Ok(Arc::new(c))
+            Ok((Arc::new(conn), Arc::new(c)))
         }
         Err(err) => {
             error!(error = err.to_string(), "error to create the channel");

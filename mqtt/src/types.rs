@@ -1,5 +1,9 @@
-use crate::errors::MqttError;
+use crate::errors::MQTTError;
 use async_trait::async_trait;
+#[cfg(test)]
+use mockall::*;
+#[cfg(mock)]
+use mockall::*;
 use opentelemetry::Context;
 use serde::{Deserialize, Serialize};
 use tracing::error;
@@ -15,23 +19,25 @@ pub enum BrokerKind {
 pub struct MqttPayload(pub Box<[u8]>);
 
 impl MqttPayload {
-    pub fn new<T>(data: &T) -> Result<MqttPayload, MqttError>
+    pub fn new<T>(data: &T) -> Result<MqttPayload, MQTTError>
     where
         T: serde::Serialize,
     {
         let bytes = serde_json::to_vec(data).map_err(|e| {
             error!(error = e.to_string(), "error parsing payload");
-            MqttError::SerializePayloadError(e.to_string())
+            MQTTError::SerializePayloadError(e.to_string())
         })?;
 
         Ok(MqttPayload(bytes.into_boxed_slice()))
     }
 }
 
+#[cfg_attr(test, automock)]
+#[cfg_attr(mock, automock)]
 #[async_trait]
 pub trait Controller {
     async fn exec(&self, ctx: &Context, msgs: &[u8], topic: &TopicMessage)
-        -> Result<(), MqttError>;
+        -> Result<(), MQTTError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash, Serialize, Deserialize)]
@@ -45,10 +51,10 @@ pub struct TopicMessage {
 }
 
 impl TopicMessage {
-    pub fn new(topic: &str) -> Result<TopicMessage, MqttError> {
+    pub fn new(topic: &str) -> Result<TopicMessage, MQTTError> {
         let splitted = topic.split("/").collect::<Vec<&str>>();
         if splitted.len() <= 3 {
-            return Err(MqttError::UnformattedTopicError {});
+            return Err(MQTTError::UnformattedTopicError {});
         }
 
         let mut is_ack = false;

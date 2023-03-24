@@ -11,9 +11,9 @@ sqlite = ["dep:deadpool-sqlite"]
 env = { path = "../env" }
 logging = { path = "../logging" }
 
-async-trait = { version = "0.1.64" }
+async-trait = { version = "0.1.67" }
 tracing = { version = "0.1.37" }
-thiserror = { version = "1.0.38" }
+thiserror = { version = "1.0.39" }
 
-deadpool-postgres = { version = "0.10.2", optional = true }
+deadpool-postgres = { version = "0.10.5", optional = true }
 deadpool-sqlite = { version = "0.5.0", optional = true }

@@ -17,7 +17,7 @@ use crate::{
     Environment,
 };
 use dotenvy::from_filename;
-use secrets_manager::{AwsSecretClientBuilder, DummyClient, SecretClient};
+use secrets_manager::{AWSSecretClientBuilder, DummyClient, SecretClient};
 use std::{env, sync::Arc};
 use tracing::error;
 
@@ -163,7 +163,7 @@ impl ConfigBuilder {
                 let secret_key = env::var(SECRET_KEY_ENV_KEY).unwrap_or_default();
 
                 Arc::new(
-                    AwsSecretClientBuilder::new()
+                    AWSSecretClientBuilder::new()
                         .setup(self.app_cfg.env.to_string(), secret_key)
                         .build()
                         .await

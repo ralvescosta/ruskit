@@ -1,9 +1,8 @@
 mod builder;
-mod client;
+mod payload;
 
 pub mod dispatcher;
 pub mod errors;
-pub mod types;
 
 pub use builder::MQTTClientBuilder;
-pub use client::{MQTTClient, MQTTClientImpl};
+pub use payload::MqttPayload;

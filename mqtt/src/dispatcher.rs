@@ -1,27 +1,79 @@
-use crate::{
-    client::MQTTClient,
-    errors::MQTTError,
-    types::{Controller, TopicMessage},
-};
+use crate::errors::MQTTError;
+use async_trait::async_trait;
 use futures_util::StreamExt;
+#[cfg(test)]
+use mockall::*;
+#[cfg(mock)]
+use mockall::*;
 use opentelemetry::{
     global::{self, BoxedTracer},
     trace::{SpanKind, Status, TraceContextExt},
     Context,
 };
-use paho_mqtt::Message;
+use paho_mqtt::{AsyncClient, AsyncReceiver, Message};
+use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, sync::Arc};
 use tracing::{debug, error, warn};
 
+#[cfg_attr(test, automock)]
+#[cfg_attr(mock, automock)]
+#[async_trait]
+pub trait Controller {
+    async fn exec(&self, ctx: &Context, msgs: &[u8], topic: &TopicMessage)
+        -> Result<(), MQTTError>;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash, Serialize, Deserialize)]
+pub struct TopicMessage {
+    pub topic: String,
+    pub label: String,
+    pub organization_id: String,
+    pub network: String,
+    pub collector_id: String,
+    pub is_ack: bool,
+}
+
+impl TopicMessage {
+    pub fn new(topic: &str) -> Result<TopicMessage, MQTTError> {
+        let splitted = topic.split("/").collect::<Vec<&str>>();
+        if splitted.len() <= 3 {
+            return Err(MQTTError::UnformattedTopicError {});
+        }
+
+        let mut is_ack = false;
+        if splitted.len() == 5 {
+            is_ack = true;
+        }
+
+        let label = splitted[0];
+        let organization_id = splitted[1];
+        let network = splitted[2];
+        let collector_id = splitted[3];
+
+        Ok(TopicMessage {
+            topic: topic.to_owned(),
+            label: label.to_owned(),
+            organization_id: organization_id.to_owned(),
+            network: network.to_owned(),
+            collector_id: collector_id.to_owned(),
+            is_ack,
+        })
+    }
+}
+
 pub struct MqttDispatcher {
+    conn: Arc<AsyncClient>,
+    stream: AsyncReceiver<Option<Message>>,
     pub(crate) topics: Vec<String>,
     pub(crate) dispatches: Vec<Arc<dyn Controller + Sync + Send>>,
     pub(crate) tracer: BoxedTracer,
 }
 
 impl MqttDispatcher {
-    pub fn new() -> Self {
+    pub fn new(conn: Arc<AsyncClient>, stream: AsyncReceiver<Option<Message>>) -> Self {
         MqttDispatcher {
+            conn,
+            stream,
             topics: vec![],
             dispatches: vec![],
             tracer: global::tracer("mqtt_consumer"),
@@ -85,14 +137,12 @@ impl MqttDispatcher {
         };
     }
 
-    pub async fn consume_blocking(&self, mut client: Box<dyn MQTTClient>) -> Result<(), MQTTError> {
+    pub async fn consume_blocking(&mut self) -> Result<(), MQTTError> {
         for topic in self.topics.clone() {
-            client.subscribe(&topic, 1).await?;
+            self.conn.subscribe(topic, 1);
         }
 
-        let mut stream = client.get_stream();
-
-        while let Some(delivery) = stream.next().await {
+        while let Some(delivery) = self.stream.next().await {
             match delivery {
                 Some(msg) => match self.consume(&Context::new(), &msg).await {
                     Err(e) => error!(error = e.to_string(), ""),
@@ -167,15 +217,20 @@ mod tests {
     use super::*;
     use crate::errors::MQTTError;
     use async_trait::async_trait;
+    use paho_mqtt::CreateOptions;
 
     #[test]
     fn test_new() {
-        MqttDispatcher::new();
+        let mut client = AsyncClient::new(CreateOptions::default()).unwrap();
+        let stream = client.get_stream(2048);
+        MqttDispatcher::new(Arc::new(client), stream);
     }
 
     #[test]
     fn test_declare() {
-        let mut dispatch = MqttDispatcher::new();
+        let mut client = AsyncClient::new(CreateOptions::default()).unwrap();
+        let stream = client.get_stream(2048);
+        let mut dispatch = MqttDispatcher::new(Arc::new(client), stream);
 
         let res = dispatch.declare("some/topic", Arc::new(MockDispatch::new()));
         assert!(res.is_ok());
@@ -186,7 +241,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_consume() {
-        let mut dispatch = MqttDispatcher::new();
+        let mut client = AsyncClient::new(CreateOptions::default()).unwrap();
+        let stream = client.get_stream(2048);
+        let mut dispatch = MqttDispatcher::new(Arc::new(client), stream);
 
         let res = dispatch.declare("some/topic/#", Arc::new(MockDispatch::new()));
         assert!(res.is_ok());
@@ -199,7 +256,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_consume_with_plus_wildcard() {
-        let mut dispatch = MqttDispatcher::new();
+        let mut client = AsyncClient::new(CreateOptions::default()).unwrap();
+        let stream = client.get_stream(2048);
+        let mut dispatch = MqttDispatcher::new(Arc::new(client), stream);
 
         let res = dispatch.declare("some/+/+/sub", Arc::new(MockDispatch::new()));
         assert!(res.is_ok());
@@ -212,7 +271,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_consume_with_dispatch_return_err() {
-        let mut dispatch = MqttDispatcher::new();
+        let mut client = AsyncClient::new(CreateOptions::default()).unwrap();
+        let stream = client.get_stream(2048);
+        let mut dispatch = MqttDispatcher::new(Arc::new(client), stream);
 
         let mut mock = MockDispatch::new();
         mock.set_error(MQTTError::InternalError {});
@@ -228,7 +289,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_consume_with_unregistered_consumer() {
-        let mut dispatch = MqttDispatcher::new();
+        let mut client = AsyncClient::new(CreateOptions::default()).unwrap();
+        let stream = client.get_stream(2048);
+        let mut dispatch = MqttDispatcher::new(Arc::new(client), stream);
 
         let res = dispatch.declare("other/topic/#", Arc::new(MockDispatch::new()));
         assert!(res.is_ok());

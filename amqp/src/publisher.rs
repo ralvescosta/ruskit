@@ -5,36 +5,64 @@ use lapin::{
     types::{AMQPValue, FieldTable, ShortString},
     BasicProperties, Channel,
 };
+#[cfg(test)]
+use mockall::*;
+#[cfg(mock)]
+use mockall::*;
 use opentelemetry::{global, Context};
 use serde::Serialize;
-use std::{collections::BTreeMap, fmt::Debug, sync::Arc};
+use std::{collections::BTreeMap, fmt::Display, sync::Arc};
 use tracing::error;
 use uuid::Uuid;
 
 pub const AMQP_JSON_CONTENT_TYPE: &str = "application/json";
 
+pub struct Payload {
+    pub payload: Box<[u8]>,
+    pub typ: String,
+}
+
+impl Payload {
+    pub fn new<T>(p: &T) -> Result<Self, AmqpError>
+    where
+        T: Display + Serialize,
+    {
+        match serde_json::to_vec::<T>(p) {
+            Ok(c) => Ok(Payload {
+                payload: c.into_boxed_slice(),
+                typ: format!("{}", p),
+            }),
+            Err(err) => {
+                error!(
+                    error = err.to_string(),
+                    "error to serialize the publish message"
+                );
+                Err(AmqpError::ParsePayloadError)
+            }
+        }
+    }
+}
+
+#[cfg_attr(test, automock)]
+#[cfg_attr(mock, automock)]
 #[async_trait]
-pub trait Publisher<'ap> {
-    async fn simple_publish<T>(
+pub trait Publisher: Send + Sync {
+    async fn simple_publish<'btm>(
         &self,
         ctx: &Context,
         target: &str,
-        msg: &'ap T,
-        params: Option<&'ap BTreeMap<ShortString, AMQPValue>>,
-    ) -> Result<(), AmqpError>
-    where
-        T: Debug + Serialize + Send + Sync;
+        payload: &Payload,
+        params: Option<&'btm BTreeMap<ShortString, AMQPValue>>,
+    ) -> Result<(), AmqpError>;
 
-    async fn publish<T>(
+    async fn publish<'btm>(
         &self,
         ctx: &Context,
         exchange: &str,
         key: &str,
-        msg: &'ap T,
-        params: Option<&'ap BTreeMap<ShortString, AMQPValue>>,
-    ) -> Result<(), AmqpError>
-    where
-        T: Debug + Serialize + Send + Sync;
+        payload: &Payload,
+        params: Option<&'btm BTreeMap<ShortString, AMQPValue>>,
+    ) -> Result<(), AmqpError>;
 }
 
 pub struct AmqpPublisher {
@@ -48,58 +76,38 @@ impl AmqpPublisher {
 }
 
 #[async_trait]
-impl<'ap> Publisher<'ap> for AmqpPublisher {
-    async fn simple_publish<T>(
+impl Publisher for AmqpPublisher {
+    async fn simple_publish<'btm>(
         &self,
         ctx: &Context,
         target: &str,
-        msg: &'ap T,
-        params: Option<&'ap BTreeMap<ShortString, AMQPValue>>,
-    ) -> Result<(), AmqpError>
-    where
-        T: Debug + Serialize + Send + Sync,
-    {
-        self.basic(ctx, target, "", msg, params).await
+        payload: &Payload,
+        params: Option<&'btm BTreeMap<ShortString, AMQPValue>>,
+    ) -> Result<(), AmqpError> {
+        self.basic(ctx, target, "", payload, params).await
     }
 
-    async fn publish<T>(
+    async fn publish<'btm>(
         &self,
         ctx: &Context,
         exchange: &str,
         key: &str,
-        msg: &'ap T,
-        params: Option<&'ap BTreeMap<ShortString, AMQPValue>>,
-    ) -> Result<(), AmqpError>
-    where
-        T: Debug + Serialize + Send + Sync,
-    {
-        self.basic(ctx, exchange, key, msg, params).await
+        payload: &Payload,
+        params: Option<&'btm BTreeMap<ShortString, AMQPValue>>,
+    ) -> Result<(), AmqpError> {
+        self.basic(ctx, exchange, key, payload, params).await
     }
 }
 
 impl AmqpPublisher {
-    async fn basic<'ap, T>(
+    async fn basic(
         &self,
         ctx: &Context,
         exchange: &str,
         routing_key: &str,
-        msg: &'ap T,
-        params: Option<&'ap BTreeMap<ShortString, AMQPValue>>,
-    ) -> Result<(), AmqpError>
-    where
-        T: Debug + Serialize + Send + Sync,
-    {
-        let data = match serde_json::to_vec::<T>(msg) {
-            Ok(c) => Ok(c.into_boxed_slice()),
-            Err(err) => {
-                error!(
-                    error = err.to_string(),
-                    "error to serialize the publish message"
-                );
-                Err(AmqpError::ParsePayloadError)
-            }
-        }?;
-
+        payload: &Payload,
+        params: Option<&BTreeMap<ShortString, AMQPValue>>,
+    ) -> Result<(), AmqpError> {
         let mut params = params
             .unwrap_or(&BTreeMap::<ShortString, AMQPValue>::default())
             .to_owned();
@@ -116,10 +124,10 @@ impl AmqpPublisher {
                     immediate: false,
                     mandatory: false,
                 },
-                &data,
+                &payload.payload,
                 BasicProperties::default()
                     .with_content_type(ShortString::from(AMQP_JSON_CONTENT_TYPE))
-                    .with_kind(ShortString::from(format!("{:?}", msg)))
+                    .with_kind(ShortString::from(payload.typ.clone()))
                     .with_message_id(ShortString::from(Uuid::new_v4().to_string()))
                     .with_headers(FieldTable::from(params)),
             )

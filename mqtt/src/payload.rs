@@ -1,10 +1,10 @@
 use crate::errors::MQTTError;
 use tracing::error;
 
-pub struct MqttPayload(pub Box<[u8]>);
+pub struct Payload(pub Box<[u8]>);
 
-impl MqttPayload {
-    pub fn new<T>(data: &T) -> Result<MqttPayload, MQTTError>
+impl Payload {
+    pub fn new<T>(data: &T) -> Result<Payload, MQTTError>
     where
         T: serde::Serialize,
     {
@@ -13,6 +13,6 @@ impl MqttPayload {
             MQTTError::SerializePayloadError(e.to_string())
         })?;
 
-        Ok(MqttPayload(bytes.into_boxed_slice()))
+        Ok(Payload(bytes.into_boxed_slice()))
     }
 }

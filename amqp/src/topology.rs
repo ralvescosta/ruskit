@@ -194,11 +194,11 @@ impl<'tp> AmqpTopology<'tp> {
             .queue_declare(
                 &retry_name,
                 QueueDeclareOptions {
-                    passive: false,
-                    durable: false,
-                    exclusive: false,
-                    auto_delete: false,
-                    nowait: false,
+                    passive: def.passive,
+                    durable: def.durable,
+                    exclusive: def.exclusive,
+                    auto_delete: def.delete,
+                    nowait: def.no_wait,
                 },
                 FieldTable::from(args),
             )
@@ -216,7 +216,7 @@ impl<'tp> AmqpTopology<'tp> {
 
                 queue_args.insert(
                     ShortString::from(AMQP_HEADERS_DEAD_LETTER_ROUTING_KEY),
-                    AMQPValue::LongString(LongString::from(def.name)),
+                    AMQPValue::LongString(LongString::from(retry_name)),
                 );
                 Ok(())
             }

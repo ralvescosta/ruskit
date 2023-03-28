@@ -9,6 +9,6 @@ env = { path = "../env" }
 opentelemetry = { version = "0.18.0", features = ["rt-tokio"] }
 opentelemetry-otlp = { version = "0.11.0", features = ["tonic", "tls", "tls-roots"] }
 tracing = { version = "0.1.37" }
-serde = { version = "1.0.158", features = ["derive"] }
+serde = { version = "1.0.159", features = ["derive"] }
 tonic = { version = "0.8.3", features = ["tls"] }
-tokio = { version = "1.26.0", features = ["default"] }
+tokio = { version = "1.27.0", features = ["default"] }

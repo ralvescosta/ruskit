@@ -2,11 +2,17 @@ use crate::{consumer::consume, errors::AmqpError, queue::QueueDefinition};
 use async_trait::async_trait;
 use futures_util::{future::join_all, StreamExt};
 use lapin::{options::BasicConsumeOptions, types::FieldTable, Channel};
+#[cfg(test)]
+use mockall::*;
+#[cfg(feature = "mocks")]
+use mockall::*;
 use opentelemetry::{global, Context};
 use std::{collections::HashMap, fmt::Display, sync::Arc, vec};
 use tokio::task::JoinError;
 use tracing::error;
 
+#[cfg_attr(test, automock)]
+#[cfg_attr(feature = "mocks", automock)]
 #[async_trait]
 pub trait ConsumerHandler: Send + Sync {
     async fn exec(&self, ctx: &Context, data: &[u8]) -> Result<(), AmqpError>;
@@ -80,8 +86,8 @@ impl<'ad> Dispatcher for AmqpDispatcher {
                     &def.queue,
                     &msg_type,
                     BasicConsumeOptions {
-                        no_local: true,
-                        no_ack: true,
+                        no_local: false,
+                        no_ack: false,
                         exclusive: false,
                         nowait: false,
                     },

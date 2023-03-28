@@ -3,7 +3,7 @@ use crate::{
     def::{
         AMQP_HOST_ENV_KEY, AMQP_PASSWORD_ENV_KEY, AMQP_PORT_ENV_KEY, AMQP_USER_ENV_KEY,
         AMQP_VHOST_ENV_KEY, APP_NAME_ENV_KEY, APP_PORT_ENV_KEY, AUTH_AUTHORITY_ENV_KEY,
-        AWS_DEFAULT_REGION, CUSTOM_AWS_ACCESS_KEY_ID_ENV_KEY, CUSTOM_AWS_SECRET_ACCESS_KEY,
+        AWS_DEFAULT_REGION, AWS_IAM_ACCESS_KEY_ID, AWS_IAM_SECRET_ACCESS_KEY,
         DYNAMO_ENDPOINT_ENV_KEY, DYNAMO_REGION_ENV_KEY, DYNAMO_TABLE_ENV_KEY,
         ENABLE_HEALTH_READINESS_ENV_KEY, ENABLE_METRICS_ENV_KEY, ENABLE_TRACES_ENV_KEY,
         HEALTH_READINESS_PORT_ENV_KEY, HOST_NAME_ENV_KEY, LOG_LEVEL_ENV_KEY, MQTT_HOST_ENV_KEY,
@@ -134,6 +134,7 @@ impl ConfigBuilder {
             name,
             port,
             secret_key,
+            use_secret_manager: false,
             auth_authority,
         };
 
@@ -279,12 +280,13 @@ impl ConfigBuilder {
                     let region = self.get_string_from_secret(value, AWS_DEFAULT_REGION.to_owned());
                     cfg.dynamo.region = region.clone();
                 }
-                CUSTOM_AWS_ACCESS_KEY_ID_ENV_KEY if self.aws => {
-                    cfg.aws.access_key_id = self.get_string_from_secret(value, "key".to_owned());
+                AWS_IAM_ACCESS_KEY_ID if self.aws => {
+                    cfg.aws.access_key_id =
+                        Some(self.get_string_from_secret(value, "key".to_owned()));
                 }
-                CUSTOM_AWS_SECRET_ACCESS_KEY if self.aws => {
+                AWS_IAM_SECRET_ACCESS_KEY if self.aws => {
                     cfg.aws.secret_access_key =
-                        self.get_string_from_secret(value, "secret".to_owned());
+                        Some(self.get_string_from_secret(value, "secret".to_owned()));
                 }
                 HEALTH_READINESS_PORT_ENV_KEY if self.health => {
                     cfg.health_readiness.port = self.get_u64_from_secret(value, 8888);

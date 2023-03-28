@@ -7,7 +7,7 @@ use lapin::{
 };
 #[cfg(test)]
 use mockall::*;
-#[cfg(mock)]
+#[cfg(feature = "mocks")]
 use mockall::*;
 use opentelemetry::{global, Context};
 use serde::Serialize;
@@ -44,7 +44,7 @@ impl Payload {
 }
 
 #[cfg_attr(test, automock)]
-#[cfg_attr(mock, automock)]
+#[cfg_attr(feature = "mocks", automock)]
 #[async_trait]
 pub trait Publisher: Send + Sync {
     async fn simple_publish<'btm>(

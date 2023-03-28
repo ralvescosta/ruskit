@@ -13,16 +13,16 @@ traces = { path = "../traces" }
 lapin = { version = "2.1.1" }
 opentelemetry = { version = "0.18.0" }
 uuid = { version = "1.3.0", features = ["v4"] }
-async-trait = { version = "0.1.67" }
+async-trait = { version = "0.1.68" }
 tracing = { version = "0.1.37" }
-serde_json = { version = "1.0.94" }
-serde = { version = "1.0.158", features = ["derive"] }
-tokio = { version = "1.26.0", features = ["default"] }
+serde_json = { version = "1.0.95" }
+serde = { version = "1.0.159", features = ["derive"] }
+tokio = { version = "1.27.0", features = ["default"] }
 futures-util = { version = "0.3.27"}
 thiserror = { version = "1.0.40" }
 
 # Used only with feature mock
-mockall = { version = "0.11.3", optional = true }
+mockall = { version = "0.11.4", optional = true }
 
 [dev-dependencies]
-mockall = { version = "0.11.3" }
+mockall = { version = "0.11.4" }

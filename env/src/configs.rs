@@ -32,10 +32,12 @@ impl DynamicConfig for Empty {
 pub struct AppConfig {
     ///Default: APP_NAME
     pub name: String,
-    ///Default: context
-    pub secret_key: String,
     ///Default: Environment::Local
     pub env: Environment,
+    ///Default:false
+    pub use_secret_manager: bool,
+    ///Default: context
+    pub secret_key: String,
     ///Default: 0.0.0.0
     pub host: String,
     ///Default: 31033
@@ -130,14 +132,12 @@ pub struct SqliteConfig {
 
 #[derive(Debug, Clone, Default)]
 pub struct AwsConfig {
-    ///Default: us-east-1
-    pub region: String,
     ///Default: local
-    pub access_key_id: String,
+    pub access_key_id: Option<String>,
     ///Default: local
-    pub secret_access_key: String,
+    pub secret_access_key: Option<String>,
     ///Default:
-    pub session_token: String,
+    pub session_token: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]

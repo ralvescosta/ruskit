@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use futures_util::StreamExt;
 #[cfg(test)]
 use mockall::*;
-#[cfg(mock)]
+#[cfg(feature = "mocks")]
 use mockall::*;
 use opentelemetry::{
     global::{self, BoxedTracer},
@@ -16,9 +16,9 @@ use std::{borrow::Cow, sync::Arc};
 use tracing::{debug, error, warn};
 
 #[cfg_attr(test, automock)]
-#[cfg_attr(mock, automock)]
+#[cfg_attr(feature = "mocks", automock)]
 #[async_trait]
-pub trait Controller {
+pub trait ConsumerHandler {
     async fn exec(&self, ctx: &Context, msgs: &[u8], topic: &TopicMessage)
         -> Result<(), MQTTError>;
 }
@@ -61,17 +61,17 @@ impl TopicMessage {
     }
 }
 
-pub struct MqttDispatcher {
+pub struct MQTTDispatcher {
     conn: Arc<AsyncClient>,
     stream: AsyncReceiver<Option<Message>>,
     pub(crate) topics: Vec<String>,
-    pub(crate) dispatches: Vec<Arc<dyn Controller + Sync + Send>>,
+    pub(crate) dispatches: Vec<Arc<dyn ConsumerHandler + Sync + Send>>,
     pub(crate) tracer: BoxedTracer,
 }
 
-impl MqttDispatcher {
+impl MQTTDispatcher {
     pub fn new(conn: Arc<AsyncClient>, stream: AsyncReceiver<Option<Message>>) -> Self {
-        MqttDispatcher {
+        MQTTDispatcher {
             conn,
             stream,
             topics: vec![],
@@ -83,7 +83,7 @@ impl MqttDispatcher {
     pub fn declare(
         &mut self,
         topic: &str,
-        dispatch: Arc<dyn Controller + Send + Sync>,
+        dispatch: Arc<dyn ConsumerHandler + Send + Sync>,
     ) -> Result<(), MQTTError> {
         if topic.is_empty() {
             return Err(MQTTError::DispatcherError {});
@@ -156,7 +156,7 @@ impl MqttDispatcher {
     }
 }
 
-impl MqttDispatcher {
+impl MQTTDispatcher {
     fn get_dispatch_index(&self, ctx: &Context, received_topic: &str) -> Result<usize, MQTTError> {
         let mut p: i16 = -1;
         for handler_topic_index in 0..self.topics.len() {
@@ -223,14 +223,14 @@ mod tests {
     fn test_new() {
         let mut client = AsyncClient::new(CreateOptions::default()).unwrap();
         let stream = client.get_stream(2048);
-        MqttDispatcher::new(Arc::new(client), stream);
+        MQTTDispatcher::new(Arc::new(client), stream);
     }
 
     #[test]
     fn test_declare() {
         let mut client = AsyncClient::new(CreateOptions::default()).unwrap();
         let stream = client.get_stream(2048);
-        let mut dispatch = MqttDispatcher::new(Arc::new(client), stream);
+        let mut dispatch = MQTTDispatcher::new(Arc::new(client), stream);
 
         let res = dispatch.declare("some/topic", Arc::new(MockDispatch::new()));
         assert!(res.is_ok());
@@ -243,7 +243,7 @@ mod tests {
     async fn test_consume() {
         let mut client = AsyncClient::new(CreateOptions::default()).unwrap();
         let stream = client.get_stream(2048);
-        let mut dispatch = MqttDispatcher::new(Arc::new(client), stream);
+        let mut dispatch = MQTTDispatcher::new(Arc::new(client), stream);
 
         let res = dispatch.declare("some/topic/#", Arc::new(MockDispatch::new()));
         assert!(res.is_ok());
@@ -258,7 +258,7 @@ mod tests {
     async fn test_consume_with_plus_wildcard() {
         let mut client = AsyncClient::new(CreateOptions::default()).unwrap();
         let stream = client.get_stream(2048);
-        let mut dispatch = MqttDispatcher::new(Arc::new(client), stream);
+        let mut dispatch = MQTTDispatcher::new(Arc::new(client), stream);
 
         let res = dispatch.declare("some/+/+/sub", Arc::new(MockDispatch::new()));
         assert!(res.is_ok());
@@ -273,7 +273,7 @@ mod tests {
     async fn test_consume_with_dispatch_return_err() {
         let mut client = AsyncClient::new(CreateOptions::default()).unwrap();
         let stream = client.get_stream(2048);
-        let mut dispatch = MqttDispatcher::new(Arc::new(client), stream);
+        let mut dispatch = MQTTDispatcher::new(Arc::new(client), stream);
 
         let mut mock = MockDispatch::new();
         mock.set_error(MQTTError::InternalError {});
@@ -291,7 +291,7 @@ mod tests {
     async fn test_consume_with_unregistered_consumer() {
         let mut client = AsyncClient::new(CreateOptions::default()).unwrap();
         let stream = client.get_stream(2048);
-        let mut dispatch = MqttDispatcher::new(Arc::new(client), stream);
+        let mut dispatch = MQTTDispatcher::new(Arc::new(client), stream);
 
         let res = dispatch.declare("other/topic/#", Arc::new(MockDispatch::new()));
         assert!(res.is_ok());
@@ -317,7 +317,7 @@ mod tests {
     }
 
     #[async_trait]
-    impl Controller for MockDispatch {
+    impl ConsumerHandler for MockDispatch {
         async fn exec(
             &self,
             _ctx: &Context,

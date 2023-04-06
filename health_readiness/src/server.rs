@@ -5,7 +5,7 @@ use crate::{
 };
 use actix_web::{middleware as actix_middleware, web, App, HttpServer};
 use deadpool_postgres::Pool;
-use env::HealthReadinessConfig;
+use env::HealthReadinessConfigs;
 use httpw::middlewares;
 use lapin::Connection;
 use paho_mqtt::AsyncClient;
@@ -19,7 +19,7 @@ pub struct HealthReadinessServer {
 }
 
 impl HealthReadinessServer {
-    pub fn new(cfg: &HealthReadinessConfig) -> HealthReadinessServer {
+    pub fn new(cfg: &HealthReadinessConfigs) -> HealthReadinessServer {
         HealthReadinessServer {
             checkers: vec![],
             addr: cfg.health_readiness_addr(),

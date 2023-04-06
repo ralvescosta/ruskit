@@ -1,5 +1,5 @@
 use crate::errors::MQTTError;
-use env::{AppConfig, Configs, DynamicConfig, MQTTConfig};
+use env::{AppConfigs, Configs, DynamicConfigs, MQTTConfigs};
 use paho_mqtt::{
     AsyncClient, AsyncReceiver, ConnectOptions, ConnectOptionsBuilder, CreateOptions,
     CreateOptionsBuilder, Message, SslOptionsBuilder, SslVersion,
@@ -16,23 +16,23 @@ pub enum BrokerKind {
 }
 
 pub struct MQTTClientBuilder {
-    mqtt_cfg: MQTTConfig,
-    app_cfg: AppConfig,
+    mqtt_cfg: MQTTConfigs,
+    app_cfg: AppConfigs,
     broker_kind: BrokerKind,
 }
 
 impl MQTTClientBuilder {
     pub fn new() -> MQTTClientBuilder {
         MQTTClientBuilder {
-            mqtt_cfg: MQTTConfig::default(),
-            app_cfg: AppConfig::default(),
+            mqtt_cfg: MQTTConfigs::default(),
+            app_cfg: AppConfigs::default(),
             broker_kind: BrokerKind::SelfHostedWithPassword,
         }
     }
 
     pub fn cfg<T>(mut self, cfgs: &Configs<T>) -> Self
     where
-        T: DynamicConfig,
+        T: DynamicConfigs,
     {
         self.mqtt_cfg = cfgs.mqtt.clone();
         self.app_cfg = self.app_cfg.clone();

@@ -1,17 +1,19 @@
 use crate::{
-    configs::{AppConfig, Configs, DynamicConfig},
+    configs::{AppConfigs, Configs, DynamicConfigs},
     def::{
         AMQP_HOST_ENV_KEY, AMQP_PASSWORD_ENV_KEY, AMQP_PORT_ENV_KEY, AMQP_USER_ENV_KEY,
-        AMQP_VHOST_ENV_KEY, APP_NAME_ENV_KEY, APP_PORT_ENV_KEY, AUTH_AUTHORITY_ENV_KEY,
-        AWS_DEFAULT_REGION, AWS_IAM_ACCESS_KEY_ID, AWS_IAM_SECRET_ACCESS_KEY,
-        DYNAMO_ENDPOINT_ENV_KEY, DYNAMO_REGION_ENV_KEY, DYNAMO_TABLE_ENV_KEY,
-        ENABLE_HEALTH_READINESS_ENV_KEY, ENABLE_METRICS_ENV_KEY, ENABLE_TRACES_ENV_KEY,
-        HEALTH_READINESS_PORT_ENV_KEY, HOST_NAME_ENV_KEY, LOG_LEVEL_ENV_KEY, MQTT_HOST_ENV_KEY,
-        MQTT_PASSWORD_ENV_KEY, MQTT_PORT_ENV_KEY, MQTT_USER_ENV_KEY, OTLP_ACCESS_KEY_ENV_KEY,
-        OTLP_EXPORT_TIMEOUT_ENV_KEY, OTLP_HOST_ENV_KEY, OTLP_SERVICE_TYPE_ENV_KEY,
-        POSTGRES_DB_ENV_KEY, POSTGRES_HOST_ENV_KEY, POSTGRES_PASSWORD_ENV_KEY,
-        POSTGRES_PORT_ENV_KEY, POSTGRES_USER_ENV_KEY, SECRET_KEY_ENV_KEY, SECRET_PREFIX,
-        SECRET_PREFIX_TO_DECODE, SQLITE_FILE_NAME_ENV_KEY,
+        AMQP_VHOST_ENV_KEY, APP_NAME_ENV_KEY, APP_PORT_ENV_KEY, AUTH0_AUDIENCE_ENV_KEY,
+        AUTH0_CLIENT_ID_ENV_KEY, AUTH0_CLIENT_SECRET_ENV_KEY, AUTH0_DOMAIN_ENV_KEY,
+        AUTH0_GRANT_TYPE_ENV_KEY, AUTH0_ISSUER_ENV_KEY, AWS_DEFAULT_REGION, AWS_IAM_ACCESS_KEY_ID,
+        AWS_IAM_SECRET_ACCESS_KEY, DYNAMO_ENDPOINT_ENV_KEY, DYNAMO_REGION_ENV_KEY,
+        DYNAMO_TABLE_ENV_KEY, ENABLE_HEALTH_READINESS_ENV_KEY, ENABLE_METRICS_ENV_KEY,
+        ENABLE_TRACES_ENV_KEY, HEALTH_READINESS_PORT_ENV_KEY, HOST_NAME_ENV_KEY, LOG_LEVEL_ENV_KEY,
+        MQTT_HOST_ENV_KEY, MQTT_PASSWORD_ENV_KEY, MQTT_PORT_ENV_KEY, MQTT_USER_ENV_KEY,
+        OTLP_ACCESS_KEY_ENV_KEY, OTLP_EXPORT_TIMEOUT_ENV_KEY, OTLP_HOST_ENV_KEY,
+        OTLP_SERVICE_TYPE_ENV_KEY, POSTGRES_DB_ENV_KEY, POSTGRES_HOST_ENV_KEY,
+        POSTGRES_PASSWORD_ENV_KEY, POSTGRES_PORT_ENV_KEY, POSTGRES_USER_ENV_KEY,
+        SECRET_KEY_ENV_KEY, SECRET_PREFIX, SECRET_PREFIX_TO_DECODE, SQLITE_FILE_NAME_ENV_KEY,
+        USE_SECRET_MANAGER_ENV_KEY,
     },
     errors::ConfigsError,
     Environment,
@@ -32,7 +34,7 @@ pub enum SecretClientKind {
 pub struct ConfigBuilder {
     secret_client_kind: SecretClientKind,
     client: Option<Arc<dyn SecretClient>>,
-    app_cfg: AppConfig,
+    app_cfg: AppConfigs,
     mqtt: bool,
     amqp: bool,
     postgres: bool,
@@ -41,6 +43,7 @@ pub struct ConfigBuilder {
     dynamo: bool,
     otlp: bool,
     health: bool,
+    auth0: bool,
 }
 
 impl ConfigBuilder {
@@ -88,6 +91,11 @@ impl ConfigBuilder {
         self
     }
 
+    pub fn auth0(mut self) -> Self {
+        self.auth0 = true;
+        self
+    }
+
     pub fn load_from_aws_secret(mut self) -> Self {
         self.secret_client_kind = SecretClientKind::AWSSecreteManager;
         self
@@ -98,7 +106,7 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn laze_load(mut self) -> (AppConfig, Self) {
+    pub fn laze_load(mut self) -> (AppConfigs, Self) {
         let env = Environment::from_rust_env();
 
         match env {
@@ -124,9 +132,12 @@ impl ConfigBuilder {
             .parse()
             .unwrap_or_default();
         let log_level = env::var(LOG_LEVEL_ENV_KEY).unwrap_or("debug".to_owned());
-        let auth_authority = env::var(AUTH_AUTHORITY_ENV_KEY).unwrap_or("".to_owned());
+        let use_secret_manager = env::var(USE_SECRET_MANAGER_ENV_KEY)
+            .unwrap_or("false".to_owned())
+            .parse()
+            .unwrap();
 
-        let app_cfg = AppConfig {
+        let app_cfg = AppConfigs {
             enable_external_creates_logging: false,
             env,
             host,
@@ -134,8 +145,7 @@ impl ConfigBuilder {
             name,
             port,
             secret_key,
-            use_secret_manager: false,
-            auth_authority,
+            use_secret_manager,
         };
 
         self.app_cfg = app_cfg.clone();
@@ -143,9 +153,9 @@ impl ConfigBuilder {
         (app_cfg, self)
     }
 
-    pub async fn build<T>(&mut self) -> Result<Configs<T>, ConfigsError>
+    pub async fn build<'c, T>(&mut self) -> Result<Configs<T>, ConfigsError>
     where
-        T: DynamicConfig,
+        T: DynamicConfigs,
     {
         let client = self.get_secret_client().await?;
         self.client = Some(client);
@@ -182,27 +192,31 @@ impl ConfigBuilder {
 
     fn config<T>(&self) -> Configs<T>
     where
-        T: DynamicConfig,
+        T: DynamicConfigs,
     {
         let mut cfg = Configs::default();
         cfg.app = self.app_cfg.clone();
 
         for (key, value) in env::vars() {
             match key.as_str() {
-                APP_NAME_ENV_KEY if cfg.app.name.is_empty() => {
-                    cfg.app.name = self.get_string_from_secret(value, "name".to_owned());
+                AUTH0_DOMAIN_ENV_KEY if self.auth0 => {
+                    cfg.auth0.domain = self.get_string_from_secret(value, "localhost".to_owned());
                 }
-                SECRET_KEY_ENV_KEY if cfg.app.secret_key.is_empty() => {
-                    cfg.app.secret_key = self.get_string_from_secret(value, "secret".to_owned());
+                AUTH0_AUDIENCE_ENV_KEY if self.auth0 => {
+                    cfg.auth0.audience = self.get_string_from_secret(value, "localhost".to_owned());
                 }
-                HOST_NAME_ENV_KEY if cfg.app.host.is_empty() => {
-                    cfg.app.host = self.get_string_from_secret(value, "localhost".to_owned());
+                AUTH0_ISSUER_ENV_KEY if self.auth0 => {
+                    cfg.auth0.issuer = self.get_string_from_secret(value, "localhost".to_owned());
                 }
-                APP_PORT_ENV_KEY if cfg.app.name.is_empty() => {
-                    cfg.app.port = self.get_u64_from_secret(value, 31033);
+                AUTH0_GRANT_TYPE_ENV_KEY if self.auth0 => {
+                    cfg.auth0.grant_type =
+                        self.get_string_from_secret(value, "client_credentials".to_owned());
                 }
-                LOG_LEVEL_ENV_KEY if cfg.app.log_level.is_empty() => {
-                    cfg.app.log_level = self.get_string_from_secret(value, "debug".to_owned());
+                AUTH0_CLIENT_ID_ENV_KEY if self.auth0 => {
+                    cfg.auth0.client_id = self.get_string_from_secret(value, "".to_owned());
+                }
+                AUTH0_CLIENT_SECRET_ENV_KEY if self.auth0 => {
+                    cfg.auth0.client_secret = self.get_string_from_secret(value, "".to_owned());
                 }
                 MQTT_HOST_ENV_KEY if self.mqtt => {
                     cfg.mqtt.host = self.get_string_from_secret(value, "localhost".to_owned());

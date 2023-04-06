@@ -1,5 +1,5 @@
 use crate::errors::AmqpError;
-use env::{Configs, DynamicConfig};
+use env::{Configs, DynamicConfigs};
 use lapin::{types::LongString, Channel, Connection, ConnectionProperties};
 use std::sync::Arc;
 use tracing::{debug, error};
@@ -8,7 +8,7 @@ pub async fn new_amqp_channel<T>(
     cfg: &Configs<T>,
 ) -> Result<(Arc<Connection>, Arc<Channel>), AmqpError>
 where
-    T: DynamicConfig,
+    T: DynamicConfigs,
 {
     debug!("creating amqp connection...");
     let options = ConnectionProperties::default()

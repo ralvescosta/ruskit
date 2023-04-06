@@ -1,5 +1,5 @@
 use crate::errors::LoggingError;
-use env::{AppConfig, Environment};
+use env::{AppConfigs, Environment};
 use tracing_bunyan_formatter::BunyanFormattingLayer;
 use tracing_log::LogTracer;
 use tracing_subscriber::{
@@ -11,7 +11,7 @@ use tracing_subscriber::{
     layer::SubscriberExt,
 };
 
-pub fn setup(cfg: &AppConfig) -> Result<(), LoggingError> {
+pub fn setup(cfg: &AppConfigs) -> Result<(), LoggingError> {
     LogTracer::init().map_err(|_| LoggingError::InternalError {})?;
 
     let level_filter = get_log_level_filter(cfg);
@@ -57,7 +57,7 @@ pub fn setup(cfg: &AppConfig) -> Result<(), LoggingError> {
     Ok(())
 }
 
-fn get_log_level_filter(cfg: &AppConfig) -> LevelFilter {
+fn get_log_level_filter(cfg: &AppConfigs) -> LevelFilter {
     match cfg.log_level.as_str() {
         "debug" | "Debug" | "DEBUG" => LevelFilter::DEBUG,
         "info" | "Info" | "INFO" => LevelFilter::INFO,
@@ -74,13 +74,13 @@ mod tests {
 
     #[test]
     fn setup_successfully() {
-        let res = setup(&AppConfig::default());
+        let res = setup(&AppConfigs::default());
         assert!(res.is_ok());
     }
 
     #[test]
     fn get_log_level_successfully() {
-        let mut cfg = AppConfig::default();
+        let mut cfg = AppConfigs::default();
 
         cfg.log_level = "debug".to_owned();
         assert_eq!(get_log_level_filter(&cfg), LevelFilter::DEBUG);

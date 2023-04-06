@@ -1,4 +1,4 @@
-use crate::viewmodels::HttpErrorViewModel;
+use crate::viewmodels::HTTPError;
 use actix_web::error::{ErrorUnauthorized, ErrorInternalServerError};
 use actix_web::web::Data;
 use actix_web::{dev::Payload, Error as ActixWebError};
@@ -25,7 +25,7 @@ impl FromRequest for JwtAuthenticateExtractor {
 
         let Some(token) = token else {
             return Box::pin(async move {
-                let json_error = HttpErrorViewModel {
+                let json_error = HTTPError {
                     status_code: http::StatusCode::UNAUTHORIZED.as_u16(),
                     message: "unauthorized".to_owned(),
                     details: "You are not logged in, please provide token".to_string(),
@@ -35,9 +35,9 @@ impl FromRequest for JwtAuthenticateExtractor {
             });
         };
 
-        let Some(jwt_manager) = req.app_data::<Data<Arc<dyn JwtManager + Send + Sync>>>() else {
+        let Some(jwt_manager) = req.app_data::<Data<Arc<dyn JwtManager>>>() else {
             return Box::pin(async move {
-                let json_error = HttpErrorViewModel {
+                let json_error = HTTPError {
                     status_code: http::StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
                     message: "jwt manager internal error".to_owned(),
                     details: "no jwt manager was provided".to_string(),
@@ -51,7 +51,7 @@ impl FromRequest for JwtAuthenticateExtractor {
 
         Box::pin(async move {
             let Ok(claims) = jwt_manager.verify(&Context::new(), &token).await else {
-                let json_error = HttpErrorViewModel {
+                let json_error = HTTPError {
                     status_code: http::StatusCode::UNAUTHORIZED.as_u16(),
                     message: "unauthorized".to_owned(),
                     details: "invalid token".to_string(),

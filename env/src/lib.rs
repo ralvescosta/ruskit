@@ -5,8 +5,8 @@ mod environment;
 pub mod errors;
 
 pub use configs::{
-    AppConfig, AwsConfig, Configs, DynamicConfig, DynamoConfig, Empty, HealthReadinessConfig,
-    MQTTConfig, OTLPConfig, PostgresConfig, SqliteConfig,
+    AppConfigs, Auth0Configs, AwsConfigs, Configs, DynamicConfigs, DynamoConfigs, Empty,
+    HealthReadinessConfigs, MQTTConfigs, OTLPConfigs, PostgresConfigs, SqliteConfigs,
 };
 pub use configs_builder::ConfigBuilder;
 pub use environment::Environment;

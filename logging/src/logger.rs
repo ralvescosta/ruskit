@@ -12,7 +12,10 @@ use tracing_subscriber::{
 };
 
 pub fn setup(cfg: &AppConfigs) -> Result<(), LoggingError> {
-    LogTracer::init().map_err(|_| LoggingError::InternalError {})?;
+    match LogTracer::init() {
+        Err(_) => Err(LoggingError::InternalError {}),
+        _ => Ok(()),
+    }?;
 
     let level_filter = get_log_level_filter(cfg);
 
@@ -46,15 +49,15 @@ pub fn setup(cfg: &AppConfigs) -> Result<(), LoggingError> {
         ));
     }
 
-    tracing::subscriber::set_global_default(
+    match tracing::subscriber::set_global_default(
         tracing_subscriber::registry()
             .with(fmt_json)
             .with(fmt_pretty)
             .with(target_filters),
-    )
-    .map_err(|_| LoggingError::InternalError {})?;
-
-    Ok(())
+    ) {
+        Err(_) => Err(LoggingError::InternalError {}),
+        _ => Ok(()),
+    }
 }
 
 fn get_log_level_filter(cfg: &AppConfigs) -> LevelFilter {

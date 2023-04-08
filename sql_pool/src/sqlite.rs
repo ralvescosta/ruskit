@@ -1,9 +1,9 @@
 use crate::errors::SqlPoolError;
-use configs::SqliteConfig;
+use configs::SqliteConfigs;
 use deadpool_sqlite::{Config, Pool, Runtime};
 use tracing::error;
 
-pub fn conn_pool(cfg: &SqliteConfig) -> Result<Pool, SqlPoolError> {
+pub fn conn_pool(cfg: &SqliteConfigs) -> Result<Pool, SqlPoolError> {
     let cfg = Config::new(cfg.file.clone());
 
     let pool = match cfg.create_pool(Runtime::Tokio1) {

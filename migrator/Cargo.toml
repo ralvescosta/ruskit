@@ -8,7 +8,7 @@ postgres = ["dep:deadpool-postgres"]
 sqlite = ["dep:deadpool-sqlite"]
 
 [dependencies]
-env = { path = "../env" }
+configs = { path = "../configs" }
 logging = { path = "../logging" }
 
 async-trait = { version = "0.1.68" }

@@ -1,5 +1,5 @@
 use crate::errors::AmqpError;
-use env::{Configs, DynamicConfigs};
+use configs::{Configs, DynamicConfigs};
 use lapin::{types::LongString, Channel, Connection, ConnectionProperties};
 use std::sync::Arc;
 use tracing::{debug, error};

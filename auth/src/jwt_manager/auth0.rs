@@ -1,7 +1,7 @@
 use super::{JwtManager, TokenClaims};
 use alcoholic_jwt::{token_kid, validate, Validation, JWKS};
 use async_trait::async_trait;
-use env::Auth0Configs;
+use configs::Auth0Configs;
 use opentelemetry::{
     global::{self, BoxedSpan, BoxedTracer},
     trace::{Span, Status, Tracer},

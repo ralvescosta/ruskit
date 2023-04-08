@@ -8,7 +8,7 @@ use actix_web::{
 };
 use actix_web_opentelemetry::{RequestMetricsBuilder, RequestTracing};
 use auth::jwt_manager::JwtManager;
-use env::AppConfigs;
+use configs::AppConfigs;
 use opentelemetry::global;
 use std::{sync::Arc, time::Duration};
 use tracing::error;

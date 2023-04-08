@@ -1,8 +1,9 @@
 [workspace]
 
 members = [
+    "configs",
+    "configs_builder",
     "amqp",
-    "env",
     "health_readiness",
     "httpw",
     "logging",

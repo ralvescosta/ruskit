@@ -1,5 +1,6 @@
 use crate::errors::LoggingError;
-use env::{AppConfigs, Environment};
+use configs::{AppConfigs, Environment};
+use tracing::warn;
 use tracing_bunyan_formatter::BunyanFormattingLayer;
 use tracing_log::LogTracer;
 use tracing_subscriber::{
@@ -13,7 +14,13 @@ use tracing_subscriber::{
 
 pub fn setup(cfg: &AppConfigs) -> Result<(), LoggingError> {
     match LogTracer::init() {
-        Err(_) => Err(LoggingError::InternalError {}),
+        Err(err) => {
+            warn!(
+                error = err.to_string(),
+                "failure to initialize logger, probably the log was already initialized"
+            );
+            Ok(())
+        }
         _ => Ok(()),
     }?;
 
@@ -55,7 +62,10 @@ pub fn setup(cfg: &AppConfigs) -> Result<(), LoggingError> {
             .with(fmt_pretty)
             .with(target_filters),
     ) {
-        Err(_) => Err(LoggingError::InternalError {}),
+        Err(err) => {
+            warn!(error = err.to_string(), "failure to set tracing subscribe");
+            Err(LoggingError::InternalError {})
+        }
         _ => Ok(()),
     }
 }

@@ -4,8 +4,8 @@ use crate::{
     HealthReadinessImpl,
 };
 use actix_web::{middleware as actix_middleware, web, App, HttpServer};
+use configs::HealthReadinessConfigs;
 use deadpool_postgres::Pool;
-use env::HealthReadinessConfigs;
 use httpw::middlewares;
 use lapin::Connection;
 use paho_mqtt::AsyncClient;

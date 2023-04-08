@@ -1,6 +1,5 @@
 use crate::{
-    configs::{AppConfigs, Configs, DynamicConfigs},
-    def::{
+    env_keys::{
         AMQP_HOST_ENV_KEY, AMQP_PASSWORD_ENV_KEY, AMQP_PORT_ENV_KEY, AMQP_USER_ENV_KEY,
         AMQP_VHOST_ENV_KEY, APP_NAME_ENV_KEY, APP_PORT_ENV_KEY, AUTH0_AUDIENCE_ENV_KEY,
         AUTH0_CLIENT_ID_ENV_KEY, AUTH0_CLIENT_SECRET_ENV_KEY, AUTH0_DOMAIN_ENV_KEY,
@@ -17,14 +16,13 @@ use crate::{
         USE_SECRET_MANAGER_ENV_KEY,
     },
     errors::ConfigsError,
-    Environment,
 };
 use base64::{engine::general_purpose, Engine};
+use configs::{AppConfigs, Configs, DynamicConfigs, Environment};
 use dotenvy::from_filename;
 use secrets_manager::{AWSSecretClientBuilder, DummyClient, SecretClient};
 use std::{env, str::FromStr, sync::Arc};
 use tracing::error;
-use tracing_log::LogTracer;
 
 #[derive(Default, Clone, Copy)]
 pub enum SecretClientKind {
@@ -35,7 +33,6 @@ pub enum SecretClientKind {
 
 #[derive(Default)]
 pub struct ConfigBuilder {
-    cfg_use_secret_manager: bool,
     secret_client_kind: SecretClientKind,
     client: Option<Arc<dyn SecretClient>>,
     app_cfg: AppConfigs,
@@ -51,11 +48,8 @@ pub struct ConfigBuilder {
 }
 
 impl ConfigBuilder {
-    pub fn new(cfg: &AppConfigs) -> ConfigBuilder {
-        ConfigBuilder {
-            cfg_use_secret_manager: cfg.use_secret_manager,
-            ..Default::default()
-        }
+    pub fn new() -> ConfigBuilder {
+        ConfigBuilder::default()
     }
 
     pub fn mqtt(mut self) -> Self {
@@ -131,12 +125,12 @@ impl ConfigBuilder {
         let mut cfg = Configs::<T>::default();
         self.fill_app(&mut cfg);
 
-        match LogTracer::init() {
-            Err(_) => return Err(ConfigsError::InternalError {}),
+        match logging::setup(&cfg.app) {
+            Err(_) => Err(ConfigsError::InternalError {}),
             _ => Ok(()),
         }?;
 
-        self.client = Some(self.get_secret_client().await?);
+        self.client = Some(self.get_secret_client(&cfg.app).await?);
         for (key, value) in env::vars() {
             if self.fill_auth0(&mut cfg, &key, &value) {
                 continue;
@@ -172,8 +166,11 @@ impl ConfigBuilder {
 }
 
 impl ConfigBuilder {
-    async fn get_secret_client(&self) -> Result<Arc<dyn SecretClient>, ConfigsError> {
-        if !self.cfg_use_secret_manager {
+    async fn get_secret_client(
+        &self,
+        app_cfg: &AppConfigs,
+    ) -> Result<Arc<dyn SecretClient>, ConfigsError> {
+        if !app_cfg.use_secret_manager {
             return Ok(Arc::new(DummyClient::new()));
         }
 

@@ -1,5 +1,5 @@
 use crate::errors::MQTTError;
-use env::{AppConfigs, Configs, DynamicConfigs, MQTTConfigs};
+use configs::{AppConfigs, Configs, DynamicConfigs, MQTTConfigs};
 use paho_mqtt::{
     AsyncClient, AsyncReceiver, ConnectOptions, ConnectOptionsBuilder, CreateOptions,
     CreateOptionsBuilder, Message, SslOptionsBuilder, SslVersion,

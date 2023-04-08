@@ -330,7 +330,7 @@ name = "amqp"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "env",
+ "configs",
  "futures-util",
  "lapin",
  "mockall",
@@ -502,7 +502,7 @@ version = "0.1.0"
 dependencies = [
  "alcoholic_jwt",
  "async-trait",
- "env",
+ "configs",
  "opentelemetry",
  "reqwest",
  "serde",
@@ -1072,6 +1072,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "configs"
+version = "0.1.0"
+
+[[package]]
+name = "configs-builder"
+version = "0.1.0"
+dependencies = [
+ "base64 0.21.0",
+ "configs",
+ "dotenvy",
+ "logging",
+ "secrets-manager",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
 name = "convert_case"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1358,18 +1375,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "071a31f4ee85403370b58aca746f01041ede6f0da2730960ad001edc2b71b394"
 dependencies = [
  "cfg-if",
-]
-
-[[package]]
-name = "env"
-version = "0.1.0"
-dependencies = [
- "base64 0.21.0",
- "dotenvy",
- "secrets-manager",
- "thiserror",
- "tracing",
- "tracing-log",
 ]
 
 [[package]]
@@ -1680,8 +1685,8 @@ version = "0.1.0"
 dependencies = [
  "actix-web",
  "async-trait",
+ "configs",
  "deadpool-postgres",
- "env",
  "httpw",
  "lapin",
  "paho-mqtt",
@@ -1761,7 +1766,7 @@ dependencies = [
  "actix-web",
  "actix-web-opentelemetry",
  "auth",
- "env",
+ "configs",
  "opentelemetry",
  "serde",
  "serde_json",
@@ -2055,7 +2060,7 @@ dependencies = [
 name = "logging"
 version = "0.1.0"
 dependencies = [
- "env",
+ "configs",
  "thiserror",
  "tracing",
  "tracing-bunyan-formatter",
@@ -2088,7 +2093,7 @@ checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
 name = "metrics"
 version = "0.1.0"
 dependencies = [
- "env",
+ "configs",
  "opentelemetry",
  "opentelemetry-otlp",
  "tokio",
@@ -2101,9 +2106,9 @@ name = "migrator"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "configs",
  "deadpool-postgres",
  "deadpool-sqlite",
- "env",
  "logging",
  "thiserror",
  "tracing",
@@ -2185,7 +2190,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "bytes",
- "env",
+ "configs",
  "futures-util",
  "mockall",
  "opentelemetry",
@@ -3239,9 +3244,9 @@ dependencies = [
 name = "sql-pool"
 version = "0.1.0"
 dependencies = [
+ "configs",
  "deadpool-postgres",
  "deadpool-sqlite",
- "env",
  "thiserror",
  "tokio-postgres",
  "tracing",
@@ -3583,7 +3588,7 @@ checksum = "b6bc1c9ce2b5135ac7f93c72918fc37feb872bdc6a5533a8b85eb4b86bfdae52"
 name = "traces"
 version = "0.1.0"
 dependencies = [
- "env",
+ "configs",
  "opentelemetry",
  "opentelemetry-otlp",
  "serde",

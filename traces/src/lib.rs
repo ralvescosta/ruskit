@@ -2,7 +2,7 @@ pub mod grpc;
 pub mod jaeger;
 pub mod otlp;
 
-use env::{Configs, DynamicConfigs, Environment};
+use configs::{Configs, DynamicConfigs, Environment};
 use opentelemetry::trace::TraceContextExt;
 use opentelemetry::{
     global::BoxedTracer,

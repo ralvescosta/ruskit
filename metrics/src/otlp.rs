@@ -1,4 +1,4 @@
-use env::{Configs, DynamicConfigs};
+use configs::{Configs, DynamicConfigs};
 use opentelemetry::{
     global, runtime,
     sdk::{

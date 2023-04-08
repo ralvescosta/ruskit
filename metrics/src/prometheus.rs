@@ -1,4 +1,4 @@
-use env::{Configs, DynamicConfigs};
+use configs::{Configs, DynamicConfigs};
 
 pub fn setup<T>(_cfg: &Configs<T>) -> Result<(), ()>
 where

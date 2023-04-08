@@ -1,5 +1,5 @@
 use crate::get_sampler;
-use env::{Configs, DynamicConfigs};
+use configs::{Configs, DynamicConfigs};
 use opentelemetry::{
     global, runtime,
     sdk::{

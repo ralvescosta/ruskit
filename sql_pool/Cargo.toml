@@ -8,7 +8,7 @@ postgres = ["dep:deadpool-postgres", "dep:tokio-postgres"]
 sqlite = ["dep:deadpool-sqlite"]
 
 [dependencies]
-env = { path = "../env" }
+configs = { path = "../configs" }
 
 tracing = { version = "0.1.37" }
 thiserror = { version = "1.0.40" }

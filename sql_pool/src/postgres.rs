@@ -1,10 +1,10 @@
 use crate::errors::SqlPoolError;
-use configs::PostgresConfig;
+use configs::PostgresConfigs;
 use deadpool_postgres::{Manager, ManagerConfig, Pool, RecyclingMethod};
 use tokio_postgres::NoTls;
 use tracing::error;
 
-pub fn conn_pool(cfg: &PostgresConfig) -> Result<Pool, SqlPoolError> {
+pub fn conn_pool(cfg: &PostgresConfigs) -> Result<Pool, SqlPoolError> {
     let mut pg_cfg = tokio_postgres::Config::new();
     pg_cfg.host(&cfg.host);
     pg_cfg.port(cfg.port);

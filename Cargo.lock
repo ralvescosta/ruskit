@@ -201,7 +201,7 @@ dependencies = [
 [[package]]
 name = "actix-web-opentelemetry"
 version = "0.14.0-alpha.1"
-source = "git+ssh://git@github.com/hedrosistemas/actix-web-opentelemetry.git?branch=main#39a47be63849ce71f99533018b923d604331f6c8"
+source = "git+https://github.com/hedrosistemas/actix-web-opentelemetry.git?branch=main#39a47be63849ce71f99533018b923d604331f6c8"
 dependencies = [
  "actix-http",
  "actix-web",

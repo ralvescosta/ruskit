@@ -119,6 +119,8 @@ pub struct OTLPConfigs {
     pub export_timeout: u64,
     ///Default: 60s
     pub metrics_export_interval: u64,
+    ///Default: 0.8
+    pub export_rate_base: f64,
 }
 
 #[derive(Debug, Clone, Default)]

@@ -7,6 +7,9 @@ install-tools:
 audit:
 	cargo audit
 
+tests:
+	cargo +nightly tarpaulin --workspace --timeout 120 --out Xml
+
 bloat-fn: # Get a list of the biggest functions in the release build
 	cargo bloat --release -n 10
 

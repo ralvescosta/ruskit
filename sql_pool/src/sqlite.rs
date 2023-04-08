@@ -1,6 +1,6 @@
 use crate::errors::SqlPoolError;
+use configs::SqliteConfig;
 use deadpool_sqlite::{Config, Pool, Runtime};
-use env::SqliteConfig;
 use tracing::error;
 
 pub fn conn_pool(cfg: &SqliteConfig) -> Result<Pool, SqlPoolError> {

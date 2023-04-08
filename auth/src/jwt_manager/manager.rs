@@ -13,6 +13,6 @@ pub struct TokenClaims {
 }
 
 #[async_trait]
-pub trait JwtManager {
+pub trait JwtManager: Send + Sync {
     async fn verify(&self, ctx: &Context, token: &str) -> Result<TokenClaims, ()>;
 }

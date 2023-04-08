@@ -8,7 +8,7 @@ use actix_web::{
 };
 use actix_web_opentelemetry::{RequestMetricsBuilder, RequestTracing};
 use auth::jwt_manager::JwtManager;
-use env::AppConfig;
+use configs::AppConfigs;
 use opentelemetry::global;
 use std::{sync::Arc, time::Duration};
 use tracing::error;
@@ -19,13 +19,13 @@ pub type RouteConfig = fn(cfg: &mut ServiceConfig);
 
 pub struct HTTPServer {
     services: Vec<RouteConfig>,
-    jwt_manager: Option<Arc<dyn JwtManager + Send + Sync>>,
+    jwt_manager: Option<Arc<dyn JwtManager>>,
     addr: String,
     openapi: Option<OpenApi>,
 }
 
 impl HTTPServer {
-    pub fn new(cfg: &AppConfig) -> HTTPServer {
+    pub fn new(cfg: &AppConfigs) -> HTTPServer {
         HTTPServer {
             services: vec![],
             addr: cfg.app_addr(),
@@ -41,7 +41,7 @@ impl HTTPServer {
         self
     }
 
-    pub fn jwt_manager(mut self, manager: Arc<dyn JwtManager + Send + Sync>) -> Self {
+    pub fn jwt_manager(mut self, manager: Arc<dyn JwtManager>) -> Self {
         self.jwt_manager = Some(manager);
         self
     }
@@ -68,11 +68,9 @@ impl HTTPServer {
                     .wrap(RequestMetricsBuilder::new().build(meter));
 
                 if let Some(jwt_manager) = jwt_manager.clone() {
-                    app = app.app_data::<Data<Arc<dyn JwtManager + Send + Sync>>>(web::Data::<
-                        Arc<dyn JwtManager + Send + Sync>,
-                    >::new(
-                        jwt_manager.clone(),
-                    ));
+                    app = app.app_data::<Data<Arc<dyn JwtManager>>>(
+                        web::Data::<Arc<dyn JwtManager>>::new(jwt_manager.clone()),
+                    );
                 }
 
                 for svc in services.clone() {

@@ -20,22 +20,36 @@ jobs:
       options:  --security-opt seccomp=unconfined
 
     steps:
-    - name: Checkout
+    - name: 📁 Checkout
       uses: actions/checkout@v3
 
-    - name: Install protoc
+    - name: ⚡ Cache
+      uses: actions/cache@v3
+      continue-on-error: false
+      with:
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: ${{ runner.os }}-cargo-
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          .cargo/
+          target/
+
+    - name: 🔧 Install protoc
       uses: arduino/setup-protoc@v1
 
-    - name: Install paho c dependencies
+    - name: 🔨 Install tools
       run: |
         apt update && apt install sudo
         sudo apt install libssl-dev build-essential cmake pkg-config llvm-dev libclang-dev clang mosquitto-dev libmosquitto-dev libsqlite3-dev -y
       
-    - name: Run tests
+    - name: 🔎 Run tests
       run: |
         cargo +nightly tarpaulin --workspace --timeout 120 --out Xml
 
-    - name: Codecov
+    - name: ☁ Codecov
       uses: codecov/codecov-action@v3
       with:
         token: ${{secrets.CODECOV_TOKEN}}

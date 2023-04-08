@@ -1,6 +1,6 @@
 use crate::errors::SqlPoolError;
+use configs::PostgresConfig;
 use deadpool_postgres::{Manager, ManagerConfig, Pool, RecyclingMethod};
-use env::PostgresConfig;
 use tokio_postgres::NoTls;
 use tracing::error;
 

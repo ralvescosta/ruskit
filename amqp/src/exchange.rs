@@ -1,6 +1,8 @@
 use crate::errors::AmqpError;
-use lapin::types::{AMQPValue, ShortString};
+use lapin::types::{AMQPValue, LongString, ShortString};
 use std::collections::BTreeMap;
+
+pub const AMQP_HEADERS_DELAYED_EXCHANGE_TYPE: &str = "x-delayed-type";
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum ExchangeKind {
@@ -56,6 +58,34 @@ impl<'ex> ExchangeDefinition<'ex> {
 
     pub fn kind(mut self, kind: &'ex ExchangeKind) -> Self {
         self.kind = kind;
+        self
+    }
+
+    pub fn direct(mut self) -> Self {
+        self.kind = &ExchangeKind::Direct;
+        self
+    }
+
+    pub fn fanout(mut self) -> Self {
+        self.kind = &ExchangeKind::Fanout;
+        self
+    }
+
+    pub fn direct_delead(mut self) -> Self {
+        self.kind = &ExchangeKind::XMessageDelayed;
+        self.params.insert(
+            ShortString::from(AMQP_HEADERS_DELAYED_EXCHANGE_TYPE),
+            AMQPValue::LongString(LongString::from("direct")),
+        );
+        self
+    }
+
+    pub fn fanout_delead(mut self) -> Self {
+        self.kind = &ExchangeKind::XMessageDelayed;
+        self.params.insert(
+            ShortString::from(AMQP_HEADERS_DELAYED_EXCHANGE_TYPE),
+            AMQPValue::LongString(LongString::from("fanout")),
+        );
         self
     }
 

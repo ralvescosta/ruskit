@@ -1,7 +1,7 @@
 use super::{JwtManager, TokenClaims};
 use alcoholic_jwt::{token_kid, validate, Validation, JWKS};
 use async_trait::async_trait;
-use env::AppConfig;
+use configs::Auth0Configs;
 use opentelemetry::{
     global::{self, BoxedSpan, BoxedTracer},
     trace::{Span, Status, Tracer},
@@ -19,17 +19,17 @@ use tracing::error;
 pub struct Auth0JwtManager {
     jwks: Mutex<Option<JWKS>>,
     jwks_retrieved_at: SystemTime,
-    authority: String,
     tracer: BoxedTracer,
+    cfg: Auth0Configs,
 }
 
 impl Auth0JwtManager {
-    pub fn new(cfg: &AppConfig) -> Arc<Auth0JwtManager> {
+    pub fn new(cfg: &Auth0Configs) -> Arc<Auth0JwtManager> {
         Arc::new(Auth0JwtManager {
             jwks: Mutex::new(None),
             jwks_retrieved_at: SystemTime::now(),
-            authority: cfg.auth_authority.clone(),
             tracer: global::tracer("auth0_middleware"),
+            cfg: cfg.to_owned(),
         })
     }
 }
@@ -64,7 +64,7 @@ impl JwtManager for Auth0JwtManager {
         }?;
 
         let validations = vec![
-            Validation::Issuer(self.authority.clone()),
+            Validation::Issuer(self.cfg.issuer.clone()),
             Validation::SubjectPresent,
         ];
 
@@ -139,18 +139,22 @@ impl Auth0JwtManager {
     }
 
     async fn get_jwks(&self, span: &mut BoxedSpan) -> Result<JWKS, ()> {
-        let res =
-            match reqwest::get(&format!("{}{}", self.authority, ".well-known/jwks.json")).await {
-                Err(err) => {
-                    error!(error = err.to_string(), "error to get jwks from auth0 api");
-                    span.record_error(&err);
-                    span.set_status(Status::Error {
-                        description: Cow::from("error to get jwks from auth0 api"),
-                    });
-                    Err(())
-                }
-                Ok(r) => Ok(r),
-            }?;
+        let res = match reqwest::get(&format!(
+            "https://{}/{}",
+            self.cfg.domain, ".well-known/jwks.json"
+        ))
+        .await
+        {
+            Err(err) => {
+                error!(error = err.to_string(), "error to get jwks from auth0 api");
+                span.record_error(&err);
+                span.set_status(Status::Error {
+                    description: Cow::from("error to get jwks from auth0 api"),
+                });
+                Err(())
+            }
+            Ok(r) => Ok(r),
+        }?;
 
         let val = match res.json::<JWKS>().await {
             Err(err) => {

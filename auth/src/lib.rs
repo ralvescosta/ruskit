@@ -1,5 +1,5 @@
-mod defs;
 pub mod jwt_manager;
+mod scopes;
 mod types;
 
-pub use defs::{PlatformScopes, Scopes, UsersScopes};
+pub use scopes::{PlatformScopes, Scopes, UsersScopes};

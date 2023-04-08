@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 httpw = { path = "../httpw" }
-env = { path = "../env" }
+configs = { path = "../configs" }
 
 async-trait = { version = "0.1.68" }
 tracing = { version = "0.1.37" }

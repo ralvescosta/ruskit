@@ -1,14 +1,25 @@
+pub const LOCAL_ENV_FILE_NAME: &str = "./.env.local";
+pub const DEV_ENV_FILE_NAME: &str = "./.env.develop";
+pub const STAGING_FILE_NAME: &str = "./.env.staging";
+pub const PROD_FILE_NAME: &str = "./.env.prod";
+
 pub const SECRET_PREFIX: &str = "!";
 pub const SECRET_PREFIX_TO_DECODE: &str = "!!";
 
 pub const AWS_DEFAULT_REGION: &str = "us-east-1";
 
 pub const APP_NAME_ENV_KEY: &str = "APP_NAME";
+pub const USE_SECRET_MANAGER_ENV_KEY: &str = "USE_SECRET_MANAGER";
 pub const SECRET_KEY_ENV_KEY: &str = "SECRET_KEY";
 pub const HOST_NAME_ENV_KEY: &str = "HOST_NAME";
 pub const APP_PORT_ENV_KEY: &str = "APP_PORT";
 pub const LOG_LEVEL_ENV_KEY: &str = "LOG_LEVEL";
-pub const AUTH_AUTHORITY_ENV_KEY: &str = "AUTH_AUTHORITY";
+pub const AUTH0_DOMAIN_ENV_KEY: &str = "AUTH0_DOMAIN";
+pub const AUTH0_AUDIENCE_ENV_KEY: &str = "AUTH0_AUDIENCE";
+pub const AUTH0_ISSUER_ENV_KEY: &str = "AUTH0_ISSUER";
+pub const AUTH0_GRANT_TYPE_ENV_KEY: &str = "AUTH0_GRANT_TYPE";
+pub const AUTH0_CLIENT_ID_ENV_KEY: &str = "AUTH0_CLIENT_ID";
+pub const AUTH0_CLIENT_SECRET_ENV_KEY: &str = "AUTH0_CLIENT_SECRET";
 pub const MQTT_HOST_ENV_KEY: &str = "MQTT_HOST";
 pub const MQTT_PORT_ENV_KEY: &str = "MQTT_PORT";
 pub const MQTT_USER_ENV_KEY: &str = "MQTT_USER";
@@ -24,6 +35,7 @@ pub const OTLP_HOST_ENV_KEY: &str = "OTLP_HOST";
 pub const OTLP_ACCESS_KEY_ENV_KEY: &str = "OTLP_KEY";
 pub const OTLP_SERVICE_TYPE_ENV_KEY: &str = "OTLP_SERVICE_TYPE";
 pub const OTLP_EXPORT_TIMEOUT_ENV_KEY: &str = "OTLP_EXPORT_TIMEOUT";
+pub const OTLP_EXPORT_RATE_BASE_ENV_KEY: &str = "OTLP_EXPORT_RATE_BASE";
 pub const POSTGRES_HOST_ENV_KEY: &str = "POSTGRES_HOST";
 pub const POSTGRES_PORT_ENV_KEY: &str = "POSTGRES_PORT";
 pub const POSTGRES_USER_ENV_KEY: &str = "POSTGRES_USER";

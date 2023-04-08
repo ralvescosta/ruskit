@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-env = { path = "../env" }
+configs = { path = "../configs" }
 
 tracing-bunyan-formatter = { version = "0.3.6" }
 tracing-subscriber = { version = "0.3.16" }

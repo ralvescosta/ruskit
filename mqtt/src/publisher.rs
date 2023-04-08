@@ -30,7 +30,7 @@ pub struct MQTTPublisher {
 impl Publisher for MQTTPublisher {
     async fn publish(
         &self,
-        ctx: &Context,
+        _ctx: &Context,
         topic: &str,
         payload: &Payload,
         qos: i32,

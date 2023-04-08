@@ -1,16 +1,17 @@
 use crate::Environment;
 
 #[derive(Debug, Clone, Default)]
-pub struct Configs<T: DynamicConfig> {
-    pub app: AppConfig,
-    pub mqtt: MQTTConfig,
-    pub amqp: AmqpConfig,
-    pub otlp: OTLPConfig,
-    pub postgres: PostgresConfig,
-    pub sqlite: SqliteConfig,
-    pub aws: AwsConfig,
-    pub dynamo: DynamoConfig,
-    pub health_readiness: HealthReadinessConfig,
+pub struct Configs<T: DynamicConfigs> {
+    pub app: AppConfigs,
+    pub auth0: Auth0Configs,
+    pub mqtt: MQTTConfigs,
+    pub amqp: AmqpConfigs,
+    pub otlp: OTLPConfigs,
+    pub postgres: PostgresConfigs,
+    pub sqlite: SqliteConfigs,
+    pub aws: AwsConfigs,
+    pub dynamo: DynamoConfigs,
+    pub health_readiness: HealthReadinessConfigs,
 
     pub dynamic: T,
 
@@ -18,18 +19,18 @@ pub struct Configs<T: DynamicConfig> {
     pub multiple_message_timer: i32,
 }
 
-pub trait DynamicConfig: Default {
+pub trait DynamicConfigs: Default {
     fn load(&self);
 }
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Empty;
-impl DynamicConfig for Empty {
+impl DynamicConfigs for Empty {
     fn load(&self) {}
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct AppConfig {
+pub struct AppConfigs {
     ///Default: APP_NAME
     pub name: String,
     ///Default: Environment::Local
@@ -46,18 +47,32 @@ pub struct AppConfig {
     pub log_level: String,
     ///Default: false
     pub enable_external_creates_logging: bool,
-    ///Default:
-    pub auth_authority: String,
 }
 
-impl AppConfig {
+impl AppConfigs {
     pub fn app_addr(&self) -> String {
         format!("{}:{}", self.host, self.port)
     }
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct MQTTConfig {
+pub struct Auth0Configs {
+    //Default: ""
+    pub domain: String,
+    //Default: ""
+    pub audience: String,
+    //Default: ""
+    pub issuer: String,
+    //Default: ""
+    pub client_id: String,
+    //Default: ""
+    pub client_secret: String,
+    //Default: "client_credentials"
+    pub grant_type: String,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct MQTTConfigs {
     ///Default: localhost
     pub host: String,
     ///Default: 1883
@@ -77,7 +92,7 @@ pub struct MQTTConfig {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct AmqpConfig {
+pub struct AmqpConfigs {
     ///Default: localhost
     pub host: String,
     ///Default: 5672
@@ -90,7 +105,7 @@ pub struct AmqpConfig {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct OTLPConfig {
+pub struct OTLPConfigs {
     ///Default: false
     pub enable_traces: bool,
     ///Default: false
@@ -104,10 +119,12 @@ pub struct OTLPConfig {
     pub export_timeout: u64,
     ///Default: 60s
     pub metrics_export_interval: u64,
+    ///Default: 0.8
+    pub export_rate_base: f64,
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct PostgresConfig {
+pub struct PostgresConfigs {
     ///Default: localhost
     pub host: String,
     ///Default: postgres
@@ -121,7 +138,7 @@ pub struct PostgresConfig {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct SqliteConfig {
+pub struct SqliteConfigs {
     ///Default: local.db
     pub file: String,
     ///Default: postgres
@@ -131,7 +148,7 @@ pub struct SqliteConfig {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct AwsConfig {
+pub struct AwsConfigs {
     ///Default: local
     pub access_key_id: Option<String>,
     ///Default: local
@@ -141,7 +158,7 @@ pub struct AwsConfig {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct DynamoConfig {
+pub struct DynamoConfigs {
     ///Default: localhost
     pub endpoint: String,
     ///Default: us-east-1
@@ -151,22 +168,28 @@ pub struct DynamoConfig {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct HealthReadinessConfig {
+pub struct HealthReadinessConfigs {
     ///Default: 8888
     pub port: u64,
     ///Default: false
     pub enable: bool,
 }
 
-impl HealthReadinessConfig {
+impl HealthReadinessConfigs {
     pub fn health_readiness_addr(&self) -> String {
         format!("0.0.0.0:{}", self.port)
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct AuthConfigs {
+    ///Default: 3600s
+    pub jwk_rotate_period: u64,
+}
+
 impl<T> Configs<T>
 where
-    T: DynamicConfig,
+    T: DynamicConfigs,
 {
     pub fn amqp_uri(&self) -> String {
         format!(
@@ -182,7 +205,7 @@ mod tests {
 
     #[test]
     fn should_return_app_addr() {
-        let cfg = AppConfig::default();
+        let cfg = AppConfigs::default();
 
         assert_eq!(cfg.app_addr(), format!("{}:{}", cfg.host, cfg.port))
     }

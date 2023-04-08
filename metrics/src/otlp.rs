@@ -1,4 +1,4 @@
-use env::{Configs, DynamicConfig};
+use configs::{Configs, DynamicConfigs};
 use opentelemetry::{
     global, runtime,
     sdk::{
@@ -13,7 +13,7 @@ use tracing::{debug, error};
 
 pub fn setup<T>(cfg: &Configs<T>) -> Result<(), Box<dyn Error>>
 where
-    T: DynamicConfig,
+    T: DynamicConfigs,
 {
     if !cfg.otlp.enable_metrics {
         debug!("metrics::setup skipping metrics export setup");

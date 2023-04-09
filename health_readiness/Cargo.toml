@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-httpw = { path = "../httpw" }
+http-components = { path = "../http_components" }
 configs = { path = "../configs" }
 
 async-trait = { version = "0.1.68" }

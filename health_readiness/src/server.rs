@@ -1,19 +1,19 @@
 use crate::{
     controller, errors::HealthReadinessError, mqtt::MqttHealthChecker,
     postgres::PostgresHealthChecker, rabbitmq::RabbitMqHealthChecker, HealthChecker,
-    HealthReadinessImpl,
+    HealthReadinessServiceImpl,
 };
 use actix_web::{middleware as actix_middleware, web, App, HttpServer};
 use configs::HealthReadinessConfigs;
 use deadpool_postgres::Pool;
-use httpw::middlewares;
+use http_components::middlewares;
 use lapin::Connection;
 use paho_mqtt::AsyncClient;
 use std::sync::Arc;
 use tracing::{debug, error};
 
 pub struct HealthReadinessServer {
-    checkers: Vec<Arc<dyn HealthChecker + Send + Sync>>,
+    checkers: Vec<Arc<dyn HealthChecker>>,
     addr: String,
     enable: bool,
 }
@@ -55,7 +55,7 @@ impl HealthReadinessServer {
         }
 
         HttpServer::new({
-            let health_readiness_service = HealthReadinessImpl::from(self.checkers.clone());
+            let health_readiness_service = HealthReadinessServiceImpl::from(self.checkers.clone());
 
             move || {
                 App::new()

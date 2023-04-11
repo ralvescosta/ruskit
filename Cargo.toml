@@ -4,6 +4,7 @@ members = [
     "configs",
     "configs_builder",
     "amqp",
+    "http_components",
     "health_readiness",
     "httpw",
     "logging",

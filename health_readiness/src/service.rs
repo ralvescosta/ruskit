@@ -21,16 +21,13 @@ pub trait HealthReadinessService: Send + Sync {
     async fn validate(&self) -> Result<(), HealthReadinessError>;
 }
 
+#[derive(Default)]
 pub struct HealthReadinessServiceImpl {
     checkers: Vec<Arc<dyn HealthChecker>>,
 }
 
 impl HealthReadinessServiceImpl {
-    pub fn new() -> Arc<HealthReadinessServiceImpl> {
-        return Arc::new(HealthReadinessServiceImpl { checkers: vec![] });
-    }
-
-    pub fn from(checkers: Vec<Arc<dyn HealthChecker>>) -> Arc<HealthReadinessServiceImpl> {
+    pub fn new(checkers: Vec<Arc<dyn HealthChecker>>) -> Arc<HealthReadinessServiceImpl> {
         return Arc::new(HealthReadinessServiceImpl { checkers });
     }
 

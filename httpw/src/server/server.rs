@@ -66,7 +66,7 @@ impl HTTPServer {
             let openapi = self.openapi.clone();
             let health_check_service = match self.health_check.clone() {
                 Some(check) => check,
-                _ => HealthReadinessServiceImpl::new(),
+                _ => Arc::new(HealthReadinessServiceImpl::default()),
             };
 
             let services = self.services.clone();

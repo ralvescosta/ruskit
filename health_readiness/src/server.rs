@@ -55,7 +55,7 @@ impl HealthReadinessServer {
         }
 
         HttpServer::new({
-            let health_readiness_service = HealthReadinessServiceImpl::from(self.checkers.clone());
+            let health_readiness_service = HealthReadinessServiceImpl::new(self.checkers.clone());
 
             move || {
                 App::new()

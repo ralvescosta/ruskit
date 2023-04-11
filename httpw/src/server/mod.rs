@@ -1,3 +1,3 @@
 mod server;
 
-pub use server::{HTTPServer, RouteConfig};
+pub use server::HTTPServer;

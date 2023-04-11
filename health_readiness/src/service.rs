@@ -26,11 +26,11 @@ pub struct HealthReadinessServiceImpl {
 }
 
 impl HealthReadinessServiceImpl {
-    pub fn new() -> Arc<dyn HealthReadinessService> {
+    pub fn new() -> Arc<HealthReadinessServiceImpl> {
         return Arc::new(HealthReadinessServiceImpl { checkers: vec![] });
     }
 
-    pub fn from(checkers: Vec<Arc<dyn HealthChecker>>) -> Arc<dyn HealthReadinessService> {
+    pub fn from(checkers: Vec<Arc<dyn HealthChecker>>) -> Arc<HealthReadinessServiceImpl> {
         return Arc::new(HealthReadinessServiceImpl { checkers });
     }
 
@@ -39,14 +39,14 @@ impl HealthReadinessServiceImpl {
         self
     }
 
-    pub fn rabbitmq(mut self, conn: Arc<Connection>) -> Self {
+    pub fn amqp(mut self, conn: Arc<Connection>) -> Self {
         self.checkers.push(RabbitMqHealthChecker::new(conn));
-        return self;
+        self
     }
 
     pub fn postgres(mut self, pool: Arc<Pool>) -> Self {
         self.checkers.push(PostgresHealthChecker::new(pool));
-        return self;
+        self
     }
 }
 

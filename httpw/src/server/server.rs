@@ -1,30 +1,27 @@
 use crate::errors::HTTPServerError;
-use actix_web::web::ServiceConfig;
 use actix_web::{
     http::KeepAlive,
     middleware as actix_middleware,
     web::{self, Data},
-    App, HttpResponse, HttpServer as ActixHttpServer, Responder,
+    App, HttpServer as ActixHttpServer,
 };
 use actix_web_opentelemetry::{RequestMetricsBuilder, RequestTracing};
 use auth::jwt_manager::JwtManager;
 use configs::AppConfigs;
 use health_readiness::{
     controller::health_handler,
-    {HealthChecker, HealthReadinessService, HealthReadinessServiceImpl},
+    {HealthReadinessService, HealthReadinessServiceImpl},
 };
-use http_components::middlewares;
+use http_components::{middlewares, CustomServiceConfigure};
 use opentelemetry::global;
 use std::{sync::Arc, time::Duration};
 use tracing::error;
 use utoipa::openapi::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-pub type RouteConfig = fn(cfg: &mut ServiceConfig);
-
 pub struct HTTPServer {
     addr: String,
-    services: Vec<RouteConfig>,
+    services: Vec<Arc<CustomServiceConfigure>>,
     openapi: Option<OpenApi>,
     jwt_manager: Option<Arc<dyn JwtManager>>,
     health_check: Option<Arc<dyn HealthReadinessService>>,
@@ -43,8 +40,8 @@ impl HTTPServer {
 }
 
 impl HTTPServer {
-    pub fn register(mut self, service: RouteConfig) -> Self {
-        self.services.push(service);
+    pub fn custom_configure(mut self, s: CustomServiceConfigure) -> Self {
+        self.services.push(Arc::new(s));
         self
     }
 
@@ -65,13 +62,14 @@ impl HTTPServer {
 
     pub async fn start(&self) -> Result<(), HTTPServerError> {
         ActixHttpServer::new({
-            let services = self.services.to_vec();
             let jwt_manager = self.jwt_manager.clone();
             let openapi = self.openapi.clone();
             let health_check_service = match self.health_check.clone() {
                 Some(check) => check,
                 _ => HealthReadinessServiceImpl::new(),
             };
+
+            let services = self.services.clone();
 
             move || {
                 let meter = global::meter("actix_web");
@@ -82,7 +80,9 @@ impl HTTPServer {
                     .wrap(middlewares::cors::config())
                     .wrap(RequestTracing::new())
                     .wrap(RequestMetricsBuilder::new().build(meter))
-                    .app_data::<Data<Arc<dyn HealthReadinessService>>>(Data::<Arc<dyn HealthReadinessService>>::new(health_check_service.clone()));
+                    .app_data(Data::<Arc<dyn HealthReadinessService>>::new(
+                        health_check_service.clone(),
+                    ));
 
                 if let Some(jwt_manager) = jwt_manager.clone() {
                     app = app.app_data::<Data<Arc<dyn JwtManager>>>(
@@ -90,9 +90,14 @@ impl HTTPServer {
                     );
                 }
 
-                for svc in services.clone() {
-                    app = app.configure(svc);
-                }
+                let services = services.clone();
+                app = app.configure(move |config| {
+                    for svc in services.clone() {
+                        let cl = svc.clone();
+                        let mut f = cl.f.lock().unwrap();
+                        f(config);
+                    }
+                });
 
                 if openapi.is_some() {
                     app = app.service(
@@ -128,3 +133,10 @@ impl HTTPServer {
         Ok(())
     }
 }
+
+// fn configure_wrapper(
+//     service: Arc<dyn FnOnce(&mut ServiceConfig) + Send + Sync>,
+// ) -> impl FnOnce(&mut ServiceConfig) {
+//     let svc = service.clone();
+//     move |cfg| svc(cfg)
+// }

@@ -133,10 +133,3 @@ impl HTTPServer {
         Ok(())
     }
 }
-
-// fn configure_wrapper(
-//     service: Arc<dyn FnOnce(&mut ServiceConfig) + Send + Sync>,
-// ) -> impl FnOnce(&mut ServiceConfig) {
-//     let svc = service.clone();
-//     move |cfg| svc(cfg)
-// }

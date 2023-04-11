@@ -1687,7 +1687,7 @@ dependencies = [
  "async-trait",
  "configs",
  "deadpool-postgres",
- "httpw",
+ "http-components",
  "lapin",
  "paho-mqtt",
  "thiserror",
@@ -1747,6 +1747,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "http-components"
+version = "0.1.0"
+dependencies = [
+ "actix-cors",
+ "actix-web",
+ "auth",
+ "opentelemetry",
+ "serde",
+ "serde_json",
+ "tracing",
+ "utoipa",
+]
+
+[[package]]
 name = "httparse"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1762,11 +1776,12 @@ checksum = "c4a1e36c821dbe04574f602848a19f742f4fb3c98d40449f11bcad18d6b17421"
 name = "httpw"
 version = "0.1.0"
 dependencies = [
- "actix-cors",
  "actix-web",
  "actix-web-opentelemetry",
  "auth",
  "configs",
+ "health-readiness",
+ "http-components",
  "opentelemetry",
  "serde",
  "serde_json",

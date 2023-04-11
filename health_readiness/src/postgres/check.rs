@@ -8,7 +8,7 @@ pub struct PostgresHealthChecker {
 }
 
 impl PostgresHealthChecker {
-    pub fn new(pool: Arc<Pool>) -> Arc<dyn HealthChecker + Send + Sync> {
+    pub fn new(pool: Arc<Pool>) -> Arc<PostgresHealthChecker> {
         Arc::new(PostgresHealthChecker { pool })
     }
 }

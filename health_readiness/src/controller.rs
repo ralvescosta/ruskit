@@ -1,13 +1,11 @@
+use crate::HealthReadinessService;
+use actix_web::{error::HttpError, get, http::StatusCode, web, HttpResponse};
+use http_components::viewmodels::HTTPError;
 use std::sync::Arc;
 
-use actix_web::{error::HttpError, get, http::StatusCode, web, HttpResponse};
-use httpw::viewmodels::HTTPError;
-
-use crate::HealthReadinessService;
-
 #[get("/health")]
-pub(crate) async fn health_handler(
-    service: web::Data<Arc<dyn HealthReadinessService + Send + Sync>>,
+pub async fn health_handler(
+    service: web::Data<Arc<dyn HealthReadinessService>>,
 ) -> Result<HttpResponse, HttpError> {
     match service.validate().await {
         Ok(_) => Ok(HttpResponse::Ok().finish()),

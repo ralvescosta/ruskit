@@ -8,7 +8,7 @@ pub struct MqttHealthChecker {
 }
 
 impl MqttHealthChecker {
-    pub fn new(client: Arc<AsyncClient>) -> Arc<dyn HealthChecker + Send + Sync> {
+    pub fn new(client: Arc<AsyncClient>) -> Arc<MqttHealthChecker> {
         Arc::new(MqttHealthChecker { client })
     }
 }

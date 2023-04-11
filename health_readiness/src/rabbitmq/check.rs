@@ -7,7 +7,7 @@ pub struct RabbitMqHealthChecker {
 }
 
 impl RabbitMqHealthChecker {
-    pub fn new(conn: Arc<Connection>) -> Arc<dyn HealthChecker + Send + Sync> {
+    pub fn new(conn: Arc<Connection>) -> Arc<RabbitMqHealthChecker> {
         Arc::new(RabbitMqHealthChecker { conn })
     }
 }

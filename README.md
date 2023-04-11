@@ -11,9 +11,11 @@
 
   - [crates]()
     - [amqp](https://github.com/ralvescosta/ruskit/tree/main/amqp)
-    - [env](https://github.com/ralvescosta/ruskit/tree/main/env)
+    - [configs](https://github.com/ralvescosta/ruskit/tree/main/configs)
+    - [configs-builder](https://github.com/ralvescosta/ruskit/tree/main/configs_builder)
     - [errors](https://github.com/ralvescosta/ruskit/tree/main/errors)
-    - [health_readiness](https://github.com/ralvescosta/ruskit/tree/main/health_readiness)
+    - [health-readiness](https://github.com/ralvescosta/ruskit/tree/main/health_readiness)
+    - [http-components](https://github.com/ralvescosta/ruskit/tree/main/http_components)
     - [httpw](https://github.com/ralvescosta/ruskit/tree/main/httpw)
     - [logging](https://github.com/ralvescosta/ruskit/tree/main/logging)
     - [metrics](https://github.com/ralvescosta/ruskit/tree/main/metrics)
@@ -56,5 +58,5 @@ Where rev = "v1.0.0" is the tag name.
   - [] Graceful shotdown for gRPC
   - [] Graceful shotdown for HTTP
 - [] Create custom middleware strategy to httpw crate
-- [] Create OpenAPI render
-- [] Improve Logger in httpw crate
+- [x] Create OpenAPI render
+- [x] Improve Logger in httpw crate

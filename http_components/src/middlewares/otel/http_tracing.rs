@@ -13,15 +13,15 @@ use opentelemetry::{
 use std::{borrow::Cow, task::Poll};
 
 #[derive(Default, Debug)]
-pub struct OtelTracing {}
+pub struct HTTPOtelTracing {}
 
-impl OtelTracing {
-    pub fn new() -> OtelTracing {
-        OtelTracing::default()
+impl HTTPOtelTracing {
+    pub fn new() -> HTTPOtelTracing {
+        HTTPOtelTracing::default()
     }
 }
 
-impl<S, B> Transform<S, ServiceRequest> for OtelTracing
+impl<S, B> Transform<S, ServiceRequest> for HTTPOtelTracing
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
@@ -29,35 +29,35 @@ where
 {
     type Response = ServiceResponse<B>;
     type Error = Error;
-    type Transform = OtelTracingMiddleware<S>;
+    type Transform = HTTPOtelTracingMiddleware<S>;
     type InitError = ();
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        ok(OtelTracingMiddleware::new(service, None))
+        ok(HTTPOtelTracingMiddleware::new(service, None))
     }
 }
 
-pub struct OtelTracingMiddleware<S> {
+pub struct HTTPOtelTracingMiddleware<S> {
     service: S,
     tracer: BoxedTracer,
 }
 
-impl<S, B> OtelTracingMiddleware<S>
+impl<S, B> HTTPOtelTracingMiddleware<S>
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
     B: 'static,
 {
     fn new(service: S, _: Option<B>) -> Self {
-        OtelTracingMiddleware {
+        HTTPOtelTracingMiddleware {
             service,
-            tracer: global::tracer("actix-web-middleware"),
+            tracer: global::tracer("http-trace-middleware"),
         }
     }
 }
 
-impl<S, B> Service<ServiceRequest> for OtelTracingMiddleware<S>
+impl<S, B> Service<ServiceRequest> for HTTPOtelTracingMiddleware<S>
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,

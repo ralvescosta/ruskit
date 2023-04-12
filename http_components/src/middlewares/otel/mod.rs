@@ -5,5 +5,5 @@ mod http_tracing;
 mod keys;
 
 pub use extractor::HTTPExtractor;
-pub use http_metrics::RequestMetricsBuilder;
-pub use http_tracing::OtelTracing;
+pub use http_metrics::HTTPOtelMetrics;
+pub use http_tracing::HTTPOtelTracing;

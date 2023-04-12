@@ -199,19 +199,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "actix-web-opentelemetry"
-version = "0.14.0-alpha.1"
-source = "git+https://github.com/hedrosistemas/actix-web-opentelemetry.git?branch=main#39a47be63849ce71f99533018b923d604331f6c8"
-dependencies = [
- "actix-http",
- "actix-web",
- "futures-util",
- "opentelemetry",
- "opentelemetry-semantic-conventions",
- "serde",
-]
-
-[[package]]
 name = "adler"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1782,7 +1769,6 @@ name = "httpw"
 version = "0.1.0"
 dependencies = [
  "actix-web",
- "actix-web-opentelemetry",
  "auth",
  "configs",
  "health-readiness",

@@ -4,7 +4,7 @@ use super::attributes::metrics_attributes_from_request;
 use actix_web::dev;
 use futures_util::future::{self, FutureExt as _, LocalBoxFuture};
 use opentelemetry::metrics::{Histogram, Meter, Unit, UpDownCounter};
-use opentelemetry::Context;
+use opentelemetry::{global, Context};
 use std::{sync::Arc, time::SystemTime};
 
 // Follows the experimental semantic conventions for HTTP metrics:
@@ -35,24 +35,6 @@ impl Metrics {
         Metrics {
             http_server_active_requests,
             http_server_duration,
-        }
-    }
-}
-
-/// Builder for [RequestMetrics]
-#[derive(Clone, Debug, Default)]
-pub struct RequestMetricsBuilder {}
-
-impl RequestMetricsBuilder {
-    /// Create a new `RequestMetricsBuilder`
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Build the `RequestMetrics` middleware
-    pub fn build(self, meter: Meter) -> RequestMetrics {
-        RequestMetrics {
-            metrics: Arc::new(Metrics::new(meter)),
         }
     }
 }
@@ -109,11 +91,19 @@ impl RequestMetricsBuilder {
 /// }
 /// ```
 #[derive(Clone, Debug)]
-pub struct RequestMetrics {
+pub struct HTTPOtelMetrics {
     metrics: Arc<Metrics>,
 }
 
-impl<S, B> dev::Transform<S, dev::ServiceRequest> for RequestMetrics
+impl HTTPOtelMetrics {
+    pub fn new() -> HTTPOtelMetrics {
+        HTTPOtelMetrics {
+            metrics: Arc::new(Metrics::new(global::meter("http-meter-middleware"))),
+        }
+    }
+}
+
+impl<S, B> dev::Transform<S, dev::ServiceRequest> for HTTPOtelMetrics
 where
     S: dev::Service<
         dev::ServiceRequest,
@@ -125,12 +115,12 @@ where
 {
     type Response = dev::ServiceResponse<B>;
     type Error = actix_web::Error;
-    type Transform = RequestMetricsMiddleware<S>;
+    type Transform = HTTPOtelMetricsMiddleware<S>;
     type InitError = ();
     type Future = future::Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        let service = RequestMetricsMiddleware {
+        let service = HTTPOtelMetricsMiddleware {
             service,
             metrics: self.metrics.clone(),
         };
@@ -141,12 +131,12 @@ where
 
 /// Request metrics middleware
 #[allow(missing_debug_implementations)]
-pub struct RequestMetricsMiddleware<S> {
+pub struct HTTPOtelMetricsMiddleware<S> {
     service: S,
     metrics: Arc<Metrics>,
 }
 
-impl<S, B> dev::Service<dev::ServiceRequest> for RequestMetricsMiddleware<S>
+impl<S, B> dev::Service<dev::ServiceRequest> for HTTPOtelMetricsMiddleware<S>
 where
     S: dev::Service<
         dev::ServiceRequest,
@@ -165,7 +155,7 @@ where
     fn call(&self, req: dev::ServiceRequest) -> Self::Future {
         let timer = SystemTime::now();
 
-        let mut http_target = req.match_pattern().unwrap_or_else(|| "default".to_string());
+        let http_target = req.match_pattern().unwrap_or_else(|| "default".to_string());
 
         let mut attributes = metrics_attributes_from_request(&req, &http_target);
         let cx = Context::current();

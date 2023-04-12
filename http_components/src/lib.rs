@@ -2,6 +2,7 @@ use actix_web::web::ServiceConfig;
 use std::sync::Mutex;
 
 pub mod extractors;
+pub mod handlers;
 pub mod middlewares;
 pub mod viewmodels;
 

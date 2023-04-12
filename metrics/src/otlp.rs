@@ -34,20 +34,20 @@ where
         }
     }?;
 
-    let exporter = opentelemetry_otlp::new_exporter()
-        .tonic()
-        .with_endpoint(&cfg.otlp.host)
-        .with_timeout(Duration::from_secs(cfg.otlp.export_timeout))
-        .with_protocol(Protocol::Grpc)
-        .with_metadata(map);
-
     let provider = opentelemetry_otlp::new_pipeline()
         .metrics(
             selectors::simple::inexpensive(),
             cumulative_temporality_selector(),
             runtime::Tokio,
         )
-        .with_exporter(exporter)
+        .with_exporter(
+            opentelemetry_otlp::new_exporter()
+                .tonic()
+                .with_endpoint(&cfg.otlp.host)
+                .with_timeout(Duration::from_secs(cfg.otlp.export_timeout))
+                .with_protocol(Protocol::Grpc)
+                .with_metadata(map),
+        )
         .with_resource(Resource::new(vec![
             KeyValue::new("service.name", cfg.app.name.clone()),
             KeyValue::new("service.type", cfg.otlp.service_type.clone()),

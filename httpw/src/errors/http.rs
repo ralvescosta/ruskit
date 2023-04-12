@@ -6,7 +6,7 @@ use actix_web::{
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum HttpError {
+pub enum HTTPError {
     #[error("bad request")]
     BadRequest,
 
@@ -29,7 +29,7 @@ pub enum HttpError {
     Timeout,
 }
 
-impl ResponseError for HttpError {
+impl ResponseError for HTTPError {
     fn error_response(&self) -> HttpResponse {
         HttpResponse::build(self.status_code())
             .insert_header(ContentType::json())
@@ -38,13 +38,13 @@ impl ResponseError for HttpError {
 
     fn status_code(&self) -> StatusCode {
         match *self {
-            HttpError::BadRequest => StatusCode::BAD_REQUEST,
-            HttpError::Unauthorized => StatusCode::UNAUTHORIZED,
-            HttpError::Forbidden => StatusCode::FORBIDDEN,
-            HttpError::NotFound => StatusCode::NOT_FOUND,
-            HttpError::Conflict => StatusCode::CONFLICT,
-            HttpError::InternalError => StatusCode::INTERNAL_SERVER_ERROR,
-            HttpError::Timeout => StatusCode::GATEWAY_TIMEOUT,
+            HTTPError::BadRequest => StatusCode::BAD_REQUEST,
+            HTTPError::Unauthorized => StatusCode::UNAUTHORIZED,
+            HTTPError::Forbidden => StatusCode::FORBIDDEN,
+            HTTPError::NotFound => StatusCode::NOT_FOUND,
+            HTTPError::Conflict => StatusCode::CONFLICT,
+            HTTPError::InternalError => StatusCode::INTERNAL_SERVER_ERROR,
+            HTTPError::Timeout => StatusCode::GATEWAY_TIMEOUT,
         }
     }
 }

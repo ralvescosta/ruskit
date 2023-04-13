@@ -1745,6 +1745,7 @@ dependencies = [
  "opentelemetry",
  "opentelemetry-prometheus",
  "opentelemetry-semantic-conventions",
+ "otel",
  "prometheus",
  "serde",
  "serde_json",
@@ -2429,6 +2430,13 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-stream",
+]
+
+[[package]]
+name = "otel"
+version = "0.1.0"
+dependencies = [
+ "opentelemetry",
 ]
 
 [[package]]

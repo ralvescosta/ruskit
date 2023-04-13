@@ -1,18 +1,19 @@
 [workspace]
 
 members = [
+    "amqp",
+    "auth",
     "configs",
     "configs_builder",
-    "amqp",
-    "http_components",
     "health_readiness",
+    "http_components",
     "httpw",
     "logging",
     "metrics",
     "migrator",
     "mqtt",
+    "otel",
     "secrets_manager",
     "sql_pool",
     "traces",
-    "auth",
 ]

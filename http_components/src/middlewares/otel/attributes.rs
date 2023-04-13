@@ -12,8 +12,7 @@ use opentelemetry_semantic_conventions::{
         HTTP_USER_AGENT, NET_HOST_PORT,
     },
 };
-
-use super::keys::{HTTP_SERVER_NAME, NET_PEER_IP};
+use otel::keys::{HTTP_SERVER_NAME, NET_PEER_IP};
 
 #[inline]
 pub(super) fn http_method_str(method: &Method) -> Value {

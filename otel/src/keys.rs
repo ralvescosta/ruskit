@@ -1246,5 +1246,6 @@ pub const MESSAGE_UNCOMPRESSED_SIZE: Key = Key::from_static_str("message.uncompr
 /// clear whether the exception will escape.
 pub const EXCEPTION_ESCAPED: Key = Key::from_static_str("exception.escaped");
 
-pub(crate) const NET_PEER_IP: Key = Key::from_static_str("net.peer.ip");
-pub(crate) const HTTP_SERVER_NAME: Key = Key::from_static_str("http.server_name");
+pub const NET_PEER_IP: Key = Key::from_static_str("net.peer.ip");
+
+pub const HTTP_SERVER_NAME: Key = Key::from_static_str("http.server_name");

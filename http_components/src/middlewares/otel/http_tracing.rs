@@ -1,6 +1,4 @@
-use super::{
-    attributes::trace_attributes_from_request, extractor::HTTPExtractor, keys::HTTP_STATUS_CODE,
-};
+use super::{attributes::trace_attributes_from_request, extractor::HTTPExtractor};
 use actix_web::{
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
     Error,
@@ -10,6 +8,7 @@ use opentelemetry::{
     global::{self, BoxedTracer},
     trace::{FutureExt, SpanKind, Status, TraceContextExt, Tracer},
 };
+use otel::keys::HTTP_STATUS_CODE;
 use std::{borrow::Cow, task::Poll};
 
 #[derive(Default, Debug)]

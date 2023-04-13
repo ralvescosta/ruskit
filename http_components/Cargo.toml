@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+otel = { path = "../otel" }
 auth = { path = "../auth" }
 
 actix-web = { version = "4.3.1" }

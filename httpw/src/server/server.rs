@@ -5,13 +5,14 @@ use actix_web::{
     web::{self, Data},
     App, HttpServer as ActixHttpServer,
 };
-use actix_web_opentelemetry::{RequestMetricsBuilder, RequestTracing};
+// use actix_web_opentelemetry::{RequestMetricsBuilder, RequestTracing};
 use auth::jwt_manager::JwtManager;
 use configs::AppConfigs;
 use health_readiness::{
     controller::health_handler,
     {HealthReadinessService, HealthReadinessServiceImpl},
 };
+use http_components::middlewares::otel::{HTTPOtelMetrics, HTTPOtelTracing};
 use http_components::{middlewares, CustomServiceConfigure};
 use opentelemetry::global;
 use std::{sync::Arc, time::Duration};
@@ -72,14 +73,12 @@ impl HTTPServer {
             let services = self.services.clone();
 
             move || {
-                let meter = global::meter("actix_web");
-
                 let mut app = App::new()
                     .wrap(actix_middleware::Compress::default())
                     .wrap(middlewares::headers::config())
                     .wrap(middlewares::cors::config())
-                    .wrap(RequestTracing::new())
-                    .wrap(RequestMetricsBuilder::new().build(meter))
+                    .wrap(HTTPOtelTracing::new())
+                    .wrap(HTTPOtelMetrics::new())
                     .app_data(Data::<Arc<dyn HealthReadinessService>>::new(
                         health_check_service.clone(),
                     ));

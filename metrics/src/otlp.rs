@@ -1,9 +1,8 @@
+use super::selectors::OTLPTemporalitySelector;
 use configs::{Configs, DynamicConfigs};
 use opentelemetry::{
     global, runtime,
-    sdk::{
-        export::metrics::aggregation::cumulative_temporality_selector, metrics::selectors, Resource,
-    },
+    sdk::{metrics::selectors, Resource},
     KeyValue,
 };
 use opentelemetry_otlp::{Protocol, WithExportConfig};
@@ -34,20 +33,20 @@ where
         }
     }?;
 
-    let exporter = opentelemetry_otlp::new_exporter()
-        .tonic()
-        .with_endpoint(&cfg.otlp.host)
-        .with_timeout(Duration::from_secs(cfg.otlp.export_timeout))
-        .with_protocol(Protocol::Grpc)
-        .with_metadata(map);
-
     let provider = opentelemetry_otlp::new_pipeline()
         .metrics(
             selectors::simple::inexpensive(),
-            cumulative_temporality_selector(),
+            OTLPTemporalitySelector::default(),
             runtime::Tokio,
         )
-        .with_exporter(exporter)
+        .with_exporter(
+            opentelemetry_otlp::new_exporter()
+                .tonic()
+                .with_endpoint(&cfg.otlp.host)
+                .with_timeout(Duration::from_secs(cfg.otlp.export_timeout))
+                .with_protocol(Protocol::Grpc)
+                .with_metadata(map),
+        )
         .with_resource(Resource::new(vec![
             KeyValue::new("service.name", cfg.app.name.clone()),
             KeyValue::new("service.type", cfg.otlp.service_type.clone()),

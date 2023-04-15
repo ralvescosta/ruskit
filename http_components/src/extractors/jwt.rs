@@ -1,11 +1,12 @@
+use crate::middlewares::otel::HTTPExtractor;
 use crate::viewmodels::HTTPError;
 use actix_web::error::{ErrorUnauthorized, ErrorInternalServerError};
 use actix_web::web::Data;
 use actix_web::{dev::Payload, Error as ActixWebError};
 use actix_web::{http, FromRequest, HttpRequest};
 use auth::jwt_manager::{JwtManager, TokenClaims};
-use opentelemetry::Context;
-use std::future::{Future};
+use opentelemetry::global;
+use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
@@ -18,6 +19,10 @@ impl FromRequest for JwtAuthenticateExtractor {
     type Future = Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
     
     fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
+        let ctx = global::get_text_map_propagator(|propagator| {
+            propagator.extract(&HTTPExtractor::new(req.headers()))
+        });
+
         let token = req
             .headers()
             .get(http::header::AUTHORIZATION)
@@ -50,7 +55,7 @@ impl FromRequest for JwtAuthenticateExtractor {
         let jwt_manager = jwt_manager.clone();
 
         Box::pin(async move {
-            let Ok(claims) = jwt_manager.verify(&Context::new(), &token).await else {
+            let Ok(claims) = jwt_manager.verify(&ctx, &token).await else {
                 let json_error = HTTPError {
                     status_code: http::StatusCode::UNAUTHORIZED.as_u16(),
                     message: "unauthorized".to_owned(),

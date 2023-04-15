@@ -3,7 +3,7 @@
 use super::attributes::metrics_attributes_from_request;
 use actix_web::dev;
 use futures_util::future::{self, FutureExt as _, LocalBoxFuture};
-use opentelemetry::metrics::{Histogram, Meter, Unit, UpDownCounter};
+use opentelemetry::metrics::{Counter, Histogram, Meter, Unit, UpDownCounter};
 use opentelemetry::{global, Context};
 use std::{sync::Arc, time::SystemTime};
 
@@ -12,11 +12,13 @@ use std::{sync::Arc, time::SystemTime};
 use opentelemetry_semantic_conventions::trace::HTTP_STATUS_CODE;
 const HTTP_SERVER_ACTIVE_REQUESTS: &str = "http.server.active_requests";
 const HTTP_SERVER_DURATION: &str = "http.server.duration";
+const HTTP_SERVER_REQUESTS: &str = "http.server.requests";
 
 #[derive(Clone, Debug)]
 struct Metrics {
     http_server_active_requests: UpDownCounter<i64>,
     http_server_duration: Histogram<f64>,
+    http_requests: Counter<u64>,
 }
 
 impl Metrics {
@@ -32,9 +34,15 @@ impl Metrics {
             .with_unit(Unit::new("ms"))
             .init();
 
+        let http_requests = meter
+            .u64_counter(HTTP_SERVER_REQUESTS)
+            .with_description("HTTP Requests")
+            .init();
+
         Metrics {
             http_server_active_requests,
             http_server_duration,
+            http_requests,
         }
     }
 }
@@ -165,28 +173,40 @@ where
             .http_server_active_requests
             .add(&cx, 1, &attributes);
 
-        let request_metrics = self.metrics.clone();
+        let metrics = self.metrics.clone();
         Box::pin(self.service.call(req).map(move |res| {
-            request_metrics
+            metrics
                 .http_server_active_requests
                 .add(&cx, -1, &attributes);
 
             // Ignore actix errors for metrics
-            if let Ok(res) = res {
-                attributes.push(HTTP_STATUS_CODE.string(res.status().as_str().to_owned()));
+            match res {
+                Ok(success) => {
+                    attributes.push(HTTP_STATUS_CODE.string(success.status().as_str().to_owned()));
 
-                request_metrics.http_server_duration.record(
-                    &cx,
-                    timer
-                        .elapsed()
-                        .map(|t| t.as_secs_f64() * 1000.0)
-                        .unwrap_or_default(),
-                    &attributes,
-                );
+                    metrics.http_server_duration.record(
+                        &cx,
+                        timer
+                            .elapsed()
+                            .map(|t| t.as_secs_f64() * 1000.0)
+                            .unwrap_or_default(),
+                        &attributes,
+                    );
 
-                Ok(res)
-            } else {
-                res
+                    metrics.http_requests.add(&cx, 1, &attributes);
+
+                    Ok(success)
+                }
+                Err(err) => {
+                    attributes.push(
+                        HTTP_STATUS_CODE
+                            .string(err.as_response_error().status_code().as_str().to_owned()),
+                    );
+
+                    metrics.http_requests.add(&cx, 1, &attributes);
+
+                    Err(err)
+                }
             }
         }))
     }

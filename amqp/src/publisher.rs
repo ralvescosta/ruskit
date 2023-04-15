@@ -111,6 +111,7 @@ impl AmqpPublisher {
         let mut params = params
             .unwrap_or(&BTreeMap::<ShortString, AMQPValue>::default())
             .to_owned();
+
         global::get_text_map_propagator(|propagator| {
             propagator.inject_context(ctx, &mut AmqpTracePropagator::new(&mut params))
         });

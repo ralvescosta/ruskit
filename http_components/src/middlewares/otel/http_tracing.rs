@@ -79,7 +79,11 @@ where
             .map(Into::into)
             .unwrap_or_else(|| "default".into());
 
-        let mut builder = self.tracer.span_builder(http_route.clone());
+        let method = req.method().as_str();
+
+        let mut builder = self
+            .tracer
+            .span_builder(format!("{} {}", method, http_route.clone()));
         builder.span_kind = Some(SpanKind::Server);
         builder.attributes = Some(trace_attributes_from_request(&req, &http_route));
 
@@ -108,6 +112,7 @@ where
                 }
                 Err(err) => {
                     let span = cx.span();
+                    span.record_error(&err);
                     span.set_status(Status::error(format!("{:?}", err)));
                     span.end();
                     Err(err)

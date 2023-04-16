@@ -11,8 +11,8 @@ auth = { path = "../auth" }
 
 thiserror = { version = "1.0.40" }
 actix-web = { version = "4.3.1" }
-serde = { version = "1.0.159", features = ["derive"] }
-serde_json = { version = "1.0.95" }
+serde = { version = "1.0.160", features = ["derive"] }
+serde_json = { version = "1.0.96" }
 tracing = { version = "0.1.37" }
 opentelemetry = { version = "0.19.0" }
 # actix-web-opentelemetry = { git = "https://github.com/hedrosistemas/actix-web-opentelemetry.git", branch="main", features = ["metrics"] }

@@ -5,7 +5,6 @@ use actix_web::{
     web::{self, Data},
     App, HttpServer as ActixHttpServer,
 };
-// use actix_web_opentelemetry::{RequestMetricsBuilder, RequestTracing};
 use auth::jwt_manager::JwtManager;
 use configs::AppConfigs;
 use health_readiness::{

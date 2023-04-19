@@ -24,16 +24,20 @@ impl HealthChecker for PostgresHealthChecker {
     }
 
     async fn check(&self) -> Result<(), HealthReadinessError> {
-        let conn = self.pool.get().await.map_err(|e| {
-            error!(error = e.to_string(), "error to get conn in pool");
-            HealthReadinessError::PostgresError
-        })?;
+        let conn = match self.pool.get().await {
+            Err(err) => {
+                error!(error = err.to_string(), "error to get conn in pool");
+                Err(HealthReadinessError::PostgresError)
+            }
+            Ok(c) => Ok(c),
+        }?;
 
-        conn.query("SELECT 1;", &[]).await.map_err(|e| {
-            error!(error = e.to_string(), "error to ping the database");
-            HealthReadinessError::PostgresError
-        })?;
-
-        Ok(())
+        match conn.query("SELECT 1;", &[]).await {
+            Err(err) => {
+                error!(error = err.to_string(), "error to ping the database");
+                Err(HealthReadinessError::PostgresError)
+            }
+            _ => Ok(()),
+        }
     }
 }

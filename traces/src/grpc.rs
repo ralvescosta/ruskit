@@ -5,9 +5,15 @@ use opentelemetry::{
     Context,
 };
 
-pub struct ExMetadataMap<'a>(&'a tonic::metadata::MetadataMap);
+pub struct GRPCExtractor<'a>(&'a tonic::metadata::MetadataMap);
 
-impl<'a> Extractor for ExMetadataMap<'a> {
+impl<'a> GRPCExtractor<'a> {
+    pub fn new(m: &'a tonic::metadata::MetadataMap) -> GRPCExtractor<'a> {
+        GRPCExtractor(m)
+    }
+}
+
+impl<'a> Extractor for GRPCExtractor<'a> {
     /// Get a value for a key from the MetadataMap.  If the value can't be converted to &str, returns None
     fn get(&self, key: &str) -> Option<&str> {
         self.0.get(key).and_then(|metadata| metadata.to_str().ok())
@@ -25,9 +31,15 @@ impl<'a> Extractor for ExMetadataMap<'a> {
     }
 }
 
-pub struct InjMetadataMap<'a>(&'a mut tonic::metadata::MetadataMap);
+pub struct GRPCInjector<'a>(&'a mut tonic::metadata::MetadataMap);
 
-impl<'a> Injector for InjMetadataMap<'a> {
+impl<'a> GRPCInjector<'a> {
+    pub fn new(m: &'a mut tonic::metadata::MetadataMap) -> GRPCInjector<'a> {
+        GRPCInjector(m)
+    }
+}
+
+impl<'a> Injector for GRPCInjector<'a> {
     /// Set a key and value in the MetadataMap.  Does nothing if the key or value are not valid inputs
     fn set(&mut self, key: &str, value: String) {
         if let Ok(key) = tonic::metadata::MetadataKey::from_bytes(key.as_bytes()) {
@@ -39,15 +51,13 @@ impl<'a> Injector for InjMetadataMap<'a> {
 }
 
 pub fn span(meta: &tonic::metadata::MetadataMap, tracer: &BoxedTracer) -> (Context, BoxedSpan) {
-    let ctx = global::get_text_map_propagator(|prop| prop.extract(&ExMetadataMap(meta)));
-
-    let span = tracer.start_with_context("Processing reply", &ctx);
-
+    let ctx = global::get_text_map_propagator(|prop| prop.extract(&GRPCExtractor(meta)));
+    let span = tracer.start_with_context("gRPC", &ctx);
     (ctx, span)
 }
 
 pub fn inject(ctx: &Context, meta: &mut tonic::metadata::MetadataMap) {
     global::get_text_map_propagator(|propagator| {
-        propagator.inject_context(&ctx, &mut InjMetadataMap(meta))
+        propagator.inject_context(&ctx, &mut GRPCInjector(meta))
     });
 }

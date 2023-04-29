@@ -8,11 +8,12 @@ impl Payload {
     where
         T: serde::Serialize,
     {
-        let bytes = serde_json::to_vec(data).map_err(|e| {
-            error!(error = e.to_string(), "error parsing payload");
-            MQTTError::SerializePayloadError(e.to_string())
-        })?;
-
-        Ok(Payload(bytes.into_boxed_slice()))
+        match serde_json::to_vec(data) {
+            Err(err) => {
+                error!(error = err.to_string(), "error parsing payload");
+                Err(MQTTError::SerializePayloadError(err.to_string()))
+            }
+            Ok(bytes) => Ok(Payload(bytes.into_boxed_slice())),
+        }
     }
 }

@@ -5,7 +5,6 @@ use mockall::*;
 #[cfg(mock)]
 use mockall::*;
 use secretsmanager::Client;
-use serde_json::Value;
 use tracing::error;
 
 #[derive(Default)]
@@ -17,14 +16,8 @@ pub struct AWSSecretClientBuilder {
 #[cfg_attr(test, automock)]
 #[cfg_attr(mock, automock)]
 impl AWSSecretClientBuilder {
-    pub fn new() -> AWSSecretClientBuilder {
-        AWSSecretClientBuilder::default()
-    }
-
-    pub fn setup(mut self, env: String, secret_key: String) -> Self {
-        self.env = env;
-        self.secret_key = secret_key;
-        self
+    pub fn new(env: String, secret_key: String) -> AWSSecretClientBuilder {
+        AWSSecretClientBuilder { env, secret_key }
     }
 
     fn secret_id(&self) -> String {
@@ -37,29 +30,28 @@ impl AWSSecretClientBuilder {
 
         let id = self.secret_id();
 
-        let res = client
-            .get_secret_value()
-            .secret_id(&id)
-            .send()
-            .await
-            .map_err(|e| {
+        let output = match client.get_secret_value().secret_id(&id).send().await {
+            Err(err) => {
                 error!(
-                    error = e.to_string(),
+                    error = err.to_string(),
                     "failure send request to secret manager"
                 );
-                SecretsManagerError::RequestFailure {}
-            })?;
+                Err(SecretsManagerError::RequestFailure {})
+            }
+            Ok(s) => Ok(s),
+        }?;
 
-        let Some(string) = res.secret_string() else {
+        let Some(string) = output.secret_string() else {
             error!("secret was not found");
             return Err(SecretsManagerError::AwsSecretWasNotFound{});
         };
 
-        let v: Value = serde_json::from_str(string).map_err(|e| {
-            error!(error = e.to_string(), "error mapping secrets");
-            SecretsManagerError::InternalError {}
-        })?;
-
-        Ok(AWSSecretClient { secrets: v })
+        match serde_json::from_str(string) {
+            Err(err) => {
+                error!(error = err.to_string(), "error mapping secrets");
+                Err(SecretsManagerError::InternalError {})
+            }
+            Ok(v) => Ok(AWSSecretClient { secrets: v }),
+        }
     }
 }

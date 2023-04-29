@@ -21,6 +21,7 @@
     - [metrics](https://github.com/ralvescosta/ruskit/tree/main/metrics)
     - [migrator](https://github.com/ralvescosta/ruskit/tree/main/migrator)
     - [mqtt](https://github.com/ralvescosta/ruskit/tree/main/mqtt)
+    - [otel](https://github.com/ralvescosta/ruskit/tree/main/otel)
     - [secrets_manager](https://github.com/ralvescosta/ruskit/tree/main/secrets_manager)
     - [sql_pool](https://github.com/ralvescosta/ruskit/tree/main/sql_pool)
     - [traces](https://github.com/ralvescosta/ruskit/tree/main/traces)
@@ -58,5 +59,3 @@ Where rev = "v1.0.0" is the tag name.
   - [] Graceful shotdown for gRPC
   - [] Graceful shotdown for HTTP
 - [] Create custom middleware strategy to httpw crate
-- [x] Create OpenAPI render
-- [x] Improve Logger in httpw crate

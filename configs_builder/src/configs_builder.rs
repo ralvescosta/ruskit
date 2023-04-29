@@ -35,7 +35,6 @@ pub enum SecretClientKind {
 pub struct ConfigBuilder {
     secret_client_kind: SecretClientKind,
     client: Option<Arc<dyn SecretClient>>,
-    app_cfg: AppConfigs,
     mqtt: bool,
     amqp: bool,
     postgres: bool,
@@ -178,16 +177,16 @@ impl ConfigBuilder {
             SecretClientKind::AWSSecreteManager => {
                 let secret_key = env::var(SECRET_KEY_ENV_KEY).unwrap_or_default();
 
-                Ok(Arc::new(
-                    AWSSecretClientBuilder::new()
-                        .setup(self.app_cfg.env.to_string(), secret_key)
-                        .build()
-                        .await
-                        .map_err(|e| {
-                            error!(error = e.to_string(), "error to create aws secret client");
-                            ConfigsError::SecretLoadingError(e.to_string())
-                        })?,
-                ))
+                match AWSSecretClientBuilder::new(app_cfg.env.to_string(), secret_key)
+                    .build()
+                    .await
+                {
+                    Ok(c) => Ok(Arc::new(c)),
+                    Err(err) => {
+                        error!(error = err.to_string(), "error to create aws secret client");
+                        Err(ConfigsError::SecretLoadingError(err.to_string()))
+                    }
+                }
             }
             _ => Err(ConfigsError::SecretLoadingError(
                 "secret manager not provided".to_owned(),

@@ -70,19 +70,23 @@ impl MQTTClientBuilder {
             BrokerKind::AWSIoTCore => self.conn_opts_aws_iot_core(),
         };
 
-        let mut client = AsyncClient::new(crate_opts).map_err(|e| {
-            error!(error = e.to_string(), "error to create mqtt client");
-            MQTTError::ConnectionError {}
-        })?;
+        let mut client = match AsyncClient::new(crate_opts) {
+            Err(err) => {
+                error!(error = err.to_string(), "error to create mqtt client");
+                Err(MQTTError::ConnectionError {})
+            }
+            Ok(c) => Ok(c),
+        }?;
 
         let stream = client.get_stream(2048);
 
-        client.connect(conn_opts.clone()).await.map_err(|e| {
-            error!(error = e.to_string(), "error to create mqtt client");
-            MQTTError::ConnectionError {}
-        })?;
-
-        return Ok((Arc::new(client), stream));
+        match client.connect(conn_opts.clone()).await {
+            Err(err) => {
+                error!(error = err.to_string(), "error to create mqtt client");
+                Err(MQTTError::ConnectionError {})
+            }
+            _ => Ok((Arc::new(client), stream)),
+        }
     }
 
     fn crate_opts_self_hosted(&self) -> CreateOptions {

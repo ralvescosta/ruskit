@@ -92,10 +92,13 @@ impl MigratorDriver for SqliteDriver {
                 continue;
             }
 
-            let query: String = fs::read_to_string(dir_entry.path()).map_err(|e| {
-                error!(error = e.to_string(), "error to read migration file");
-                MigrationError::InternalError {}
-            })?;
+            let query: String = match fs::read_to_string(dir_entry.path()) {
+                Err(err) => {
+                     error!(error = e.to_string(), "error to read migration file");
+                    Err(MigrationError::InternalError {})
+                },
+                Ok(q) => Ok(q)
+            }?;
 
             match conn
                 .interact(move |conn| {
@@ -181,28 +184,32 @@ impl SqliteDriver {
     }
 
     async fn begin(&self, conn: &Object) -> Result<(), MigrationError> {
-        conn.interact(|conn| {
-            let mut statement = match conn.prepare("BEGIN TRANSACTION migrations;") {
-                Err(e) => {
-                    error!(error = e.to_string(), "error prepare begin transaction");
-                    Err(MigrationError::InternalError {})
-                }
-                Ok(s) => Ok(s),
-            }?;
+        match conn
+            .interact(|conn| {
+                let mut statement = match conn.prepare("BEGIN TRANSACTION migrations;") {
+                    Err(e) => {
+                        error!(error = e.to_string(), "error prepare begin transaction");
+                        Err(MigrationError::InternalError {})
+                    }
+                    Ok(s) => Ok(s),
+                }?;
 
-            match statement.execute([]) {
-                Err(e) => {
-                    error!(error = e.to_string(), "error query begin transaction");
-                    Err(MigrationError::InternalError {})
+                match statement.execute([]) {
+                    Err(e) => {
+                        error!(error = e.to_string(), "error query begin transaction");
+                        Err(MigrationError::InternalError {})
+                    }
+                    _ => Ok(()),
                 }
-                _ => Ok(()),
+            })
+            .await
+        {
+            Err(err) => {
+                error!(error = err.to_string(), "unsuspected error");
+                Err(MigrationError::InternalError {})
             }
-        })
-        .await
-        .map_err(|e| {
-            error!(error = e.to_string(), "unsuspected error");
-            MigrationError::InternalError {}
-        })?
+            _ => Ok(()),
+        }
     }
 
     async fn commit(&self, conn: &Object) -> Result<(), MigrationError> {

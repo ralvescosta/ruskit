@@ -5,7 +5,6 @@ use actix_web::{
     web::{self, Data},
     App, HttpServer as ActixHttpServer,
 };
-// use actix_web_opentelemetry::{RequestMetricsBuilder, RequestTracing};
 use auth::jwt_manager::JwtManager;
 use configs::AppConfigs;
 use health_readiness::{
@@ -79,6 +78,7 @@ impl HTTPServer {
                     .wrap(middlewares::cors::config())
                     .wrap(HTTPOtelTracing::new())
                     .wrap(HTTPOtelMetrics::new())
+                    .app_data(middlewares::deserializer::handler())
                     .app_data(Data::<Arc<dyn HealthReadinessService>>::new(
                         health_check_service.clone(),
                     ));

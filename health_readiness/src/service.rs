@@ -55,10 +55,13 @@ impl HealthReadinessService for HealthReadinessServiceImpl {
 
     async fn validate(&self) -> Result<(), HealthReadinessError> {
         for checker in self.checkers.clone() {
-            checker.check().await.map_err(|e| {
-                error!(error = e.to_string(), "{:?}", checker.name());
-                e
-            })?;
+            match checker.check().await {
+                Err(err) => {
+                    error!(error = err.to_string(), "{:?}", checker.name());
+                    Err(err)
+                }
+                _ => Ok(()),
+            }?;
         }
 
         Ok(())

@@ -16,6 +16,9 @@ use std::{
 use tokio::sync::Mutex;
 use tracing::error;
 
+// 18000 seconds = 5 hours
+const SECONDS_TO_ROTATE_JWK: u64 = 18000;
+
 pub struct Auth0JwtManager {
     jwks: Mutex<Option<JWKS>>,
     jwks_retrieved_at: SystemTime,
@@ -64,8 +67,10 @@ impl JwtManager for Auth0JwtManager {
         }?;
 
         let validations = vec![
-            Validation::Issuer(self.cfg.issuer.clone()),
+            Validation::NotExpired,
             Validation::SubjectPresent,
+            Validation::Issuer(self.cfg.issuer.clone()),
+            Validation::Audience(self.cfg.audience.clone()),
         ];
 
         let jwk = match jwks.find(&kid) {
@@ -129,7 +134,10 @@ impl Auth0JwtManager {
             }
         }?;
 
-        if duration.cmp(&Duration::new(3600, 0)).is_ge() {
+        if duration
+            .cmp(&Duration::new(SECONDS_TO_ROTATE_JWK, 0))
+            .is_ge()
+        {
             let new = self.get_jwks(span).await?;
             *jwks = Some(new.clone());
             return Ok(new);

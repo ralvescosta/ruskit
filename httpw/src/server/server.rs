@@ -78,6 +78,7 @@ impl HTTPServer {
                     .wrap(middlewares::cors::config())
                     .wrap(HTTPOtelTracing::new())
                     .wrap(HTTPOtelMetrics::new())
+                    .app_data(middlewares::deserializer::handler())
                     .app_data(Data::<Arc<dyn HealthReadinessService>>::new(
                         health_check_service.clone(),
                     ));

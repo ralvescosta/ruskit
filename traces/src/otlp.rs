@@ -59,22 +59,25 @@ where
         .with_timeout(Duration::from_secs(cfg.otlp.export_timeout))
         .with_metadata(map);
 
-    opentelemetry_otlp::new_pipeline()
+    match opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_trace_config(config)
         .with_exporter(exporter)
         .install_batch(runtime::Tokio)
-        .map_err(|e| {
-            error!(error = e.to_string(), "err installing otlp tracing");
-            e
-        })?;
+    {
+        Err(err) => {
+            error!(error = err.to_string(), "err installing otlp tracing");
+            Err(err.into())
+        }
+        _ => {
+            global::set_text_map_propagator(TextMapCompositePropagator::new(vec![
+                Box::new(TraceContextPropagator::new()),
+                Box::new(BaggagePropagator::new()),
+            ]));
 
-    global::set_text_map_propagator(TextMapCompositePropagator::new(vec![
-        Box::new(TraceContextPropagator::new()),
-        Box::new(BaggagePropagator::new()),
-    ]));
+            debug!("traces::setup tracer installed");
 
-    debug!("traces::setup tracer installed");
-
-    Ok(())
+            Ok(())
+        }
+    }
 }

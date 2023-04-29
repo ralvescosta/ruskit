@@ -4,6 +4,7 @@ use std::sync::Mutex;
 pub mod extractors;
 pub mod handlers;
 pub mod middlewares;
+pub mod validate;
 pub mod viewmodels;
 
 pub struct CustomServiceConfigure {

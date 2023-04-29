@@ -139,7 +139,7 @@ impl MQTTDispatcher {
 
     pub async fn consume_blocking(&mut self) -> Result<(), MQTTError> {
         for topic in self.topics.clone() {
-            self.conn.subscribe(topic, 1);
+            self.conn.subscribe(topic, 2);
         }
 
         while let Some(delivery) = self.stream.next().await {

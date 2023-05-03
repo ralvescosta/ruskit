@@ -38,16 +38,14 @@ pub trait Topology<'tp> {
 ///
 ///
 /// ```rust,no_run
-/// use ruskit::{
-///     amqp::{
-///         channel::new_amqp_channel,
-///         exchange::ExchangeDefinition,
-///         queue::QueueDefinition,
-///         topology::AmqpTopology,
-///     },
-///     configs::Empty,
-///     configs_builder::ConfigsBuilder
+/// use amqp::{
+///     channel::new_amqp_channel,
+///     exchange::ExchangeDefinition,
+///     queue::QueueDefinition,
+///     topology::AmqpTopology,
 /// };
+/// use configs::Empty;
+/// use configs_builder::ConfigsBuilder;
 /// use tracing::info;
 ///
 /// #[tokio::main]

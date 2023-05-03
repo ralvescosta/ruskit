@@ -43,15 +43,13 @@ pub struct DispatcherDefinition {
 ///
 ///
 /// ```rust,no_run
-/// use ruskit::{
-///     amqp::{
-///         dispatcher::{AmqpDispatcher, Dispatcher, ConsumerHandler, DispatcherDefinition},
-///         queue::QueueDefinition,
-///         channel::new_amqp_channel
-///     },
-///     configs::Empty,
-///     configs_builder::ConfigsBuilder
+/// use amqp::{
+///     dispatcher::{AmqpDispatcher, Dispatcher, ConsumerHandler, DispatcherDefinition},
+///     queue::QueueDefinition,
+///     channel::new_amqp_channel
 /// };
+/// use configs::Empty;
+/// use configs_builder::ConfigsBuilder
 /// use async_trait::async_trait;
 /// use std::sync::Arc;
 /// use tokio::task::JoinError;
@@ -121,14 +119,12 @@ pub trait Dispatcher: Send + Sync {
 ///
 ///
 /// ```rust,no_run
-/// use ruskit::{
-///     amqp::{
-///         dispatcher::{AmqpDispatcher},
-///         channel::new_amqp_channel
-///     },
-///     configs::Empty,
-///     configs_builder::ConfigsBuilder
+/// use amqp::{
+///     dispatcher::AmqpDispatcher,
+///     channel::new_amqp_channel
 /// };
+/// use configs::Empty;
+/// use configs_builder::ConfigsBuilder
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), AmqpError> {

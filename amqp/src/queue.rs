@@ -3,7 +3,7 @@
 /// # Examples
 ///
 /// ```rust,no_run
-/// use ruskit::amqp::queue::QueueDefinition;
+/// use amqp::queue::QueueDefinition;
 ///
 /// fn main() {
 ///     // Define a new queue named "example_queue" durable with a TTL of 10 seconds.
@@ -31,7 +31,7 @@ impl QueueDefinition {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use ruskit::amqp::queue::QueueDefinition;
+    /// use amqp::queue::QueueDefinition;
     ///
     /// fn main() {
     ///     // Define a new queue named "example_queue".
@@ -59,7 +59,7 @@ impl QueueDefinition {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use ruskit::amqp::queue::QueueDefinition;
+    /// use amqp::queue::QueueDefinition;
     ///
     /// fn main() {
     ///     // Define a new durable queue named "example_queue".
@@ -76,7 +76,7 @@ impl QueueDefinition {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use ruskit::amqp::queue::QueueDefinition;
+    /// use amqp::queue::QueueDefinition;
     ///
     /// fn main() {
     ///     // Define a new queue named "example_queue" that will be deleted automatically.
@@ -93,7 +93,7 @@ impl QueueDefinition {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use ruskit::amqp::queue::QueueDefinition;
+    /// use amqp::queue::QueueDefinition;
     ///
     /// fn main() {
     ///     // Define a new exclusive queue named "example_queue".
@@ -110,7 +110,7 @@ impl QueueDefinition {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use ruskit::amqp::queue::QueueDefinition;
+    /// use amqp::queue::QueueDefinition;
     ///
     /// fn main() {
     ///     // Define a new queue named "example_queue" with a TTL of 10 seconds.
@@ -127,7 +127,7 @@ impl QueueDefinition {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use ruskit::amqp::queue::QueueDefinition;
+    /// use amqp::queue::QueueDefinition;
     ///
     /// fn main() {
     ///     // Add a DLQ queue to the queue named "example_queue".
@@ -144,7 +144,7 @@ impl QueueDefinition {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use ruskit::amqp::queue::QueueDefinition;
+    /// use amqp::queue::QueueDefinition;
     ///
     /// fn main() {
     ///     // Define a new queue named "example_queue" with a TTL retry of 10 seconds and retry count of 3 times.
@@ -169,7 +169,7 @@ impl QueueDefinition {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use ruskit::amqp::queue::QueueBinding;
+/// use amqp::queue::QueueBinding;
 ///
 /// fn main() {
 ///     // Create a new binding with the default routing key.

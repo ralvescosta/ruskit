@@ -53,7 +53,7 @@ impl TryInto<lapin::ExchangeKind> for ExchangeKind {
 ///     message::AMQPValue,
 ///     types::{ExchangeDefinition, ExchangeKind, ShortString, LongString},
 /// };
-/// use ruskit::amqp::exchange::ExchangeDefinition;
+/// use amqp::exchange::ExchangeDefinition;
 ///
 /// fn main() {
 ///     // Create a new exchange definition with the name "my_exchange".

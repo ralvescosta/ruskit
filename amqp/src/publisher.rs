@@ -59,14 +59,12 @@ pub trait Publisher: Send + Sync {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use ruskit::{
-    ///     configs::Empty,
-    ///     configs_builder::ConfigsBuilder,
-    ///     amqp::{
-    ///         channel:new_amqp_channel,
-    ///         publisher::{AmqpPublisher, Payload}
-    ///     }
+    /// use amqp::{
+    ///     channel:new_amqp_channel,
+    ///     publisher::{AmqpPublisher, Payload}
     /// };
+    /// use configs::Empty;
+    /// use configs_builder::ConfigsBuilder;
     /// use opentelemetry::Context;
     ///
     /// #[tokio::main]
@@ -109,14 +107,12 @@ pub trait Publisher: Send + Sync {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use ruskit::{
-    ///     configs::Empty,
-    ///     configs_builder::ConfigsBuilder,
-    ///     amqp::{
-    ///         channel:new_amqp_channel,
-    ///         publisher::{AmqpPublisher, Payload}
-    ///     }
+    /// use amqp::{
+    ///     channel:new_amqp_channel,
+    ///     publisher::{AmqpPublisher, Payload}
     /// };
+    /// use configs::Empty;
+    /// use configs_builder::ConfigsBuilder;
     /// use opentelemetry::Context;
     ///
     /// #[tokio::main]
@@ -159,14 +155,12 @@ pub trait Publisher: Send + Sync {
 /// Create a new `AmqpPublisher` and use it to publish a message to an exchange:
 ///
 /// ```rust,no_run
-/// use ruskit::{
-///     configs::Empty,
-///     configs_builder::ConfigsBuilder,
-///     amqp::{
-///         channel:new_amqp_channel,
-///         publisher::{AmqpPublisher, Payload}
-///     }
+/// use amqp::{
+///     channel:new_amqp_channel,
+///     publisher::{AmqpPublisher, Payload}
 /// };
+/// use configs::Empty;
+/// use configs_builder::ConfigsBuilder;
 /// use opentelemetry::Context;
 ///
 /// #[tokio::main]

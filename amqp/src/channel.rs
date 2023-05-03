@@ -22,11 +22,9 @@ use tracing::{debug, error};
 /// # Example
 ///
 /// ```no_run
-/// use ruskit::{
-///     amqp::{errors::AmqpError, channel::new_amqp_channel},
-///     configs::Empty,
-///     configs_builder::ConfigsBuilder
-/// };
+/// use amqp::{errors::AmqpError, channel::new_amqp_channel};
+/// use configs::Empty;
+/// use configs_builder::ConfigsBuilder;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), AmqpError> {

@@ -19,7 +19,7 @@ use tracing::error;
 /// use std::collections::BTreeMap;
 /// use lapin::types::{AMQPValue, ShortString};
 /// use opentelemetry::{api::{TraceContextExt, Injector}, global, Context};
-/// use ruskit::amqp::otel::AmqpTracePropagator;
+/// use amqp::otel::AmqpTracePropagator;
 ///
 /// fn main() {
 ///     // Create an AMQP message and its headers.

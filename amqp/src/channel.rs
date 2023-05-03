@@ -4,6 +4,38 @@ use lapin::{types::LongString, Channel, Connection, ConnectionProperties};
 use std::sync::Arc;
 use tracing::{debug, error};
 
+/// Creates a new AMQP connection and channel.
+///
+/// # Arguments
+///
+/// * `cfg`: A reference to the `Configs` struct containing configurations loaded from the .env file.
+///
+/// # Generic type
+///
+/// * `T`: A type that implements the `DynamicConfigs` trait.
+///
+/// # Returns
+///
+/// Returns a `Result` containing a tuple of two `Arc` references: one to the AMQP connection and one to the channel.
+/// If an error occurs during the connection or channel creation, an `AmqpError` is returned.
+///
+/// # Example
+///
+/// ```no_run
+/// use amqp::{errors::AmqpError, channel::new_amqp_channel};
+/// use configs::Empty;
+/// use configs_builder::ConfigsBuilder;
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), AmqpError> {
+///     // Read configs from .env file
+///     let configs = ConfigsBuilder::new().build::<Empty>().await?
+///
+///     // Create a new connection and channel.
+///     let (conn, channel) = new_amqp_channel(&configs).await?;
+/// }
+/// ```
+///
 pub async fn new_amqp_channel<T>(
     cfg: &Configs<T>,
 ) -> Result<(Arc<Connection>, Arc<Channel>), AmqpError>

@@ -76,13 +76,7 @@ pub struct DispatcherDefinition {
 ///     let (_conn, channel) = new_amqp_channel(&configs).await?;
 ///
 ///     // Define a queue.
-///     let queue_def = QueueDefinition {
-///         name: "my_queue".into(),
-///         durable: true,
-///         exclusive: false,
-///         auto_delete: false,
-///         arguments: None,
-///     };
+///     let queue_def = QueueDefinition::new("queue").durable();
 ///
 ///     // Create a new dispatcher.
 ///     let dispatcher = AmqpDispatcher::new(channel);

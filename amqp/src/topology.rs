@@ -19,6 +19,7 @@ pub const AMQP_HEADERS_DEAD_LETTER_EXCHANGE: &str = "x-dead-letter-exchange";
 pub const AMQP_HEADERS_DEAD_LETTER_ROUTING_KEY: &str = "x-dead-letter-routing-key";
 pub const AMQP_HEADERS_MESSAGE_TTL: &str = "x-message-ttl";
 
+/// Trait to define a Messaging Topology.
 #[async_trait]
 pub trait Topology<'tp> {
     fn exchange(self, def: &'tp ExchangeDefinition) -> Self;
@@ -28,6 +29,64 @@ pub trait Topology<'tp> {
     async fn install(&self) -> Result<(), AmqpError>;
 }
 
+/// Struct to implement a RabbitMQ Topology.
+///
+/// A `Topology` is an abstraction over the RabbitMQ structure which define all the RabbitMQ elements
+/// that our application need to execute properly. In the Topology we declare our exchanges, queues and bindings
+///
+/// # Example:
+///
+///
+/// ```rust,no_run
+/// use ruskit::{
+///     amqp::{
+///         channel::new_amqp_channel,
+///         exchange::ExchangeDefinition,
+///         queue::QueueDefinition,
+///         topology::AmqpTopology,
+///     },
+///     configs::Empty,
+///     configs_builder::ConfigsBuilder
+/// };
+/// use tracing::info;
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), AmqpError> {
+///     // Read configs from .env file
+///     let configs = ConfigsBuilder::new().build::<Empty>().await?
+///
+///     // Create a new channel.
+///     let (_conn, channel) = new_amqp_channel(&configs).await?;
+///
+///     // Define a queue.
+///     let queue_def = QueueDefinition::new("queue")
+///        .with_dlq()
+///        .with_retry(18000, 3)
+///        .durable();
+///     
+///     // Define a exchange
+///     let exchange_def = ExchangeDefinition::new("exchange")
+///         .durable()
+///         .kind(&amqp::exchange::ExchangeKind::Direct);
+///
+///     // Define a Binding
+///     let binding_def = QueueBinding::new("queue")
+///         .exchange("exchange")
+///         .routing_key("routing_key")
+///
+///     // Create the Topology
+///     AmqpTopology::new(channel.clone())
+///         .queue(&queue_def)
+///         .exchange(&exchange_def)
+///         .queue_binding(&binding_def)
+///         .install()
+///         .await?
+///
+///     info!("shutdown complete");
+///
+///     Ok(())
+/// }
+/// ```
 pub struct AmqpTopology<'tp> {
     channel: Arc<Channel>,
     pub(crate) queues: HashMap<&'tp str, &'tp QueueDefinition>,

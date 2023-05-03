@@ -4,19 +4,32 @@ use std::collections::BTreeMap;
 
 pub const AMQP_HEADERS_DELAYED_EXCHANGE_TYPE: &str = "x-delayed-type";
 
+/// Enumeration of possible AMQP exchange kinds.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum ExchangeKind {
+    /// A direct exchange.
     #[default]
     Direct,
+    /// A fanout exchange.
     Fanout,
+    /// A topic exchange.
     Topic,
+    /// A headers exchange.
     Headers,
+    /// A custom exchange that enables message delay.
     XMessageDelayed,
 }
 
 impl TryInto<lapin::ExchangeKind> for ExchangeKind {
     type Error = AmqpError;
 
+    /// Attempts to convert this `ExchangeKind` to a `lapin::ExchangeKind`.
+    ///
+    /// # Errors
+    ///
+    /// If the conversion fails, an `AmqpError` is returned. The error variants are:
+    ///
+    /// * `DeclareExchangeError` - Failure to declare the exchange.
     fn try_into(self) -> Result<lapin::ExchangeKind, AmqpError> {
         match self {
             ExchangeKind::Direct => Ok(lapin::ExchangeKind::Direct),
@@ -30,6 +43,36 @@ impl TryInto<lapin::ExchangeKind> for ExchangeKind {
     }
 }
 
+/// A struct representing an AMQP exchange definition.
+///
+/// # Example
+///
+/// ```no_run
+/// use std::collections::BTreeMap;
+/// use lapin::{
+///     message::AMQPValue,
+///     types::{ExchangeDefinition, ExchangeKind, ShortString, LongString},
+/// };
+/// use ruskit::amqp::exchange::ExchangeDefinition;
+///
+/// fn main() {
+///     // Create a new exchange definition with the name "my_exchange".
+///     let exchange_def = ExchangeDefinition::new("my_exchange")
+///         .durable()
+///         .direct();
+///
+///     // Add a parameter to the exchange definition.
+///     let mut params = BTreeMap::new();
+///     params.insert(
+///         ShortString::from("my_param"),
+///         AMQPValue::LongString(LongString::from("my_value")),
+///     );
+///     let exchange_def_with_params = exchange_def.params(params);
+///
+///     // Print the exchange definition.
+///     println!("{:?}", exchange_def_with_params);
+/// }
+/// ```
 #[derive(Debug, Clone)]
 pub struct ExchangeDefinition<'ex> {
     pub(crate) name: &'ex str,

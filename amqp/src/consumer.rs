@@ -16,6 +16,27 @@ use tracing::{debug, error, warn};
 pub const AMQP_HEADERS_X_DEATH: &str = "x-death";
 pub const AMQP_HEADERS_COUNT: &str = "count";
 
+/// Consume a message from RabbitMQ and process it.
+///
+/// This function takes a `BoxedTracer` for tracing purposes, a `Delivery` message to process,
+/// a HashMap of `DispatcherDefinition` objects to find the correct handler for the message type,
+/// and an `Arc<Channel>` for communicating with RabbitMQ.
+///
+/// It extracts the message type and count from the message header properties, creates a new
+/// OpenTelemetry span with the `BoxedTracer`, and logs a debug message with the message type.
+///
+/// If the message type is not supported, it removes the message from the queue, logs an error
+/// with the span, sets the span status to error, and returns an `AmqpError::InternalError`.
+///
+/// If the message type is supported, it executes the corresponding handler and logs a debug
+/// message if successful. If the handler fails and there is no retry configured, it acks the
+/// message and removes it from the queue. If the handler fails and there is a retry configured,
+/// it nacks the message and sends it to the retry queue if the retry count has not reached the
+/// maximum. If the retry count has reached the maximum, it sends the message to the dead-letter
+/// queue.
+///
+/// Returns `Ok(())` if the message was processed successfully or an `AmqpError` if there was
+/// an error during processing.
 pub(crate) async fn consume<'c>(
     tracer: &BoxedTracer,
     delivery: &Delivery,
@@ -186,6 +207,16 @@ pub(crate) async fn consume<'c>(
     }
 }
 
+/// Extracts the message type and retry count from AMQP message properties.
+///
+/// # Arguments
+///
+/// * `props` - A reference to the `AMQPProperties` object containing message properties.
+///
+/// # Returns
+///
+/// A tuple containing the message type (as a `String`) and retry count (as an `i64`).
+///
 fn extract_header_properties(props: &AMQPProperties) -> (String, i64) {
     let headers = match props.headers() {
         Some(val) => val.to_owned(),

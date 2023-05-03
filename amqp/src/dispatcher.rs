@@ -1,76 +1,3 @@
-//! This module contains a RabbitMQ message dispatcher.
-//!
-//! A `Dispatcher` is an abstraction over the RabbitMQ message broker, which allows
-//! messages to be consumed from a queue and dispatched to registered handlers. Each handler is
-//! responsible for processing messages of a specific type, which is determined by the message
-//! type string representation. The dispatcher consumes messages from the registered queues and
-//! dispatches them to the corresponding handlers based on the message type string.
-//!
-//! Example:
-//!
-//! ```no_run
-//! use ruskit::{
-//!     amqp::{
-//!         dispatcher::{AmqpDispatcher, Dispatcher, ConsumerHandler, DispatcherDefinition},
-//!         queue::QueueDefinition,
-//!         channel::new_amqp_channel
-//!     },
-//!     configs::Empty,
-//!     configs_builder::ConfigsBuilder
-//! };
-//! use async_trait::async_trait;
-//! use std::sync::Arc;
-//! use tokio::task::JoinError;
-//! use tracing::{error, info};
-//!
-//! struct MyHandler {}
-//!
-//! #[async_trait]
-//! impl ConsumerHandler for MyHandler {
-//!     async fn exec(&self, _ctx: &Context, data: &[u8]) -> Result<(), AmqpError> {
-//!         // Handle message data here.
-//!         Ok(())
-//!     }
-//! }
-//!
-//! #[tokio::main]
-//! async fn main() -> Result<(), AmqpError> {
-//!     // Read configs from .env file
-//!     let configs = ConfigsBuilder::new().build::<Empty>().await?
-//!
-//!     // Create a new channel.
-//!     let (_conn, channel) = new_amqp_channel(&configs).await?;
-//!
-//!     // Define a queue.
-//!     let queue_def = QueueDefinition {
-//!         name: "my_queue".into(),
-//!         durable: true,
-//!         exclusive: false,
-//!         auto_delete: false,
-//!         arguments: None,
-//!     };
-//!
-//!     // Create a new dispatcher.
-//!     let dispatcher = AmqpDispatcher::new(channel);
-//!
-//!     // Register a handler for the "my_message" message type.
-//!     let dispatcher = dispatcher.register(&queue_def, &"my_message", Arc::new(MyHandler {})).await;
-//!
-//!     // Consume messages.
-//!     let results = dispatcher.consume_blocking().await;
-//!
-//!     // Handle any join errors.
-//!     for result in results {
-//!         if let Err(err) = result {
-//!             error!(error = err.to_string(), "error joining task");
-//!         }
-//!     }
-//!
-//!     info!("shutdown complete");
-//!
-//!     Ok(())
-//! }
-//! ```
 use crate::{consumer::consume, errors::AmqpError, queue::QueueDefinition};
 use async_trait::async_trait;
 use futures_util::{future::join_all, StreamExt};
@@ -105,6 +32,79 @@ pub struct DispatcherDefinition {
 }
 
 /// Trait to define a dispatcher for the AMQP messages.
+///
+/// A `Dispatcher` is an abstraction over the RabbitMQ message broker, which allows
+/// messages to be consumed from a queue and dispatched to registered handlers. Each handler is
+/// responsible for processing messages of a specific type, which is determined by the message
+/// type string representation. The dispatcher consumes messages from the registered queues and
+/// dispatches them to the corresponding handlers based on the message type string.
+///
+/// # Example:
+///
+///
+/// ```rust,no_run
+/// use ruskit::{
+///     amqp::{
+///         dispatcher::{AmqpDispatcher, Dispatcher, ConsumerHandler, DispatcherDefinition},
+///         queue::QueueDefinition,
+///         channel::new_amqp_channel
+///     },
+///     configs::Empty,
+///     configs_builder::ConfigsBuilder
+/// };
+/// use async_trait::async_trait;
+/// use std::sync::Arc;
+/// use tokio::task::JoinError;
+/// use tracing::{error, info};
+///
+/// struct MyHandler {}
+///
+/// #[async_trait]
+/// impl ConsumerHandler for MyHandler {
+///     async fn exec(&self, _ctx: &Context, data: &[u8]) -> Result<(), AmqpError> {
+///         // Handle message data here.
+///         Ok(())
+///     }
+/// }
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), AmqpError> {
+///     // Read configs from .env file
+///     let configs = ConfigsBuilder::new().build::<Empty>().await?
+///
+///     // Create a new channel.
+///     let (_conn, channel) = new_amqp_channel(&configs).await?;
+///
+///     // Define a queue.
+///     let queue_def = QueueDefinition {
+///         name: "my_queue".into(),
+///         durable: true,
+///         exclusive: false,
+///         auto_delete: false,
+///         arguments: None,
+///     };
+///
+///     // Create a new dispatcher.
+///     let dispatcher = AmqpDispatcher::new(channel);
+///
+///     // Register a handler for the "my_message" message type.
+///     let dispatcher = dispatcher.register(&queue_def, &"my_message", Arc::new(MyHandler {})).await;
+///
+///     // Consume messages.
+///     let results = dispatcher.consume_blocking().await;
+///
+///     // Handle any join errors.
+///     for result in results {
+///         if let Err(err) = result {
+///             error!(error = err.to_string(), "error joining task");
+///         }
+///     }
+///
+///     info!("shutdown complete");
+///
+///     Ok(())
+/// }
+/// ```
 #[async_trait]
 pub trait Dispatcher: Send + Sync {
     /// Method to register a message handler for a queue.
@@ -122,6 +122,34 @@ pub trait Dispatcher: Send + Sync {
 }
 
 /// Struct to define an AMQP dispatcher.
+///
+/// # Example:
+///
+///
+/// ```rust,no_run
+/// use ruskit::{
+///     amqp::{
+///         dispatcher::{AmqpDispatcher},
+///         channel::new_amqp_channel
+///     },
+///     configs::Empty,
+///     configs_builder::ConfigsBuilder
+/// };
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), AmqpError> {
+///     // Read configs from .env file
+///     let configs = ConfigsBuilder::new().build::<Empty>().await?
+///
+///     // Create a new channel.
+///     let (_conn, channel) = new_amqp_channel(&configs).await?;
+///
+///     // Create a new dispatcher.
+///     let dispatcher = AmqpDispatcher::new(channel);
+///
+///     Ok(())
+/// }
+/// ```
 pub struct AmqpDispatcher {
     /// Channel to interact with AMQP.
     channel: Arc<Channel>,

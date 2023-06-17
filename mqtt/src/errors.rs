@@ -8,6 +8,9 @@ pub enum MQTTError {
     #[error("mqtt connection error")]
     ConnectionError,
 
+    #[error("ssl transport must need the CA cert path")]
+    SSLMustContainCACertError,
+
     #[error("mqtt broker connection lost")]
     ConnectionLostError,
 

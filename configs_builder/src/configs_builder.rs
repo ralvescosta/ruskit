@@ -7,13 +7,13 @@ use crate::{
         AWS_IAM_SECRET_ACCESS_KEY, DEV_ENV_FILE_NAME, DYNAMO_ENDPOINT_ENV_KEY,
         DYNAMO_REGION_ENV_KEY, DYNAMO_TABLE_ENV_KEY, ENABLE_HEALTH_READINESS_ENV_KEY,
         ENABLE_METRICS_ENV_KEY, ENABLE_TRACES_ENV_KEY, HEALTH_READINESS_PORT_ENV_KEY,
-        HOST_NAME_ENV_KEY, LOCAL_ENV_FILE_NAME, LOG_LEVEL_ENV_KEY, MQTT_HOST_ENV_KEY,
-        MQTT_PASSWORD_ENV_KEY, MQTT_PORT_ENV_KEY, MQTT_USER_ENV_KEY, OTLP_ACCESS_KEY_ENV_KEY,
-        OTLP_EXPORT_RATE_BASE_ENV_KEY, OTLP_EXPORT_TIMEOUT_ENV_KEY, OTLP_HOST_ENV_KEY,
-        OTLP_SERVICE_TYPE_ENV_KEY, POSTGRES_DB_ENV_KEY, POSTGRES_HOST_ENV_KEY,
-        POSTGRES_PASSWORD_ENV_KEY, POSTGRES_PORT_ENV_KEY, POSTGRES_USER_ENV_KEY, PROD_FILE_NAME,
-        SECRET_KEY_ENV_KEY, SECRET_PREFIX, SQLITE_FILE_NAME_ENV_KEY, STAGING_FILE_NAME,
-        USE_SECRET_MANAGER_ENV_KEY,
+        HOST_NAME_ENV_KEY, LOCAL_ENV_FILE_NAME, LOG_LEVEL_ENV_KEY, MQTT_CA_CERT_PATH_ENV_KEY,
+        MQTT_HOST_ENV_KEY, MQTT_PASSWORD_ENV_KEY, MQTT_PORT_ENV_KEY, MQTT_TRANSPORT_ENV_KEY,
+        MQTT_USER_ENV_KEY, OTLP_ACCESS_KEY_ENV_KEY, OTLP_EXPORT_RATE_BASE_ENV_KEY,
+        OTLP_EXPORT_TIMEOUT_ENV_KEY, OTLP_HOST_ENV_KEY, OTLP_SERVICE_TYPE_ENV_KEY,
+        POSTGRES_DB_ENV_KEY, POSTGRES_HOST_ENV_KEY, POSTGRES_PASSWORD_ENV_KEY,
+        POSTGRES_PORT_ENV_KEY, POSTGRES_USER_ENV_KEY, PROD_FILE_NAME, SECRET_KEY_ENV_KEY,
+        SECRET_PREFIX, SQLITE_FILE_NAME_ENV_KEY, STAGING_FILE_NAME, USE_SECRET_MANAGER_ENV_KEY,
     },
     errors::ConfigsError,
 };
@@ -278,6 +278,10 @@ impl ConfigBuilder {
                 cfg.mqtt.host = self.get_from_secret(value.into(), "localhost".to_owned());
                 true
             }
+            MQTT_TRANSPORT_ENV_KEY if self.mqtt => {
+                cfg.mqtt.transport = self.get_from_secret(value.into(), "tcp".to_owned());
+                true
+            }
             MQTT_PORT_ENV_KEY if self.mqtt => {
                 cfg.mqtt.port = self.get_from_secret(value.into(), 1883);
                 true
@@ -288,6 +292,10 @@ impl ConfigBuilder {
             }
             MQTT_PASSWORD_ENV_KEY if self.mqtt => {
                 cfg.mqtt.password = self.get_from_secret(value.into(), "password".to_owned());
+                true
+            }
+            MQTT_CA_CERT_PATH_ENV_KEY if self.mqtt => {
+                cfg.mqtt.root_ca_path = self.get_from_secret(value.into(), "".to_owned());
                 true
             }
             _ => false,

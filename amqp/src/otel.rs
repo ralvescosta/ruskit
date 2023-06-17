@@ -11,30 +11,7 @@ use opentelemetry::{
 use std::{borrow::Cow, collections::BTreeMap};
 use tracing::error;
 
-/// Injects trace context into AMQP headers.
-///
-/// # Example
-///
-/// ```no_run
-/// use std::collections::BTreeMap;
-/// use lapin::types::{AMQPValue, ShortString};
-/// use opentelemetry::{api::{TraceContextExt, Injector}, global, Context};
-/// use amqp::otel::AmqpTracePropagator;
-///
-/// fn main() {
-///     // Create an AMQP message and its headers.
-///     let mut headers = BTreeMap::new();
-///     headers.insert("content-type".into(), AMQPValue::LongString("text/plain".into()));
-///
-///     let ctx = Context::new();
-///
-///     // Inject trace context into AMQP headers.
-///     global::get_text_map_propagator(|propagator| {
-///       propagator.inject_context(&ctx, &mut AmqpTracePropagator::new(&mut headers))
-///     })
-/// }
-/// ```
-pub struct AmqpTracePropagator<'a> {
+pub(crate) struct AmqpTracePropagator<'a> {
     headers: &'a mut BTreeMap<ShortString, AMQPValue>,
 }
 

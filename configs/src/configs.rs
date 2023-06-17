@@ -14,9 +14,6 @@ pub struct Configs<T: DynamicConfigs> {
     pub health_readiness: HealthReadinessConfigs,
 
     pub dynamic: T,
-
-    ///Default: 15000
-    pub multiple_message_timer: i32,
 }
 
 pub trait DynamicConfigs: Default {
@@ -75,6 +72,8 @@ pub struct Auth0Configs {
 pub struct MQTTConfigs {
     ///Default: localhost
     pub host: String,
+    //Default: tcp
+    pub transport: String,
     ///Default: 1883
     pub port: u64,
     ///Default: mqtt_user

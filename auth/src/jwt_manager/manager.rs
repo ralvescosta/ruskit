@@ -1,8 +1,12 @@
 use async_trait::async_trait;
 use opentelemetry::Context;
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize)]
+pub struct Session(pub Map<String, Value>);
+
+#[derive(Default, Serialize, Deserialize)]
 pub struct TokenClaims {
     pub iss: String,
     pub sub: String,
@@ -10,6 +14,7 @@ pub struct TokenClaims {
     pub iat: u64,
     pub exp: u64,
     pub scope: String,
+    pub session: Session,
 }
 
 #[async_trait]

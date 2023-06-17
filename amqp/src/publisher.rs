@@ -47,45 +47,6 @@ impl Payload {
 #[cfg_attr(feature = "mocks", automock)]
 #[async_trait]
 pub trait Publisher: Send + Sync {
-    /// Publishes a message to a target.
-    ///
-    /// # Arguments
-    ///
-    /// * `ctx` - The current tracing context.
-    /// * `target` - The name of the target queue or exchange.
-    /// * `payload` - The payload of the message.
-    /// * `params` - The additional parameters for the message (e.g., message headers).
-    ///
-    /// # Example
-    ///
-    /// ```rust,no_run
-    /// use amqp::{
-    ///     channel:new_amqp_channel,
-    ///     publisher::{AmqpPublisher, Payload}
-    /// };
-    /// use configs::Empty;
-    /// use configs_builder::ConfigsBuilder;
-    /// use opentelemetry::Context;
-    ///
-    /// #[tokio::main]
-    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///     // Read configs from env file.
-    ///     let configs = ConfigsBuilder::new().build::<Empty>();
-    ///     
-    ///     // Create amqp channel
-    ///     let (_, channel) = new_amqp_channel().await?;
-    ///
-    ///     // Create the publisher
-    ///     let publisher = AmqpPublisher::new(channel);
-    ///
-    ///     let target = "my-exchange";
-    ///     let payload = Payload::new(&"{ \"message\": \"hello world\" }".to_owned());
-    ///
-    ///     publisher.simple_publish(&Context::new(), target, &payload, None).await?;
-    ///
-    ///     Ok(())
-    /// }
-    /// ```
     async fn simple_publish<'btm>(
         &self,
         ctx: &Context,
@@ -94,47 +55,6 @@ pub trait Publisher: Send + Sync {
         params: Option<&'btm BTreeMap<ShortString, AMQPValue>>,
     ) -> Result<(), AmqpError>;
 
-    /// Publishes a message to an exchange.
-    ///
-    /// # Arguments
-    ///
-    /// * `ctx` - The current tracing context.
-    /// * `exchange` - The name of the exchange.
-    /// * `key` - The routing key.
-    /// * `payload` - The payload of the message.
-    /// * `params` - The additional parameters for the message (e.g., message headers).
-    ///
-    /// # Example
-    ///
-    /// ```rust,no_run
-    /// use amqp::{
-    ///     channel:new_amqp_channel,
-    ///     publisher::{AmqpPublisher, Payload}
-    /// };
-    /// use configs::Empty;
-    /// use configs_builder::ConfigsBuilder;
-    /// use opentelemetry::Context;
-    ///
-    /// #[tokio::main]
-    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///     // Read configs from env file.
-    ///     let configs = ConfigsBuilder::new().build::<Empty>();
-    ///     
-    ///     // Create amqp channel
-    ///     let (_, channel) = new_amqp_channel().await?;
-    ///
-    ///     // Create the publisher
-    ///     let publisher = AmqpPublisher::new(channel);
-    ///
-    ///     let exchange = "my-exchange";
-    ///     let routing_key = "my-routing-key";
-    ///     let payload = Payload::new(&"{ \"message\": \"hello world\" }".to_owned());
-    ///
-    ///     publisher.publish(&Context::new(), exchange, routing_key, &payload, None).await?;
-    ///
-    ///     Ok(())
-    /// }
-    /// ```
     async fn publish<'btm>(
         &self,
         ctx: &Context,
@@ -145,49 +65,6 @@ pub trait Publisher: Send + Sync {
     ) -> Result<(), AmqpError>;
 }
 
-/// An AMQP publisher for publishing messages to RabbitMQ.
-///
-/// The `AmqpPublisher` struct implements the `Publisher` trait, providing a simple interface
-/// for publishing messages to an AMQP exchange through a RabbitMQ channel.
-///
-/// # Examples
-///
-/// Create a new `AmqpPublisher` and use it to publish a message to an exchange:
-///
-/// ```rust,no_run
-/// use amqp::{
-///     channel:new_amqp_channel,
-///     publisher::{AmqpPublisher, Payload}
-/// };
-/// use configs::Empty;
-/// use configs_builder::ConfigsBuilder;
-/// use opentelemetry::Context;
-///
-/// #[tokio::main]
-/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     // Read configs from env file.
-///     let configs = ConfigsBuilder::new().build::<Empty>();
-///     
-///     // Create amqp channel
-///     let (_, channel) = new_amqp_channel().await?;
-///
-///     let publisher = AmqpPublisher::new(channel);
-///
-///     // Create a payload to publish.
-///     let payload = Payload::new(&"{ \"message\": \"hello world\" }".to_owned());
-///
-///     // Publish the message to an exchange.
-///     publisher
-///         .publish(&Context::new(), "my_exchange", "my_routing_key", &payload, None)
-///         .await?;
-///
-///     Ok(())
-/// }
-/// ```
-///
-/// The `AmqpPublisher` struct can also be used to perform a simple publish to a target destination
-/// using the `simple_publish` method.
-///
 pub struct AmqpPublisher {
     channel: Arc<Channel>,
 }

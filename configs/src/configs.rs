@@ -14,6 +14,9 @@ pub struct Configs<T: DynamicConfigs> {
     pub health_readiness: HealthReadinessConfigs,
 
     pub dynamic: T,
+
+    ///Default: 15000
+    pub multiple_message_timer: i32,
 }
 
 pub trait DynamicConfigs: Default {

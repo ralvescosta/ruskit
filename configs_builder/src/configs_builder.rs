@@ -200,7 +200,8 @@ impl ConfigBuilder {
     where
         T: DynamicConfigs,
     {
-        let name = env::var(APP_NAME_ENV_KEY).unwrap_or_default();
+        let env = Environment::from_rust_env();
+        let name = self.fmt_name(&env, env::var(APP_NAME_ENV_KEY).unwrap_or_default());
         let secret_key = env::var(SECRET_KEY_ENV_KEY).unwrap_or_default();
         let host = env::var(HOST_NAME_ENV_KEY).unwrap_or_default();
         let port = env::var(APP_PORT_ENV_KEY)
@@ -215,7 +216,7 @@ impl ConfigBuilder {
 
         cfg.app = AppConfigs {
             enable_external_creates_logging: false,
-            env: Environment::from_rust_env(),
+            env,
             host,
             log_level,
             name,
@@ -531,6 +532,15 @@ impl ConfigBuilder {
             error!(key = key, value = v, "parse went wrong");
             return default;
         })
+    }
+
+    fn fmt_name(&self, env: &Environment, name: String) -> String {
+        let env_str = env.to_string();
+        if name.starts_with(&env_str) {
+            return name;
+        }
+
+        format!("{}-{}", env_str, name)
     }
 
     fn _decoded(&self, text: String) -> Result<String, ()> {

@@ -3,15 +3,23 @@ name = "health-readiness"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+mqtt = ["dep:paho-mqtt"]
+rabbitmq = ["dep:lapin"]
+postgres = ["dep:deadpool-postgres"]
+
 [dependencies]
 http-components = { path = "../http_components" }
 configs = { path = "../configs" }
 
-async-trait = { version = "0.1.68" }
+async-trait = { version = "0.1.71" }
 tracing = { version = "0.1.37" }
-deadpool-postgres = { version = "0.10.5" }
-lapin = { version = "2.1.1" }
-paho-mqtt = { version = "0.12.1" }
 actix-web = { version = "4.3.1" }
-thiserror = { version = "1.0.40" }
+thiserror = { version = "1.0.43" }
+
+paho-mqtt = { version = "0.12.1", optional = true }
+
+lapin = { version = "2.1.1", optional = true }
+
+deadpool-postgres = { version = "0.10.5", optional = true }
 

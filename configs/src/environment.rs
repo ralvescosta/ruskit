@@ -16,9 +16,9 @@ impl Display for Environment {
     fn fmt(&self, f: &mut Formatter) -> Result {
         let printable = match *self {
             Environment::Local => "local",
-            Environment::Dev => "development",
-            Environment::Staging => "staging",
-            Environment::Prod => "prod",
+            Environment::Dev => "dev",
+            Environment::Staging => "stg",
+            Environment::Prod => "prd",
         };
         write!(f, "{}", printable)
     }
@@ -29,8 +29,8 @@ impl Environment {
         let env = env::var("RUST_ENV").unwrap_or_default();
 
         match env.as_str() {
-            "production" | "prod" | "PRODUCTION" | "PROD" => Environment::Prod,
-            "staging" | "stg" | "STAGING" | "STG" => Environment::Staging,
+            "production" | "PRODUCTION" | "prod" | "PROD" | "prd" | "PRD" => Environment::Prod,
+            "staging" | "STAGING" | "stg" | "STG" => Environment::Staging,
             "develop" | "DEVELOP" | "dev" | "DEV" => Environment::Dev,
             _ => Environment::Local,
         }

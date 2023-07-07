@@ -3,9 +3,11 @@ use actix_web::{http::header::ContentType, HttpResponse, ResponseError};
 use serde::Serialize;
 use serde_json::Value;
 use std::fmt;
+#[cfg(feature = "openapi")]
 use utoipa::ToSchema;
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct HTTPError {
     pub status_code: u16,
     pub message: String,

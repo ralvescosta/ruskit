@@ -1,10 +1,16 @@
-use crate::{
-    errors::HealthReadinessError, mqtt::MqttHealthChecker, postgres::PostgresHealthChecker,
-    rabbitmq::RabbitMqHealthChecker,
-};
+use crate::errors::HealthReadinessError;
+#[cfg(feature = "mqtt")]
+use crate::mqtt::MqttHealthChecker;
+#[cfg(feature = "postgres")]
+use crate::postgres::PostgresHealthChecker;
+#[cfg(feature = "rabbitmq")]
+use crate::rabbitmq::RabbitMqHealthChecker;
 use async_trait::async_trait;
+#[cfg(feature = "postgres")]
 use deadpool_postgres::Pool;
+#[cfg(feature = "rabbitmq")]
 use lapin::Connection;
+#[cfg(feature = "mqtt")]
 use paho_mqtt::AsyncClient;
 use std::sync::Arc;
 use tracing::error;
@@ -31,16 +37,19 @@ impl HealthReadinessServiceImpl {
         return Arc::new(HealthReadinessServiceImpl { checkers });
     }
 
+    #[cfg(feature = "mqtt")]
     pub fn mqtt(mut self, client: Arc<AsyncClient>) -> Self {
         self.checkers.push(MqttHealthChecker::new(client));
         self
     }
 
+    #[cfg(feature = "rabbitmq")]
     pub fn amqp(mut self, conn: Arc<Connection>) -> Self {
         self.checkers.push(RabbitMqHealthChecker::new(conn));
         self
     }
 
+    #[cfg(feature = "postgres")]
     pub fn postgres(mut self, pool: Arc<Pool>) -> Self {
         self.checkers.push(PostgresHealthChecker::new(pool));
         self

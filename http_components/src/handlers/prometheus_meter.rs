@@ -1,28 +1,25 @@
 use actix_web::{dev, http::StatusCode};
 use futures_util::future::{self, LocalBoxFuture};
 use opentelemetry::{global, metrics::MetricsError};
-use opentelemetry_prometheus::PrometheusExporter;
-use prometheus::{Encoder, TextEncoder};
+use prometheus::{Encoder, Registry, TextEncoder};
 
 /// Prometheus request metrics service
 #[derive(Clone, Debug)]
 pub struct PrometheusMetricsHandler {
-    prometheus_exporter: PrometheusExporter,
+    registry: Registry,
 }
 
 impl PrometheusMetricsHandler {
     /// Build a route to serve Prometheus metrics
-    pub fn new(exporter: PrometheusExporter) -> Self {
-        Self {
-            prometheus_exporter: exporter,
-        }
+    pub fn new(registry: Registry) -> Self {
+        Self { registry }
     }
 }
 
 impl PrometheusMetricsHandler {
     fn metrics(&self) -> String {
         let encoder = TextEncoder::new();
-        let metric_families = self.prometheus_exporter.registry().gather();
+        let metric_families = self.registry.gather();
         let mut buf = Vec::new();
         if let Err(err) = encoder.encode(&metric_families[..], &mut buf) {
             global::handle_error(MetricsError::Other(err.to_string()));

@@ -1,7 +1,7 @@
-use opentelemetry::sdk::{
-    export::metrics::aggregation::{AggregationKind, Temporality, TemporalitySelector},
-    metrics::sdk_api::{Descriptor, InstrumentKind},
-};
+use opentelemetry::sdk::metrics::reader::TemporalitySelector;
+use opentelemetry_sdk::metrics::{data::Temporality, InstrumentKind};
+
+// use opentelemetry_sdk::metrics::reader::TemporalitySelector;
 
 /// - Cumulative temporality means that successive data points repeat the starting timestamp. For example, from start time T0, cumulative data points cover time ranges (T0, T1], (T0, T2], (T0, T3], and so on.
 ///
@@ -14,9 +14,9 @@ use opentelemetry::sdk::{
 pub struct OTLPTemporalitySelector;
 
 impl TemporalitySelector for OTLPTemporalitySelector {
-    fn temporality_for(&self, descriptor: &Descriptor, _kind: &AggregationKind) -> Temporality {
-        match descriptor.instrument_kind() {
-            &InstrumentKind::UpDownCounter | &InstrumentKind::UpDownCounterObserver => {
+    fn temporality(&self, kind: InstrumentKind) -> Temporality {
+        match kind {
+            InstrumentKind::UpDownCounter | InstrumentKind::ObservableUpDownCounter => {
                 Temporality::Cumulative
             }
             _ => Temporality::Delta,

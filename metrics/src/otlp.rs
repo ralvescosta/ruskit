@@ -1,10 +1,6 @@
 use super::selectors::OTLPTemporalitySelector;
 use configs::{Configs, DynamicConfigs};
-use opentelemetry::{
-    global, runtime,
-    sdk::{metrics::selectors, Resource},
-    KeyValue,
-};
+use opentelemetry::{global, runtime, sdk::Resource, KeyValue};
 use opentelemetry_otlp::{Protocol, WithExportConfig};
 use std::{error::Error, time::Duration};
 use tonic::metadata::MetadataMap;
@@ -34,11 +30,8 @@ where
     }?;
 
     let provider = opentelemetry_otlp::new_pipeline()
-        .metrics(
-            selectors::simple::inexpensive(),
-            OTLPTemporalitySelector::default(),
-            runtime::Tokio,
-        )
+        .metrics(runtime::Tokio)
+        .with_temporality_selector(OTLPTemporalitySelector::default())
         .with_exporter(
             opentelemetry_otlp::new_exporter()
                 .tonic()

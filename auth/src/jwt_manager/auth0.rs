@@ -1,4 +1,4 @@
-use super::{manager::Session, JwtManager, TokenClaims};
+use super::{JwtManager, TokenClaims};
 use alcoholic_jwt::{token_kid, validate, Validation, JWKS};
 use async_trait::async_trait;
 use configs::Auth0Configs;
@@ -105,7 +105,6 @@ impl JwtManager for Auth0JwtManager {
             iat: self.get_claim_as_u64("iat", &claims, &mut span)?,
             exp: self.get_claim_as_u64("exp", &claims, &mut span)?,
             scope: self.get_claim_as_string("scope", &claims, &mut span)?,
-            session: self.get_session_claim(&claims, &mut span)?,
         })
     }
 }
@@ -251,46 +250,6 @@ impl Auth0JwtManager {
             },
             _ => {
                 error!(claim = key, "invalid jwt claim");
-                span.set_status(Status::Error {
-                    description: Cow::from("invalid jwt claim"),
-                });
-                Err(())
-            }
-        }
-    }
-
-    fn get_session_claim(&self, claims: &Value, span: &mut BoxedSpan) -> Result<Session, ()> {
-        match claims.get("user_data") {
-            Some(fv) => match fv.as_object() {
-                Some(user_data) => match user_data.get("user_metadata") {
-                    Some(uv) => match uv.as_object() {
-                        Some(user_metadata) => Ok(Session(user_metadata.clone())),
-                        _ => {
-                            error!(claim = "user_metadata", "invalid jwt claim");
-                            span.set_status(Status::Error {
-                                description: Cow::from("invalid jwt claim"),
-                            });
-                            Err(())
-                        }
-                    },
-                    _ => {
-                        error!(claim = "user_metadata", "invalid jwt claim");
-                        span.set_status(Status::Error {
-                            description: Cow::from("invalid jwt claim"),
-                        });
-                        Err(())
-                    }
-                },
-                _ => {
-                    error!(claim = "user_data", "invalid jwt claim");
-                    span.set_status(Status::Error {
-                        description: Cow::from("invalid jwt claim"),
-                    });
-                    Err(())
-                }
-            },
-            _ => {
-                error!(claim = "user_data", "invalid jwt claim");
                 span.set_status(Status::Error {
                     description: Cow::from("invalid jwt claim"),
                 });

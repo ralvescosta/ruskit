@@ -29,7 +29,7 @@ impl DynamicConfigs for Empty {
     fn load(&self) {}
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct AppConfigs {
     ///Default: APP_NAME
     pub name: String,
@@ -49,13 +49,28 @@ pub struct AppConfigs {
     pub enable_external_creates_logging: bool,
 }
 
+impl Default for AppConfigs {
+    fn default() -> Self {
+        Self {
+            name: "APP_NAME".to_owned(),
+            env: Environment::Local,
+            use_secret_manager: false,
+            secret_key: "context".to_owned(),
+            host: "0.0.0.0".to_owned(),
+            port: 31033,
+            log_level: "debug".to_owned(),
+            enable_external_creates_logging: false,
+        }
+    }
+}
+
 impl AppConfigs {
     pub fn app_addr(&self) -> String {
         format!("{}:{}", self.host, self.port)
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Auth0Configs {
     //Default: ""
     pub domain: String,
@@ -71,7 +86,20 @@ pub struct Auth0Configs {
     pub grant_type: String,
 }
 
-#[derive(Debug, Clone, Default)]
+impl Default for Auth0Configs {
+    fn default() -> Self {
+        Self {
+            domain: Default::default(),
+            audience: Default::default(),
+            issuer: Default::default(),
+            client_id: Default::default(),
+            client_secret: Default::default(),
+            grant_type: "client_credentials".to_owned(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct MQTTConfigs {
     ///Default: localhost
     pub host: String,
@@ -93,7 +121,23 @@ pub struct MQTTConfigs {
     pub private_key_path: String,
 }
 
-#[derive(Debug, Clone, Default)]
+impl Default for MQTTConfigs {
+    fn default() -> Self {
+        Self {
+            host: "localhost".to_owned(),
+            transport: "tcp".to_owned(),
+            port: 1883,
+            user: "mqtt".to_owned(),
+            password: "password".to_owned(),
+            device_name: Default::default(),
+            root_ca_path: Default::default(),
+            cert_path: Default::default(),
+            private_key_path: Default::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct AmqpConfigs {
     ///Default: localhost
     pub host: String,
@@ -106,7 +150,19 @@ pub struct AmqpConfigs {
     pub vhost: String,
 }
 
-#[derive(Debug, Clone, Default)]
+impl Default for AmqpConfigs {
+    fn default() -> Self {
+        Self {
+            host: "localhost".to_owned(),
+            port: 5672,
+            user: "default".to_owned(),
+            password: "default".to_owned(),
+            vhost: Default::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct OTLPConfigs {
     ///Default: false
     pub enable_traces: bool,
@@ -125,7 +181,22 @@ pub struct OTLPConfigs {
     pub export_rate_base: f64,
 }
 
-#[derive(Debug, Clone, Default)]
+impl Default for OTLPConfigs {
+    fn default() -> Self {
+        Self {
+            enable_traces: false,
+            enable_metrics: false,
+            host: Default::default(),
+            key: Default::default(),
+            service_type: Default::default(),
+            export_timeout: 30,
+            metrics_export_interval: 60,
+            export_rate_base: 0.8,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct PostgresConfigs {
     ///Default: localhost
     pub host: String,
@@ -139,7 +210,19 @@ pub struct PostgresConfigs {
     pub db: String,
 }
 
-#[derive(Debug, Clone, Default)]
+impl Default for PostgresConfigs {
+    fn default() -> Self {
+        Self {
+            host: "localhost".to_owned(),
+            user: Default::default(),
+            password: Default::default(),
+            port: Default::default(),
+            db: Default::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct SqliteConfigs {
     ///Default: local.db
     pub file: String,
@@ -149,7 +232,17 @@ pub struct SqliteConfigs {
     pub password: String,
 }
 
-#[derive(Debug, Clone, Default)]
+impl Default for SqliteConfigs {
+    fn default() -> Self {
+        Self {
+            file: Default::default(),
+            user: Default::default(),
+            password: Default::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct AwsConfigs {
     ///Default: local
     pub access_key_id: Option<String>,
@@ -159,7 +252,17 @@ pub struct AwsConfigs {
     pub session_token: Option<String>,
 }
 
-#[derive(Debug, Clone, Default)]
+impl Default for AwsConfigs {
+    fn default() -> Self {
+        Self {
+            access_key_id: Some("local".to_owned()),
+            secret_access_key: Some("local".to_owned()),
+            session_token: Default::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct DynamoConfigs {
     ///Default: localhost
     pub endpoint: String,
@@ -167,14 +270,36 @@ pub struct DynamoConfigs {
     pub region: String,
     ///Default: table
     pub table: String,
+    ///Default: 31536000
+    pub expire: u64,
 }
 
-#[derive(Debug, Clone, Default)]
+impl Default for DynamoConfigs {
+    fn default() -> Self {
+        Self {
+            endpoint: "localhost".to_owned(),
+            region: "us-east-1".to_owned(),
+            table: Default::default(),
+            expire: 31536000,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct HealthReadinessConfigs {
     ///Default: 8888
     pub port: u64,
     ///Default: false
     pub enable: bool,
+}
+
+impl Default for HealthReadinessConfigs {
+    fn default() -> Self {
+        Self {
+            port: 8888,
+            enable: false,
+        }
+    }
 }
 
 impl HealthReadinessConfigs {
@@ -183,10 +308,18 @@ impl HealthReadinessConfigs {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct AuthConfigs {
     ///Default: 3600s
     pub jwk_rotate_period: u64,
+}
+
+impl Default for AuthConfigs {
+    fn default() -> Self {
+        Self {
+            jwk_rotate_period: 3600,
+        }
+    }
 }
 
 impl<T> Configs<T>

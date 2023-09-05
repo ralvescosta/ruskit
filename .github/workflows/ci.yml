@@ -47,7 +47,7 @@ jobs:
       
     - name: 🔎 Run tests
       run: |
-        cargo +nightly tarpaulin --workspace --timeout 120 --out Xml
+        cargo +nightly tarpaulin --workspace --timeout 120 --out xml
 
     - name: ☁ Codecov
       uses: codecov/codecov-action@v3

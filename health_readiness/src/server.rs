@@ -4,7 +4,10 @@ use crate::mqtt::MqttHealthChecker;
 use crate::postgres::PostgresHealthChecker;
 #[cfg(feature = "rabbitmq")]
 use crate::rabbitmq::RabbitMqHealthChecker;
-use crate::{controller, errors::HealthReadinessError, HealthChecker, HealthReadinessServiceImpl};
+use crate::{
+    controller, errors::HealthReadinessError, HealthChecker, HealthReadinessService,
+    HealthReadinessServiceImpl,
+};
 use actix_web::{middleware as actix_middleware, web, App, HttpServer};
 use configs::HealthReadinessConfigs;
 #[cfg(feature = "postgres")]
@@ -72,7 +75,9 @@ impl HealthReadinessServer {
                     .wrap(middlewares::cors::config())
                     .wrap(actix_middleware::Logger::default())
                     //
-                    .app_data(web::Data::new(health_readiness_service.clone()))
+                    .app_data(web::Data::<Arc<dyn HealthReadinessService>>::new(
+                        health_readiness_service.clone(),
+                    ))
                     //
                     //  Health route
                     //

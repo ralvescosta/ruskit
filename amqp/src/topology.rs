@@ -31,7 +31,7 @@ pub trait Topology<'tp> {
 pub struct AmqpTopology<'tp> {
     channel: Arc<Channel>,
     pub(crate) queues: HashMap<&'tp str, &'tp QueueDefinition>,
-    pub(crate) queues_binding: HashMap<&'tp str, &'tp QueueBinding<'tp>>,
+    pub(crate) queues_binding: Vec<&'tp QueueBinding<'tp>>,
     pub(crate) exchanges: Vec<&'tp ExchangeDefinition<'tp>>,
     pub(crate) exchanges_binding: Vec<&'tp ExchangeBinding>,
 }
@@ -41,7 +41,7 @@ impl<'tp> AmqpTopology<'tp> {
         AmqpTopology {
             channel,
             queues: HashMap::default(),
-            queues_binding: HashMap::default(),
+            queues_binding: vec![],
             exchanges: vec![],
             exchanges_binding: vec![],
         }
@@ -66,7 +66,7 @@ impl<'tp> Topology<'tp> for AmqpTopology<'tp> {
     }
 
     fn queue_binding(mut self, binding: &'tp QueueBinding) -> Self {
-        self.queues_binding.insert(binding.queue_name, binding);
+        self.queues_binding.push(binding);
         self
     }
 
@@ -270,11 +270,16 @@ impl<'tp> AmqpTopology<'tp> {
     }
 
     async fn binding_queues(&self) -> Result<(), AmqpError> {
-        for (queue_name, binding) in self.queues_binding.clone() {
+        for binding in self.queues_binding.clone() {
+            debug!(
+                "binding queue: {} to the exchange: {} with the key: {}",
+                binding.queue_name, binding.exchange_name, binding.routing_key
+            );
+
             match self
                 .channel
                 .queue_bind(
-                    queue_name,
+                    binding.queue_name,
                     binding.exchange_name,
                     binding.routing_key,
                     QueueBindOptions { nowait: false },
@@ -287,12 +292,15 @@ impl<'tp> AmqpTopology<'tp> {
 
                     Err(AmqpError::BindingExchangeToQueueError(
                         binding.exchange_name.to_owned(),
-                        queue_name.to_owned(),
+                        binding.queue_name.to_owned(),
                     ))
                 }
                 _ => Ok(()),
             }?;
         }
+
+        debug!("queue was bounded");
+
         Ok(())
     }
 }

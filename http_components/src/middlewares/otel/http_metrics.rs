@@ -3,13 +3,13 @@
 use super::attributes::metrics_attributes_from_request;
 use actix_web::dev;
 use futures_util::future::{self, FutureExt as _, LocalBoxFuture};
+use opentelemetry::global;
 use opentelemetry::metrics::{Counter, Histogram, Meter, Unit, UpDownCounter};
-use opentelemetry::{global, Context};
 use std::{sync::Arc, time::SystemTime};
 
 // Follows the experimental semantic conventions for HTTP metrics:
 // https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/semantic_conventions/http-metrics.md
-use opentelemetry_semantic_conventions::trace::HTTP_STATUS_CODE;
+use opentelemetry_semantic_conventions::trace::HTTP_RESPONSE_STATUS_CODE;
 const HTTP_SERVER_ACTIVE_REQUESTS: &str = "http.server.active_requests";
 const HTTP_SERVER_DURATION: &str = "http.server.duration";
 const HTTP_SERVER_REQUESTS: &str = "http.server.requests";
@@ -167,25 +167,21 @@ where
         let http_target = req.match_pattern().unwrap_or_else(|| "default".to_string());
 
         let mut attributes = metrics_attributes_from_request(&req, &http_target);
-        let cx = Context::current();
 
-        self.metrics
-            .http_server_active_requests
-            .add(&cx, 1, &attributes);
+        self.metrics.http_server_active_requests.add(1, &attributes);
 
         let metrics = self.metrics.clone();
         Box::pin(self.service.call(req).map(move |res| {
-            metrics
-                .http_server_active_requests
-                .add(&cx, -1, &attributes);
+            metrics.http_server_active_requests.add(-1, &attributes);
 
             // Ignore actix errors for metrics
             match res {
                 Ok(success) => {
-                    attributes.push(HTTP_STATUS_CODE.string(success.status().as_str().to_owned()));
+                    attributes.push(
+                        HTTP_RESPONSE_STATUS_CODE.string(success.status().as_str().to_owned()),
+                    );
 
                     metrics.http_server_duration.record(
-                        &cx,
                         timer
                             .elapsed()
                             .map(|t| t.as_secs_f64() * 1000.0)
@@ -193,17 +189,17 @@ where
                         &attributes,
                     );
 
-                    metrics.http_requests.add(&cx, 1, &attributes);
+                    metrics.http_requests.add(1, &attributes);
 
                     Ok(success)
                 }
                 Err(err) => {
                     attributes.push(
-                        HTTP_STATUS_CODE
+                        HTTP_RESPONSE_STATUS_CODE
                             .string(err.as_response_error().status_code().as_str().to_owned()),
                     );
 
-                    metrics.http_requests.add(&cx, 1, &attributes);
+                    metrics.http_requests.add(1, &attributes);
 
                     Err(err)
                 }

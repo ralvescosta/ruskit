@@ -3,12 +3,22 @@ name = "metrics"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+prometheus = ["dep:prometheus", "dep:opentelemetry-prometheus"]
+otlp = ["dep:opentelemetry-otlp", "dep:tonic", "dep:tokio"]
+
 [dependencies]
 configs = { path = "../configs" }
 
 opentelemetry = { version = "0.20.0", features = ["rt-tokio", "metrics"] }
-opentelemetry-otlp = { version = "0.13.0", features = ["tonic", "metrics", "grpc-tonic" , "tls", "tls-roots"] }
 opentelemetry_sdk = { version = "0.20.0", features = ["metrics"] }
 tracing = { version = "0.1.37" }
-tonic = { version = "0.9.2", features = ["tls"] }
-tokio = { version = "1.32.0", features = ["default"] }
+
+# OTLP Featue
+tonic = { version = "0.9.2", features = ["tls"], optional = true }
+tokio = { version = "1.32.0", features = ["default"], optional = true }
+opentelemetry-otlp = { version = "0.13.0", features = ["tonic", "metrics", "grpc-tonic" , "tls", "tls-roots"], optional = true }
+
+# Prometheus Feature
+prometheus = { version = "0.13.3", optional = true }
+opentelemetry-prometheus = { version = "0.13.0", optional = true }

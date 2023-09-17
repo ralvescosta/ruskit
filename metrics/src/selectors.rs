@@ -1,8 +1,6 @@
 use opentelemetry::sdk::metrics::reader::TemporalitySelector;
 use opentelemetry_sdk::metrics::{data::Temporality, InstrumentKind};
 
-// use opentelemetry_sdk::metrics::reader::TemporalitySelector;
-
 /// - Cumulative temporality means that successive data points repeat the starting timestamp. For example, from start time T0, cumulative data points cover time ranges (T0, T1], (T0, T2], (T0, T3], and so on.
 ///
 /// - Delta temporality means that successive data points advance the starting timestamp. For example, from start time T0, delta data points cover time ranges (T0, T1], (T1, T2], (T2, T3], and so on.

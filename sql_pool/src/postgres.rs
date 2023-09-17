@@ -1,16 +1,21 @@
 use crate::errors::SqlPoolError;
-use configs::PostgresConfigs;
+use configs::{Configs, DynamicConfigs};
 use deadpool_postgres::{Manager, ManagerConfig, Pool, RecyclingMethod};
-use tokio_postgres::NoTls;
+use tokio_postgres::{config::SslMode, tls::NoTls};
 use tracing::error;
 
-pub fn conn_pool(cfg: &PostgresConfigs) -> Result<Pool, SqlPoolError> {
+pub fn conn_pool<T>(cfg: &Configs<T>) -> Result<Pool, SqlPoolError>
+where
+    T: DynamicConfigs,
+{
     let mut pg_cfg = tokio_postgres::Config::new();
-    pg_cfg.host(&cfg.host);
-    pg_cfg.port(cfg.port);
-    pg_cfg.dbname(&cfg.db);
-    pg_cfg.user(&cfg.user);
-    pg_cfg.password(&cfg.password);
+    pg_cfg.host(&cfg.postgres.host);
+    pg_cfg.port(cfg.postgres.port);
+    pg_cfg.dbname(&cfg.postgres.db);
+    pg_cfg.user(&cfg.postgres.user);
+    pg_cfg.password(&cfg.postgres.password);
+    pg_cfg.ssl_mode(SslMode::Disable);
+    pg_cfg.application_name(&cfg.app.name);
 
     let mgr_cfg = ManagerConfig {
         recycling_method: RecyclingMethod::Fast,

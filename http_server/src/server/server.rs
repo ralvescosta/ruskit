@@ -16,12 +16,15 @@ use http_components::{middlewares, CustomServiceConfigure};
 use opentelemetry::global;
 use std::{sync::Arc, time::Duration};
 use tracing::error;
+#[cfg(openapi)]
 use utoipa::openapi::OpenApi;
+#[cfg(openapi)]
 use utoipa_swagger_ui::SwaggerUi;
 
 pub struct HTTPServer {
     addr: String,
     services: Vec<Arc<CustomServiceConfigure>>,
+    #[cfg(openapi)]
     openapi: Option<OpenApi>,
     jwt_manager: Option<Arc<dyn JwtManager>>,
     health_check: Option<Arc<dyn HealthReadinessService>>,
@@ -32,6 +35,7 @@ impl HTTPServer {
         HTTPServer {
             addr: cfg.app_addr(),
             services: vec![],
+            #[cfg(openapi)]
             openapi: None,
             jwt_manager: None,
             health_check: None,
@@ -50,6 +54,7 @@ impl HTTPServer {
         self
     }
 
+    #[cfg(openapi)]
     pub fn openapi(mut self, openapi: &OpenApi) -> Self {
         self.openapi = Some(openapi.to_owned());
         self
@@ -62,8 +67,10 @@ impl HTTPServer {
 
     pub async fn start(&self) -> Result<(), HTTPServerError> {
         ActixHttpServer::new({
-            let jwt_manager = self.jwt_manager.clone();
+            #[cfg(openapi)]
             let openapi = self.openapi.clone();
+
+            let jwt_manager = self.jwt_manager.clone();
             let health_check_service = match self.health_check.clone() {
                 Some(check) => check,
                 _ => Arc::new(HealthReadinessServiceImpl::default()),
@@ -98,6 +105,7 @@ impl HTTPServer {
                     }
                 });
 
+                #[cfg(openapi)]
                 if openapi.is_some() {
                     app = app.service(
                         SwaggerUi::new("/docs/{_:.*}")

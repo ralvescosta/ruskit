@@ -18,7 +18,7 @@ pub fn setup<T>(cfg: &Configs<T>) -> Result<(), Box<dyn Error>>
 where
     T: DynamicConfigs,
 {
-    if !cfg.otlp.enable_traces {
+    if !cfg.trace.enable {
         debug!("traces::setup skipping trace export setup");
         return Ok(());
     }
@@ -27,7 +27,7 @@ where
 
     let mut map = MetadataMap::with_capacity(3);
 
-    match cfg.otlp.key.parse() {
+    match cfg.trace.key.parse() {
         Ok(p) => {
             map.insert("api-key", p);
             Ok(())
@@ -47,16 +47,16 @@ where
         .with_max_attributes_per_span(16)
         .with_resource(Resource::new(vec![
             KeyValue::new("service.name", cfg.app.name.clone()),
-            KeyValue::new("service.type", cfg.otlp.service_type.clone()),
+            KeyValue::new("service.type", cfg.trace.service_type.clone()),
             KeyValue::new("environment", format!("{}", cfg.app.env)),
             KeyValue::new("library.language", "rust"),
         ]));
 
     let exporter = opentelemetry_otlp::new_exporter()
         .tonic()
-        .with_endpoint(&cfg.otlp.host)
+        .with_endpoint(&cfg.trace.host)
         .with_protocol(Protocol::Grpc)
-        .with_timeout(Duration::from_secs(cfg.otlp.export_timeout))
+        .with_timeout(Duration::from_secs(cfg.trace.export_timeout))
         .with_metadata(map);
 
     match opentelemetry_otlp::new_pipeline()

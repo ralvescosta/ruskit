@@ -20,7 +20,7 @@ where
         return Sampler::AlwaysOn;
     }
 
-    let sampler = Sampler::TraceIdRatioBased(cfg.otlp.export_rate_base);
+    let sampler = Sampler::TraceIdRatioBased(cfg.trace.export_rate_base);
     return Sampler::ParentBased(Box::new(sampler));
 }
 

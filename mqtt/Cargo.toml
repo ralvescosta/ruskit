@@ -13,8 +13,8 @@ traces = { path = "../traces" }
 opentelemetry = { version = "0.20.0" }
 tracing = { version = "0.1.37" }
 async-trait = { version = "0.1.73" }
-bytes = { version = "1.4.0", features = ["serde"] }
-paho-mqtt = { version = "0.12.1" }
+bytes = { version = "1.5.0", features = ["serde"] }
+paho-mqtt = { version = "0.12.2" }
 serde = { version = "1.0.188", features = ["derive"] }
 serde_json = { version = "1.0.105" }
 futures-util = { version = "0.3.26" }

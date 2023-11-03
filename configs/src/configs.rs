@@ -21,13 +21,13 @@ pub struct Configs<T: DynamicConfigs> {
 }
 
 pub trait DynamicConfigs: Default {
-    fn load(&self);
+    fn load(&mut self);
 }
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Empty;
 impl DynamicConfigs for Empty {
-    fn load(&self) {}
+    fn load(&mut self) {}
 }
 
 #[derive(Debug, Clone)]

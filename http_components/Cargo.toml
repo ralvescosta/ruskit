@@ -17,8 +17,8 @@ auth = { path = "../auth", optional = true }
 actix-web = { version = "4.4.0" }
 actix-http = { version = "3.4.0" }
 actix-cors = { version = "0.6.4" }
-serde = { version = "1.0.188", features = ["derive"] }
-serde_json = { version = "1.0.105" }
+serde = { version = "1.0.190", features = ["derive"] }
+serde_json = { version = "1.0.108" }
 tracing = { version = "0.1.37" }
 futures-util = { version = "0.3.28" }
 opentelemetry = { version = "0.20.0" }

@@ -138,6 +138,8 @@ impl ConfigBuilder {
             _ => Ok(()),
         }?;
 
+        cfg.dynamic.load();
+
         self.client = Some(self.get_secret_client(&cfg.app).await?);
         for (key, value) in env::vars() {
             if self.fill_auth0(&mut cfg, &key, &value) {

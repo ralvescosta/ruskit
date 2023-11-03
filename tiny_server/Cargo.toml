@@ -1,0 +1,21 @@
+[package]
+name = "tiny-server"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+prometheus = ["dep:prometheus"]
+
+[dependencies]
+configs = { path = '../configs' }
+http-components = { path = '../http_components', features = ["metrics"]}
+health-readiness = { path = '../health_readiness' }
+
+thiserror = { version = "1.0.50" }
+actix-web = { version = "4.3.1" }
+tracing = { version = "0.1.37" }
+opentelemetry = { version = "0.20.0" }
+
+prometheus = { version = "0.13.3", optional = true }
+
+

@@ -8,13 +8,15 @@ use crate::{
         DYNAMO_EXPIRE_ENV_KEY, DYNAMO_REGION_ENV_KEY, DYNAMO_TABLE_ENV_KEY,
         ENABLE_HEALTH_READINESS_ENV_KEY, ENABLE_METRICS_ENV_KEY, ENABLE_TRACES_ENV_KEY,
         HEALTH_READINESS_PORT_ENV_KEY, HOST_NAME_ENV_KEY, LOCAL_ENV_FILE_NAME, LOG_LEVEL_ENV_KEY,
-        MQTT_CA_CERT_PATH_ENV_KEY, MQTT_HOST_ENV_KEY, MQTT_PASSWORD_ENV_KEY, MQTT_PORT_ENV_KEY,
-        MQTT_TRANSPORT_ENV_KEY, MQTT_USER_ENV_KEY, OTLP_ACCESS_KEY_ENV_KEY,
-        OTLP_EXPORT_RATE_BASE_ENV_KEY, OTLP_EXPORT_TIMEOUT_ENV_KEY, OTLP_HOST_ENV_KEY,
-        OTLP_SERVICE_TYPE_ENV_KEY, POSTGRES_DB_ENV_KEY, POSTGRES_HOST_ENV_KEY,
-        POSTGRES_PASSWORD_ENV_KEY, POSTGRES_PORT_ENV_KEY, POSTGRES_USER_ENV_KEY, PROD_FILE_NAME,
-        SECRET_KEY_ENV_KEY, SECRET_PREFIX, SQLITE_FILE_NAME_ENV_KEY, STAGING_FILE_NAME,
-        USE_SECRET_MANAGER_ENV_KEY,
+        METRIC_ACCESS_KEY_ENV_KEY, METRIC_EXPORT_RATE_BASE_ENV_KEY, METRIC_EXPORT_TIMEOUT_ENV_KEY,
+        METRIC_HOST_ENV_KEY, METRIC_SERVICE_TYPE_ENV_KEY, MQTT_CA_CERT_PATH_ENV_KEY,
+        MQTT_HOST_ENV_KEY, MQTT_PASSWORD_ENV_KEY, MQTT_PORT_ENV_KEY, MQTT_TRANSPORT_ENV_KEY,
+        MQTT_USER_ENV_KEY, MULTIPLE_MESSAGE_TIMER_ENV_KEY, POSTGRES_DB_ENV_KEY,
+        POSTGRES_HOST_ENV_KEY, POSTGRES_PASSWORD_ENV_KEY, POSTGRES_PORT_ENV_KEY,
+        POSTGRES_USER_ENV_KEY, PROD_FILE_NAME, SECRET_KEY_ENV_KEY, SECRET_PREFIX,
+        SQLITE_FILE_NAME_ENV_KEY, STAGING_FILE_NAME, TRACE_ACCESS_KEY_ENV_KEY,
+        TRACE_EXPORT_RATE_BASE_ENV_KEY, TRACE_EXPORT_TIMEOUT_ENV_KEY, TRACE_HOST_ENV_KEY,
+        TRACE_SERVICE_TYPE_ENV_KEY, USE_SECRET_MANAGER_ENV_KEY,
     },
     errors::ConfigsError,
 };
@@ -42,7 +44,8 @@ pub struct ConfigBuilder {
     sqlite: bool,
     aws: bool,
     dynamo: bool,
-    otlp: bool,
+    metric: bool,
+    trace: bool,
     health: bool,
     auth0: bool,
 }
@@ -82,8 +85,13 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn otlp(mut self) -> Self {
-        self.otlp = true;
+    pub fn metric(mut self) -> Self {
+        self.metric = true;
+        self
+    }
+
+    pub fn trace(mut self) -> Self {
+        self.trace = true;
         self
     }
 
@@ -130,6 +138,8 @@ impl ConfigBuilder {
             _ => Ok(()),
         }?;
 
+        cfg.dynamic.load();
+
         self.client = Some(self.get_secret_client(&cfg.app).await?);
         for (key, value) in env::vars() {
             if self.fill_auth0(&mut cfg, &key, &value) {
@@ -141,9 +151,12 @@ impl ConfigBuilder {
             if self.fill_amqp(&mut cfg, &key, &value) {
                 continue;
             };
-            if self.fill_otlp(&mut cfg, &key, &value) {
+            if self.fill_trace(&mut cfg, &key, &value) {
                 continue;
-            };
+            }
+            if self.fill_metric(&mut cfg, &key, &value) {
+                continue;
+            }
             if self.fill_postgres(&mut cfg, &key, &value) {
                 continue;
             };
@@ -214,7 +227,12 @@ impl ConfigBuilder {
             .unwrap_or("false".to_owned())
             .parse()
             .unwrap();
+        let message_time = env::var(MULTIPLE_MESSAGE_TIMER_ENV_KEY)
+            .unwrap_or("15000".to_owned())
+            .parse()
+            .unwrap();
 
+        cfg.multiple_message_timer = message_time;
         cfg.app = AppConfigs {
             enable_external_creates_logging: false,
             env,
@@ -225,6 +243,84 @@ impl ConfigBuilder {
             secret_key,
             use_secret_manager,
         };
+    }
+
+    fn fill_metric<T>(
+        &self,
+        cfg: &mut Configs<T>,
+        key: impl Into<std::string::String>,
+        value: impl Into<std::string::String>,
+    ) -> bool
+    where
+        T: DynamicConfigs,
+    {
+        match key.into().as_str() {
+            ENABLE_METRICS_ENV_KEY if self.metric => {
+                cfg.metric.enable = self.get_from_secret(value.into(), false);
+                true
+            }
+            METRIC_HOST_ENV_KEY if self.metric => {
+                cfg.metric.host = self.get_from_secret(value.into(), "localhost".to_owned());
+                true
+            }
+            METRIC_ACCESS_KEY_ENV_KEY if self.metric => {
+                cfg.metric.key = self.get_from_secret(value.into(), "key".to_owned());
+                true
+            }
+            METRIC_SERVICE_TYPE_ENV_KEY if self.metric => {
+                cfg.metric.service_type = self.get_from_secret(value.into(), "service".to_owned());
+                true
+            }
+            METRIC_EXPORT_TIMEOUT_ENV_KEY if self.metric => {
+                let k: String = value.into();
+                cfg.metric.export_timeout = self.get_from_secret(k.clone(), 30);
+                true
+            }
+            METRIC_EXPORT_RATE_BASE_ENV_KEY if self.metric => {
+                cfg.metric.export_rate_base = self.get_from_secret(value.into(), 0.8);
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn fill_trace<T>(
+        &self,
+        cfg: &mut Configs<T>,
+        key: impl Into<std::string::String>,
+        value: impl Into<std::string::String>,
+    ) -> bool
+    where
+        T: DynamicConfigs,
+    {
+        match key.into().as_str() {
+            ENABLE_TRACES_ENV_KEY if self.trace => {
+                cfg.trace.enable = self.get_from_secret(value.into(), false);
+                true
+            }
+            TRACE_HOST_ENV_KEY if self.trace => {
+                cfg.trace.host = self.get_from_secret(value.into(), "localhost".to_owned());
+                true
+            }
+            TRACE_ACCESS_KEY_ENV_KEY if self.trace => {
+                cfg.trace.key = self.get_from_secret(value.into(), "key".to_owned());
+                true
+            }
+            TRACE_SERVICE_TYPE_ENV_KEY if self.trace => {
+                cfg.trace.service_type = self.get_from_secret(value.into(), "service".to_owned());
+                true
+            }
+            TRACE_EXPORT_TIMEOUT_ENV_KEY if self.trace => {
+                let k: String = value.into();
+                cfg.trace.export_timeout = self.get_from_secret(k.clone(), 30);
+                true
+            }
+            TRACE_EXPORT_RATE_BASE_ENV_KEY if self.trace => {
+                cfg.trace.export_rate_base = self.get_from_secret(value.into(), 0.8);
+                true
+            }
+            _ => false,
+        }
     }
 
     fn fill_auth0<T>(
@@ -332,50 +428,6 @@ impl ConfigBuilder {
             }
             AMQP_VHOST_ENV_KEY if self.amqp => {
                 cfg.amqp.vhost = self.get_from_secret(value.into(), "".to_owned());
-                true
-            }
-            _ => false,
-        }
-    }
-
-    fn fill_otlp<T>(
-        &self,
-        cfg: &mut Configs<T>,
-        key: impl Into<std::string::String>,
-        value: impl Into<std::string::String>,
-    ) -> bool
-    where
-        T: DynamicConfigs,
-    {
-        match key.into().as_str() {
-            ENABLE_TRACES_ENV_KEY if self.otlp => {
-                cfg.otlp.enable_traces = self.get_from_secret(value.into(), false);
-                true
-            }
-            ENABLE_METRICS_ENV_KEY if self.otlp => {
-                cfg.otlp.enable_metrics = self.get_from_secret(value.into(), false);
-                true
-            }
-            OTLP_HOST_ENV_KEY if self.otlp => {
-                cfg.otlp.host = self.get_from_secret(value.into(), "localhost".to_owned());
-                true
-            }
-            OTLP_ACCESS_KEY_ENV_KEY if self.otlp => {
-                cfg.otlp.key = self.get_from_secret(value.into(), "key".to_owned());
-                true
-            }
-            OTLP_SERVICE_TYPE_ENV_KEY if self.otlp => {
-                cfg.otlp.service_type = self.get_from_secret(value.into(), "service".to_owned());
-                true
-            }
-            OTLP_EXPORT_TIMEOUT_ENV_KEY if self.otlp => {
-                let k: String = value.into();
-                cfg.otlp.export_timeout = self.get_from_secret(k.clone(), 30);
-                cfg.otlp.metrics_export_interval = self.get_from_secret(k, 60);
-                true
-            }
-            OTLP_EXPORT_RATE_BASE_ENV_KEY if self.otlp => {
-                cfg.otlp.export_rate_base = self.get_from_secret(value.into(), 0.8);
                 true
             }
             _ => false,

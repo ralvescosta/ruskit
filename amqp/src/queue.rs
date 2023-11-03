@@ -1,6 +1,6 @@
 #[derive(Debug, Clone)]
 pub struct QueueDefinition {
-    pub(crate) name: &'static str,
+    pub(crate) name: String,
     pub(crate) durable: bool,
     pub(crate) delete: bool,
     pub(crate) exclusive: bool,
@@ -14,9 +14,9 @@ pub struct QueueDefinition {
 }
 
 impl QueueDefinition {
-    pub fn new(name: &'static str) -> QueueDefinition {
+    pub fn new(name: &str) -> QueueDefinition {
         QueueDefinition {
-            name,
+            name: name.to_owned(),
             durable: false,
             delete: false,
             exclusive: false,

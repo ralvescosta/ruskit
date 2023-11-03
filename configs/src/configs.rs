@@ -6,7 +6,8 @@ pub struct Configs<T: DynamicConfigs> {
     pub auth0: Auth0Configs,
     pub mqtt: MQTTConfigs,
     pub amqp: AmqpConfigs,
-    pub otlp: OTLPConfigs,
+    pub metric: MetricConfigs,
+    pub trace: TraceConfigs,
     pub postgres: PostgresConfigs,
     pub sqlite: SqliteConfigs,
     pub aws: AwsConfigs,
@@ -20,13 +21,13 @@ pub struct Configs<T: DynamicConfigs> {
 }
 
 pub trait DynamicConfigs: Default {
-    fn load(&self);
+    fn load(&mut self);
 }
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Empty;
 impl DynamicConfigs for Empty {
-    fn load(&self) {}
+    fn load(&mut self) {}
 }
 
 #[derive(Debug, Clone)]
@@ -158,6 +159,78 @@ impl Default for AmqpConfigs {
             user: "default".to_owned(),
             password: "default".to_owned(),
             vhost: Default::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MetricConfigs {
+    ///Default: false
+    pub enable: bool,
+    ///Only used with OTLP
+    ///
+    ///Default: localhost
+    pub host: String,
+    ///Only used with OTLP
+    ///
+    ///Default: key
+    pub key: String,
+    pub service_type: String,
+    ///Only used with OTLP
+    ///
+    ///Default: 30s
+    pub export_timeout: u64,
+    ///Only used with OTLP
+    ///
+    ///Default: 60s
+    pub export_interval: u64,
+    ///Only used with OTLP
+    ///
+    ///Default: 0.8
+    pub export_rate_base: f64,
+}
+
+impl Default for MetricConfigs {
+    fn default() -> Self {
+        Self {
+            enable: false,
+            host: Default::default(),
+            key: Default::default(),
+            service_type: Default::default(),
+            export_timeout: 30,
+            export_interval: 60,
+            export_rate_base: 0.8,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TraceConfigs {
+    ///Default: false
+    pub enable: bool,
+    ///Default: localhost
+    pub host: String,
+    ///Default: key
+    pub key: String,
+    pub service_type: String,
+    ///Default: 30s
+    pub export_timeout: u64,
+    ///Default: 60s
+    pub export_interval: u64,
+    ///Default: 0.8
+    pub export_rate_base: f64,
+}
+
+impl Default for TraceConfigs {
+    fn default() -> Self {
+        Self {
+            enable: false,
+            host: Default::default(),
+            key: Default::default(),
+            service_type: Default::default(),
+            export_timeout: 30,
+            export_interval: 60,
+            export_rate_base: 0.8,
         }
     }
 }

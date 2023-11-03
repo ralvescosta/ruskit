@@ -56,7 +56,7 @@ impl<'tp> Topology<'tp> for AmqpTopology<'tp> {
     }
 
     fn queue(mut self, def: &'tp QueueDefinition) -> Self {
-        self.queues.insert(def.name, def);
+        self.queues.insert(&def.name, def);
         self
     }
 

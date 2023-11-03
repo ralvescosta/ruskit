@@ -54,7 +54,7 @@ impl MQTTClientBuilder {
         T: DynamicConfigs,
     {
         self.mqtt_cfg = cfgs.mqtt.clone();
-        self.app_cfg = self.app_cfg.clone();
+        self.app_cfg = cfgs.app.clone();
 
         if self.mqtt_cfg.transport == "ssl" {
             self.transport_kind = TransportKind::SSL

@@ -1,6 +1,6 @@
-use crate::HealthReadinessService;
+use crate::viewmodels::HTTPError;
 use actix_web::{error::HttpError, get, web, HttpResponse};
-use http_components::viewmodels::HTTPError;
+use health_readiness::HealthReadinessService;
 use std::sync::Arc;
 
 #[get("/health")]

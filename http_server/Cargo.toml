@@ -8,7 +8,7 @@ openapi = ["dep:utoipa", "dep:utoipa-swagger-ui"]
 
 [dependencies]
 configs = { path = '../configs' }
-http-components = { path = '../http_components', features = ["tracing", "metrics", "validator", "openapi", "auth"] }
+http-components = { path = '../http_components', features = ["tracing", "metrics", "validator", "openapi", "auth", "health"] }
 health-readiness = { path = '../health_readiness' }
 auth = { path = "../auth" }
 

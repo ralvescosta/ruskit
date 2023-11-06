@@ -8,7 +8,7 @@ prometheus = ["dep:prometheus"]
 
 [dependencies]
 configs = { path = '../configs' }
-http-components = { path = '../http_components', features = ["metrics"]}
+http-components = { path = '../http_components', features = ["metrics", "health"]}
 health-readiness = { path = '../health_readiness' }
 
 thiserror = { version = "1.0.50" }

@@ -12,7 +12,7 @@ use deadpool_postgres::Pool;
 use lapin::Connection;
 #[cfg(feature = "mqtt")]
 use paho_mqtt::AsyncClient;
-use std::sync::Arc;
+use std::{sync::Arc, vec};
 use tracing::error;
 #[async_trait]
 pub trait HealthChecker: Send + Sync {
@@ -33,6 +33,10 @@ pub struct HealthReadinessServiceImpl {
 }
 
 impl HealthReadinessServiceImpl {
+    pub fn empty() -> Arc<HealthReadinessServiceImpl> {
+        return Arc::new(HealthReadinessServiceImpl { checkers: vec![] });
+    }
+
     pub fn new(checkers: Vec<Arc<dyn HealthChecker>>) -> Arc<HealthReadinessServiceImpl> {
         return Arc::new(HealthReadinessServiceImpl { checkers });
     }

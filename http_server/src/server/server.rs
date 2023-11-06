@@ -7,12 +7,13 @@ use actix_web::{
 };
 use auth::jwt_manager::JwtManager;
 use configs::AppConfigs;
-use health_readiness::{
-    controller::health_handler,
-    {HealthReadinessService, HealthReadinessServiceImpl},
+use health_readiness::{HealthReadinessService, HealthReadinessServiceImpl};
+use http_components::{
+    handlers::health_handler,
+    middlewares,
+    middlewares::otel::{HTTPOtelMetrics, HTTPOtelTracing},
+    CustomServiceConfigure,
 };
-use http_components::middlewares::otel::{HTTPOtelMetrics, HTTPOtelTracing};
-use http_components::{middlewares, CustomServiceConfigure};
 use opentelemetry::global;
 use std::{sync::Arc, time::Duration};
 use tracing::error;

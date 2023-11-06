@@ -6,13 +6,10 @@ use actix_web::{
     App, HttpServer as ActixHttpServer,
 };
 use configs::AppConfigs;
-use health_readiness::{
-    controller::health_handler,
-    {HealthReadinessService, HealthReadinessServiceImpl},
-};
+use health_readiness::{HealthReadinessService, HealthReadinessServiceImpl};
 #[cfg(feature = "prometheus")]
 use http_components::handlers::PrometheusMetricsHandler;
-use http_components::{middlewares, CustomServiceConfigure};
+use http_components::{handlers::health_handler, middlewares, CustomServiceConfigure};
 use opentelemetry::global;
 #[cfg(feature = "prometheus")]
 use prometheus::Registry;

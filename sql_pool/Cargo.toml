@@ -10,7 +10,7 @@ sqlite = ["dep:deadpool-sqlite"]
 [dependencies]
 configs = { path = "../configs" }
 
-tracing = { version = "0.1.37" }
+tracing = { version = "0.1.40" }
 thiserror = { version = "1.0.50" }
 
 # PostgreSQL dep
@@ -18,4 +18,4 @@ deadpool-postgres = { version = "0.11.0", optional = true }
 tokio-postgres = { version = "0.7.10",  features = ["with-chrono-0_4", "with-uuid-0_8"], optional = true }
 
 # SQLite dep
-deadpool-sqlite = { version = "0.6.0", optional = true }
+deadpool-sqlite = { version = "0.7.0", optional = true }

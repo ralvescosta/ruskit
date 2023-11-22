@@ -1,15 +1,15 @@
 use crate::{errors::SecretsManagerError, SecretClient};
 
-pub struct DummyClient;
+pub struct FakeSecretClient;
 
-impl SecretClient for DummyClient {
+impl SecretClient for FakeSecretClient {
     fn get_by_key(&self, _key: &str) -> Result<String, SecretsManagerError> {
         Ok(String::new())
     }
 }
 
-impl DummyClient {
-    pub fn new() -> DummyClient {
-        DummyClient {}
+impl FakeSecretClient {
+    pub fn new() -> FakeSecretClient {
+        FakeSecretClient {}
     }
 }

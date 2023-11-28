@@ -3,8 +3,7 @@ use actix_web::{
     dev::ServiceRequest,
     http::{Method, Version},
 };
-use opentelemetry::KeyValue;
-use opentelemetry::{trace::OrderMap, Key, Value};
+use opentelemetry::{Key, KeyValue, Value};
 use opentelemetry_semantic_conventions::{
     resource::HOST_NAME,
     trace::{
@@ -54,19 +53,37 @@ pub(super) fn http_scheme(scheme: &str) -> Value {
 pub(super) fn trace_attributes_from_request(
     req: &ServiceRequest,
     http_route: &str,
-) -> OrderMap<Key, Value> {
+) -> Vec<KeyValue> {
     let conn_info = req.connection_info();
 
-    let mut attributes = OrderMap::with_capacity(11);
-    attributes.insert(HTTP_REQUEST_METHOD, http_method_str(req.method()));
-    attributes.insert(NETWORK_PROTOCOL_VERSION, http_flavor(req.version()));
-    attributes.insert(HOST_NAME, conn_info.host().to_string().into());
-    attributes.insert(HTTP_ROUTE, http_route.to_owned().into());
-    attributes.insert(URL_SCHEME, http_scheme(conn_info.scheme()));
+    let mut attributes = Vec::with_capacity(11);
+    attributes.push(KeyValue::new::<Key, Value>(
+        HTTP_REQUEST_METHOD,
+        http_method_str(req.method()),
+    ));
+    attributes.push(KeyValue::new::<Key, Value>(
+        NETWORK_PROTOCOL_VERSION,
+        http_flavor(req.version()),
+    ));
+    attributes.push(KeyValue::new::<Key, Value>(
+        HOST_NAME,
+        conn_info.host().to_string().into(),
+    ));
+    attributes.push(KeyValue::new::<Key, Value>(
+        HTTP_ROUTE,
+        http_route.to_owned().into(),
+    ));
+    attributes.push(KeyValue::new::<Key, Value>(
+        URL_SCHEME,
+        http_scheme(conn_info.scheme()),
+    ));
 
     let server_name = req.app_config().host();
     if server_name != conn_info.host() {
-        attributes.insert(HTTP_SERVER_NAME, server_name.to_string().into());
+        attributes.push(KeyValue::new::<Key, Value>(
+            HTTP_SERVER_NAME,
+            server_name.to_string().into(),
+        ));
     }
     if let Some(port) = conn_info
         .host()
@@ -75,27 +92,36 @@ pub(super) fn trace_attributes_from_request(
         .and_then(|port| port.parse::<i64>().ok())
     {
         if port != 80 && port != 443 {
-            attributes.insert(SERVER_PORT, port.into());
+            attributes.push(KeyValue::new::<Key, Value>(SERVER_PORT, port.into()));
         }
     }
     if let Some(path) = req.uri().path_and_query() {
-        attributes.insert(URL_PATH, path.as_str().to_string().into());
+        attributes.push(KeyValue::new::<Key, Value>(
+            URL_PATH,
+            path.as_str().to_string().into(),
+        ));
     }
     if let Some(user_agent) = req
         .headers()
         .get(header::USER_AGENT)
         .and_then(|s| s.to_str().ok())
     {
-        attributes.insert(USER_AGENT_ORIGINAL, user_agent.to_string().into());
+        attributes.push(KeyValue::new::<Key, Value>(
+            USER_AGENT_ORIGINAL,
+            user_agent.to_string().into(),
+        ));
     }
     let remote_addr = conn_info.realip_remote_addr();
     if let Some(remote) = remote_addr {
-        attributes.insert(CLIENT_ADDRESS, remote.to_string().into());
+        attributes.push(KeyValue::new::<Key, Value>(
+            CLIENT_ADDRESS,
+            remote.to_string().into(),
+        ));
     }
     if let Some(peer_addr) = req.peer_addr().map(|socket| socket.ip().to_string()) {
         if Some(peer_addr.as_str()) != remote_addr {
             // Client is going through a proxy
-            attributes.insert(NET_PEER_IP, peer_addr.into());
+            attributes.push(KeyValue::new::<Key, Value>(NET_PEER_IP, peer_addr.into()));
         }
     }
 
@@ -109,17 +135,20 @@ pub(super) fn metrics_attributes_from_request(
     let conn_info = req.connection_info();
 
     let mut attributes = Vec::with_capacity(11);
-    attributes.push(KeyValue::new(
-        HTTP_REQUEST_METHOD,
+    attributes.push(KeyValue::new::<Key, Value>(
+        HTTP_REQUEST_METHOD.into(),
         http_method_str(req.method()),
     ));
-    attributes.push(KeyValue::new(
-        NETWORK_PROTOCOL_VERSION,
+    attributes.push(KeyValue::new::<Key, Value>(
+        NETWORK_PROTOCOL_VERSION.into(),
         http_flavor(req.version()),
     ));
     attributes.push(HOST_NAME.string(conn_info.host().to_string()));
     attributes.push(URL_PATH.string(http_target.to_owned()));
-    attributes.push(KeyValue::new(URL_SCHEME, http_scheme(conn_info.scheme())));
+    attributes.push(KeyValue::new::<Key, Value>(
+        URL_SCHEME.into(),
+        http_scheme(conn_info.scheme()),
+    ));
 
     let server_name = req.app_config().host();
     if server_name != conn_info.host() {

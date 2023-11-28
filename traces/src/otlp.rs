@@ -1,15 +1,13 @@
 use crate::get_sampler;
 use configs::{Configs, DynamicConfigs};
-use opentelemetry::{
-    global, runtime,
-    sdk::{
-        propagation::{BaggagePropagator, TextMapCompositePropagator, TraceContextPropagator},
-        trace::{self, RandomIdGenerator},
-        Resource,
-    },
-    KeyValue,
-};
+use opentelemetry::{global, KeyValue};
 use opentelemetry_otlp::{Protocol, WithExportConfig};
+use opentelemetry_sdk::{
+    propagation::{BaggagePropagator, TextMapCompositePropagator, TraceContextPropagator},
+    runtime,
+    trace::{self, RandomIdGenerator},
+    Resource,
+};
 use std::{error::Error, time::Duration, vec};
 use tonic::metadata::*;
 use tracing::{debug, error};

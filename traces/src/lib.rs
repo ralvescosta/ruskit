@@ -6,10 +6,10 @@ use configs::{Configs, DynamicConfigs, Environment};
 use opentelemetry::trace::TraceContextExt;
 use opentelemetry::{
     global::BoxedTracer,
-    sdk::trace::Sampler,
     trace::{SpanKind, Tracer},
     Context,
 };
+use opentelemetry_sdk::trace::Sampler;
 use std::borrow::Cow;
 
 fn get_sampler<T>(cfg: &Configs<T>) -> Sampler

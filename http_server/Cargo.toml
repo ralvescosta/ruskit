@@ -8,17 +8,17 @@ openapi = ["dep:utoipa", "dep:utoipa-swagger-ui"]
 
 [dependencies]
 configs = { path = '../configs' }
-http-components = { path = '../http_components', features = ["tracing", "metrics", "validator", "openapi", "auth", "health"] }
+http-components = { path = '../http_components', features = ["tracing", "metrics", "validator", "openapi", "auth"] }
 health-readiness = { path = '../health_readiness' }
 auth = { path = "../auth" }
 
 thiserror = { version = "1.0.50" }
 actix-web = { version = "4.3.1" }
-serde = { version = "1.0.190", features = ["derive"] }
+serde = { version = "1.0.193", features = ["derive"] }
 serde_json = { version = "1.0.108" }
-tracing = { version = "0.1.37" }
-opentelemetry = { version = "0.20.0" }
+tracing = { version = "0.1.40" }
+opentelemetry = { version = "0.21.0" }
 
-# Swagger deps
-utoipa = { version = "3.5.0", features = ["actix_extras"], optional = true }
-utoipa-swagger-ui = { version = "3.1.5", features = ["actix-web"], optional = true }
+# Swagger
+utoipa = { version = "4.1.0", features = ["actix_extras"], optional = true }
+utoipa-swagger-ui = { version = "4.0.0", features = ["actix-web"], optional = true }

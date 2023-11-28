@@ -23,7 +23,7 @@ use crate::{
 use base64::{engine::general_purpose, Engine};
 use configs::{AppConfigs, Configs, DynamicConfigs, Environment};
 use dotenvy::from_filename;
-use secrets_manager::{AWSSecretClientBuilder, DummyClient, SecretClient};
+use secrets_manager::{AWSSecretClientBuilder, FakeSecretClient, SecretClient};
 use std::{env, str::FromStr, sync::Arc};
 use tracing::error;
 
@@ -184,7 +184,7 @@ impl ConfigBuilder {
         app_cfg: &AppConfigs,
     ) -> Result<Arc<dyn SecretClient>, ConfigsError> {
         if !app_cfg.use_secret_manager {
-            return Ok(Arc::new(DummyClient::new()));
+            return Ok(Arc::new(FakeSecretClient::new()));
         }
 
         match self.secret_client_kind {

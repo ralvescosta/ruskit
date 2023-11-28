@@ -1,7 +1,8 @@
 use super::selectors::OTLPTemporalitySelector;
 use configs::{Configs, DynamicConfigs};
-use opentelemetry::{global, runtime, sdk::Resource, KeyValue};
+use opentelemetry::{global, KeyValue};
 use opentelemetry_otlp::{Protocol, WithExportConfig};
+use opentelemetry_sdk::{runtime, Resource};
 use std::{error::Error, time::Duration};
 use tonic::metadata::MetadataMap;
 use tracing::{debug, error};

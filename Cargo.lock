@@ -316,25 +316,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "amqp"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "configs",
- "futures-util",
- "lapin",
- "mockall",
- "opentelemetry",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "traces",
- "tracing",
- "uuid 1.6.1",
-]
-
-[[package]]
 name = "android-tzdata"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2235,6 +2216,7 @@ dependencies = [
  "async-trait",
  "mockall",
  "opentelemetry",
+ "thiserror",
 ]
 
 [[package]]
@@ -2955,6 +2937,45 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5267fca4496028628a95160fc423a33e8b2e6af8a5302579e322e4b520293cae"
 dependencies = [
  "proc-macro2",
+]
+
+[[package]]
+name = "rabbitmq"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "configs",
+ "futures-util",
+ "lapin",
+ "mockall",
+ "opentelemetry",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "traces",
+ "tracing",
+ "uuid 1.6.1",
+]
+
+[[package]]
+name = "rabbitmqv2"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "configs",
+ "futures-util",
+ "lapin",
+ "messaging",
+ "mockall",
+ "opentelemetry",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "traces",
+ "tracing",
+ "uuid 1.6.1",
 ]
 
 [[package]]

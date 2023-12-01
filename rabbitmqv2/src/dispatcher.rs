@@ -1,0 +1,121 @@
+use crate::{consumer::consume, errors::AmqpError, queue::QueueDefinition};
+use async_trait::async_trait;
+use futures_util::StreamExt;
+use lapin::{options::BasicConsumeOptions, types::FieldTable, Channel};
+use messaging::{
+    dispatcher::{Dispatcher, DispatcherDefinition},
+    errors::MessagingError,
+    handler::ConsumerHandler,
+};
+use opentelemetry::global;
+use std::{collections::HashMap, error::Error, sync::Arc};
+use tracing::error;
+
+#[derive(Clone)]
+pub struct RabbitMQDispatcherDefinition {
+    pub(crate) queue: String,
+    pub(crate) queue_def: QueueDefinition,
+    pub(crate) handler: Arc<dyn ConsumerHandler>,
+}
+
+pub struct RabbitMQDispatcher {
+    channel: Arc<Channel>,
+    queues_def: Vec<QueueDefinition>,
+    pub(crate) dispatchers_def: HashMap<String, RabbitMQDispatcherDefinition>,
+}
+
+impl RabbitMQDispatcher {
+    pub fn new(channel: Arc<Channel>, queues_def: Vec<QueueDefinition>) -> Self {
+        RabbitMQDispatcher {
+            channel,
+            queues_def,
+            dispatchers_def: HashMap::default(),
+        }
+    }
+}
+
+#[async_trait]
+impl Dispatcher for RabbitMQDispatcher {
+    fn register(mut self, def: &DispatcherDefinition, handler: Arc<dyn ConsumerHandler>) -> Self {
+        let mut queue_def = QueueDefinition::default();
+        for queue in &self.queues_def {
+            if def.name == queue.name {
+                queue_def = queue.clone();
+            }
+        }
+
+        self.dispatchers_def.insert(
+            def.msg_type.clone(),
+            RabbitMQDispatcherDefinition {
+                queue: def.name.clone(),
+                queue_def,
+                handler,
+            },
+        );
+
+        self
+    }
+
+    async fn consume_blocking(&self) -> Result<(), MessagingError> {
+        self.consume_blocking_single().await
+    }
+}
+
+impl RabbitMQDispatcher {
+    async fn consume_blocking_single(&self) -> Result<(), MessagingError> {
+        let key = self.dispatchers_def.keys().next().unwrap();
+        let def = self.dispatchers_def.get(key).unwrap();
+
+        let mut consumer = self
+            .channel
+            .basic_consume(
+                &def.queue,
+                key,
+                BasicConsumeOptions {
+                    no_local: false,
+                    no_ack: false,
+                    exclusive: false,
+                    nowait: false,
+                },
+                FieldTable::default(),
+            )
+            .await
+            .expect("");
+
+        let defs = self.dispatchers_def.clone();
+        let channel = self.channel.clone();
+
+        let spawned = tokio::spawn({
+            async move {
+                while let Some(result) = consumer.next().await {
+                    match result {
+                        Ok(delivery) => {
+                            match consume(
+                                &global::tracer("amqp consumer"),
+                                &delivery,
+                                &defs,
+                                channel.clone(),
+                            )
+                            .await
+                            {
+                                Err(err) => {
+                                    error!(error = err.to_string(), "error consume msg")
+                                }
+                                _ => {}
+                            }
+                        }
+
+                        Err(err) => error!(error = err.to_string(), "errors consume msg"),
+                    }
+                }
+            }
+        })
+        .await;
+
+        if spawned.is_err() {
+            return Err(MessagingError::ConsumerError("".to_owned()));
+        }
+
+        return Ok(());
+    }
+}

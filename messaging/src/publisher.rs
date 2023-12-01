@@ -1,6 +1,7 @@
+use crate::errors::MessagingError;
 use async_trait::async_trait;
 use opentelemetry::Context;
-use std::{collections::HashMap, error::Error};
+use std::collections::HashMap;
 
 pub struct PublishPayload {
     pub to: String,
@@ -13,5 +14,5 @@ pub struct PublishPayload {
 
 #[async_trait]
 pub trait Publisher: Send + Sync {
-    async fn publish(&self, ctx: &Context, payload: &PublishPayload) -> Result<(), Box<dyn Error>>;
+    async fn publish(&self, ctx: &Context, payload: &PublishPayload) -> Result<(), MessagingError>;
 }

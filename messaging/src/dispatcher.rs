@@ -1,7 +1,8 @@
-use crate::handler::ConsumerHandler;
+use crate::{errors::MessagingError, handler::ConsumerHandler};
 use async_trait::async_trait;
-use std::{error::Error, sync::Arc};
+use std::sync::Arc;
 
+#[derive(Debug, Clone)]
 pub struct DispatcherDefinition {
     pub name: String,
     pub msg_type: String,
@@ -12,5 +13,5 @@ pub trait Dispatcher: Send + Sync {
     fn register(self, definition: &DispatcherDefinition, handler: Arc<dyn ConsumerHandler>)
         -> Self;
 
-    async fn consume_blocking(&self) -> Result<(), Box<dyn Error>>;
+    async fn consume_blocking(&self) -> Result<(), MessagingError>;
 }

@@ -1,15 +1,17 @@
+use crate::errors::MessagingError;
 use async_trait::async_trait;
 use opentelemetry::Context;
-use std::{collections::HashMap, error::Error};
+use std::collections::HashMap;
 
+#[derive(Clone, Default)]
 pub struct ConsumerPayload {
     pub from: String,
     pub msg_type: String,
     pub payload: Box<[u8]>,
-    pub headers: HashMap<String, String>,
+    pub headers: Option<HashMap<String, String>>,
 }
 
 #[async_trait]
 pub trait ConsumerHandler: Send + Sync {
-    async fn exec(&self, ctx: &Context, payload: &ConsumerPayload) -> Result<(), Box<dyn Error>>;
+    async fn exec(&self, ctx: &Context, payload: &ConsumerPayload) -> Result<(), MessagingError>;
 }

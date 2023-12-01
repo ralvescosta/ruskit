@@ -9,6 +9,7 @@ mocks = ["dep:mockall"]
 [dependencies]
 opentelemetry = { version = "0.21.0" }
 async-trait = { version = "0.1.73" }
+thiserror = { version = "1.0.50" }
 
 # mock
 mockall = { version = "0.11.4", optional = true }

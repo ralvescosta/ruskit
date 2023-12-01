@@ -9,11 +9,8 @@ pub struct DispatcherDefinition {
 
 #[async_trait]
 pub trait Dispatcher: Send + Sync {
-    fn register<H>(
-        self,
-        definition: &DispatcherDefinition,
-        handler: Arc<dyn ConsumerHandler<H>>,
-    ) -> Self;
+    fn register(self, definition: &DispatcherDefinition, handler: Arc<dyn ConsumerHandler>)
+        -> Self;
 
     async fn consume_blocking(&self) -> Result<(), Box<dyn Error>>;
 }

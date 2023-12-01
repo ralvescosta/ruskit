@@ -1,11 +1,9 @@
-mod builder;
-
+pub mod client;
 pub mod dispatcher;
 pub mod errors;
 pub mod payload;
 pub mod publisher;
 
-pub use builder::MQTTClientBuilder;
 #[cfg(test)]
 pub use dispatcher::MockConsumerHandler;
 #[cfg(feature = "mocks")]

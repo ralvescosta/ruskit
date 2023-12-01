@@ -1,4 +1,4 @@
-use crate::{consumer::consume, errors::AmqpError, queue::QueueDefinition};
+use crate::{consumer::consume, queue::QueueDefinition};
 use async_trait::async_trait;
 use futures_util::StreamExt;
 use lapin::{options::BasicConsumeOptions, types::FieldTable, Channel};
@@ -8,7 +8,7 @@ use messaging::{
     handler::ConsumerHandler,
 };
 use opentelemetry::global;
-use std::{collections::HashMap, error::Error, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 use tracing::error;
 
 #[derive(Clone)]

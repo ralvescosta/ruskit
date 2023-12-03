@@ -4,7 +4,6 @@ resolver = "2"
 members = [
     "messaging",
     "rabbitmq",
-    "rabbitmqv2",
     "auth",
     "configs",
     "configs_builder",

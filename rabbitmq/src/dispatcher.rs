@@ -1,91 +1,133 @@
-use crate::{consumer::consume, errors::AmqpError, queue::QueueDefinition};
+use crate::{consumer::consume, queue::QueueDefinition};
 use async_trait::async_trait;
 use futures_util::{future::join_all, StreamExt};
 use lapin::{options::BasicConsumeOptions, types::FieldTable, Channel};
-#[cfg(test)]
-use mockall::*;
-#[cfg(feature = "mocks")]
-use mockall::*;
-use opentelemetry::{global, Context};
-use std::{collections::HashMap, fmt::Display, sync::Arc, vec};
-use tokio::task::JoinError;
+use messaging::{
+    dispatcher::{Dispatcher, DispatcherDefinition},
+    errors::MessagingError,
+    handler::ConsumerHandler,
+};
+use opentelemetry::global;
+use std::{collections::HashMap, sync::Arc};
 use tracing::error;
 
-#[cfg_attr(test, automock)]
-#[cfg_attr(feature = "mocks", automock)]
-#[async_trait]
-pub trait ConsumerHandler: Send + Sync {
-    async fn exec(&self, ctx: &Context, data: &[u8]) -> Result<(), AmqpError>;
-}
-
 #[derive(Clone)]
-pub struct DispatcherDefinition {
-    pub(crate) queue: String,
+pub struct RabbitMQDispatcherDefinition {
     pub(crate) queue_def: QueueDefinition,
     pub(crate) handler: Arc<dyn ConsumerHandler>,
 }
 
-#[async_trait]
-pub trait Dispatcher: Send + Sync {
-    fn register<'dp, T>(
-        self,
-        def: &'dp QueueDefinition,
-        msg: &'dp T,
-        handler: Arc<dyn ConsumerHandler>,
-    ) -> Self
-    where
-        T: Display + 'static;
-
-    async fn consume_blocking_single(&self) -> Result<(), JoinError>;
-
-    async fn consume_blocking_multi(&self) -> Vec<Result<(), JoinError>>;
-}
-
-pub struct AmqpDispatcher {
+pub struct RabbitMQDispatcher {
     channel: Arc<Channel>,
-    pub(crate) dispatchers_def: HashMap<String, DispatcherDefinition>,
+    queues_def: Vec<QueueDefinition>,
+    pub(crate) dispatchers_def: HashMap<String, RabbitMQDispatcherDefinition>,
 }
 
-impl AmqpDispatcher {
-    pub fn new(channel: Arc<Channel>) -> AmqpDispatcher {
-        return AmqpDispatcher {
+impl RabbitMQDispatcher {
+    pub fn new(channel: Arc<Channel>, queues_def: Vec<QueueDefinition>) -> Self {
+        RabbitMQDispatcher {
             channel,
+            queues_def,
             dispatchers_def: HashMap::default(),
-        };
+        }
     }
 }
 
 #[async_trait]
-impl<'ad> Dispatcher for AmqpDispatcher {
-    fn register<'dp, T>(
-        mut self,
-        def: &'dp QueueDefinition,
-        msg: &'dp T,
-        handler: Arc<dyn ConsumerHandler>,
-    ) -> Self
-    where
-        T: Display,
-    {
+impl Dispatcher for RabbitMQDispatcher {
+    fn register(mut self, def: &DispatcherDefinition, handler: Arc<dyn ConsumerHandler>) -> Self {
+        let mut queue_def = QueueDefinition::default();
+        for queue in &self.queues_def {
+            if def.name == queue.name {
+                queue_def = queue.clone();
+            }
+        }
+
         self.dispatchers_def.insert(
-            format!("{}", msg),
-            DispatcherDefinition {
-                queue: def.name.to_owned(),
-                queue_def: def.to_owned(),
-                handler,
-            },
+            def.msg_type.clone(),
+            RabbitMQDispatcherDefinition { queue_def, handler },
         );
 
         self
     }
 
-    async fn consume_blocking_multi(&self) -> Vec<Result<(), JoinError>> {
+    async fn consume_blocking(&self) -> Result<(), MessagingError> {
+        self.consume_blocking_single().await
+    }
+}
+
+impl RabbitMQDispatcher {
+    pub async fn consume_blocking_single(&self) -> Result<(), MessagingError> {
+        let key = self.dispatchers_def.keys().next().unwrap();
+        let def = self.dispatchers_def.get(key).unwrap();
+
+        let mut consumer = match self
+            .channel
+            .basic_consume(
+                &def.queue_def.name,
+                key,
+                BasicConsumeOptions {
+                    no_local: false,
+                    no_ack: false,
+                    exclusive: false,
+                    nowait: false,
+                },
+                FieldTable::default(),
+            )
+            .await
+        {
+            Err(err) => {
+                error!(error = err.to_string(), "error to create the consumer");
+                Err(MessagingError::CreatingConsumerError)
+            }
+            Ok(c) => Ok(c),
+        }?;
+
+        let defs = self.dispatchers_def.clone();
+        let channel = self.channel.clone();
+
+        let spawned = tokio::spawn({
+            async move {
+                while let Some(result) = consumer.next().await {
+                    match result {
+                        Ok(delivery) => {
+                            match consume(
+                                &global::tracer("amqp consumer"),
+                                &delivery,
+                                &defs,
+                                channel.clone(),
+                            )
+                            .await
+                            {
+                                Err(err) => {
+                                    error!(error = err.to_string(), "error consume msg")
+                                }
+                                _ => {}
+                            }
+                        }
+
+                        Err(err) => error!(error = err.to_string(), "errors consume msg"),
+                    }
+                }
+            }
+        })
+        .await;
+
+        if spawned.is_err() {
+            return Err(MessagingError::ConsumerError("some error occur".to_owned()));
+        }
+
+        return Ok(());
+    }
+
+    pub async fn consume_blocking_multi(&self) -> Result<(), MessagingError> {
         let mut spawns = vec![];
 
-        for (msg_type, def) in self.dispatchers_def.clone() {
-            let mut consumer = self
+        for (msg_type, def) in &self.dispatchers_def {
+            let mut consumer = match self
                 .channel
                 .basic_consume(
-                    &def.queue,
+                    &def.queue_def.name,
                     &msg_type,
                     BasicConsumeOptions {
                         no_local: false,
@@ -96,7 +138,13 @@ impl<'ad> Dispatcher for AmqpDispatcher {
                     FieldTable::default(),
                 )
                 .await
-                .expect("");
+            {
+                Err(err) => {
+                    error!(error = err.to_string(), "failure to create the consumer");
+                    Err(MessagingError::CreatingConsumerError)
+                }
+                Ok(c) => Ok(c),
+            }?;
 
             let defs = self.dispatchers_def.clone();
             let channel = self.channel.clone();
@@ -128,57 +176,14 @@ impl<'ad> Dispatcher for AmqpDispatcher {
             }));
         }
 
-        join_all(spawns).await
-    }
-
-    async fn consume_blocking_single(&self) -> Result<(), JoinError> {
-        let key = self.dispatchers_def.keys().next().unwrap();
-        let def = self.dispatchers_def.get(key).unwrap();
-
-        let mut consumer = self
-            .channel
-            .basic_consume(
-                &def.queue,
-                key,
-                BasicConsumeOptions {
-                    no_local: false,
-                    no_ack: false,
-                    exclusive: false,
-                    nowait: false,
-                },
-                FieldTable::default(),
-            )
-            .await
-            .expect("");
-
-        let defs = self.dispatchers_def.clone();
-        let channel = self.channel.clone();
-
-        tokio::spawn({
-            async move {
-                while let Some(result) = consumer.next().await {
-                    match result {
-                        Ok(delivery) => {
-                            match consume(
-                                &global::tracer("amqp consumer"),
-                                &delivery,
-                                &defs,
-                                channel.clone(),
-                            )
-                            .await
-                            {
-                                Err(err) => {
-                                    error!(error = err.to_string(), "error consume msg")
-                                }
-                                _ => {}
-                            }
-                        }
-
-                        Err(err) => error!(error = err.to_string(), "errors consume msg"),
-                    }
-                }
+        let spawned = join_all(spawns).await;
+        for res in spawned {
+            if res.is_err() {
+                error!("tokio process error");
+                return Err(MessagingError::InternalError);
             }
-        })
-        .await
+        }
+
+        Ok(())
     }
 }

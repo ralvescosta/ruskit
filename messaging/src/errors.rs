@@ -13,4 +13,7 @@ pub enum MessagingError {
 
     #[error("failure to consume message `{0}`")]
     ConsumerError(String),
+
+    #[error("failure to publish message")]
+    PublishingError,
 }

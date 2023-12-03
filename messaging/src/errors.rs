@@ -8,6 +8,9 @@ pub enum MessagingError {
     #[error("failure to connect")]
     ConnectionError,
 
+    #[error("failure to create the consumer")]
+    CreatingConsumerError,
+
     #[error("failure to consume message `{0}`")]
     ConsumerError(String),
 }

@@ -1,6 +1,4 @@
-pub mod client;
 pub mod dispatcher;
 pub mod errors;
-pub mod payload;
+pub mod handler;
 pub mod publisher;
-pub mod topic;

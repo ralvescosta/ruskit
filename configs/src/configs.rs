@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::Environment;
 
 #[derive(Debug, Clone, Default)]
@@ -5,7 +7,7 @@ pub struct Configs<T: DynamicConfigs> {
     pub app: AppConfigs,
     pub auth0: Auth0Configs,
     pub mqtt: MQTTConfigs,
-    pub amqp: AmqpConfigs,
+    pub rabbitmq: RabbitMQConfigs,
     pub metric: MetricConfigs,
     pub trace: TraceConfigs,
     pub postgres: PostgresConfigs,
@@ -30,6 +32,31 @@ impl DynamicConfigs for Empty {
     fn load(&mut self) {}
 }
 
+#[derive(Debug, Clone, Default)]
+pub enum SecretsManagerKind {
+    #[default]
+    None,
+    AWSSecretManager,
+}
+
+impl From<&str> for SecretsManagerKind {
+    fn from(value: &str) -> Self {
+        match value.to_uppercase().as_str() {
+            "AWS" => SecretsManagerKind::AWSSecretManager,
+            _ => SecretsManagerKind::None,
+        }
+    }
+}
+
+impl From<&String> for SecretsManagerKind {
+    fn from(value: &String) -> Self {
+        match value.to_uppercase().as_str() {
+            "AWS" => SecretsManagerKind::AWSSecretManager,
+            _ => SecretsManagerKind::None,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct AppConfigs {
     ///Default: APP_NAME
@@ -37,7 +64,7 @@ pub struct AppConfigs {
     ///Default: Environment::Local
     pub env: Environment,
     ///Default:false
-    pub use_secret_manager: bool,
+    pub secret_manager: SecretsManagerKind,
     ///Default: context
     pub secret_key: String,
     ///Default: 0.0.0.0
@@ -55,7 +82,7 @@ impl Default for AppConfigs {
         Self {
             name: "APP_NAME".to_owned(),
             env: Environment::Local,
-            use_secret_manager: false,
+            secret_manager: SecretsManagerKind::default(),
             secret_key: "context".to_owned(),
             host: "0.0.0.0".to_owned(),
             port: 31033,
@@ -100,12 +127,76 @@ impl Default for Auth0Configs {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub enum MQTTBrokerKind {
+    #[default]
+    Default,
+    AWSIoTCore,
+}
+
+impl From<&str> for MQTTBrokerKind {
+    fn from(value: &str) -> Self {
+        match value.to_uppercase().as_str() {
+            "AWSIoTCore" => MQTTBrokerKind::AWSIoTCore,
+            _ => MQTTBrokerKind::Default,
+        }
+    }
+}
+
+impl From<&String> for MQTTBrokerKind {
+    fn from(value: &String) -> Self {
+        match value.to_uppercase().as_str() {
+            "AWSIoTCore" => MQTTBrokerKind::AWSIoTCore,
+            _ => MQTTBrokerKind::Default,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub enum MQTTTransport {
+    #[default]
+    TCP,
+    SSL,
+    WS,
+}
+
+impl From<&str> for MQTTTransport {
+    fn from(value: &str) -> Self {
+        match value.to_uppercase().as_str() {
+            "SSL" => MQTTTransport::SSL,
+            "WS" => MQTTTransport::WS,
+            _ => MQTTTransport::TCP,
+        }
+    }
+}
+
+impl From<&String> for MQTTTransport {
+    fn from(value: &String) -> Self {
+        match value.to_uppercase().as_str() {
+            "SSL" => MQTTTransport::SSL,
+            "WS" => MQTTTransport::WS,
+            _ => MQTTTransport::TCP,
+        }
+    }
+}
+
+impl Display for MQTTTransport {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MQTTTransport::TCP => write!(f, "tcp"),
+            MQTTTransport::SSL => write!(f, "ssl"),
+            MQTTTransport::WS => write!(f, "ws"),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct MQTTConfigs {
+    pub broker_kind: MQTTBrokerKind,
     ///Default: localhost
     pub host: String,
     //Default: tcp
-    pub transport: String,
+    pub transport: MQTTTransport,
     ///Default: 1883
     pub port: u64,
     ///Default: mqtt_user
@@ -125,8 +216,9 @@ pub struct MQTTConfigs {
 impl Default for MQTTConfigs {
     fn default() -> Self {
         Self {
+            broker_kind: MQTTBrokerKind::default(),
             host: "localhost".to_owned(),
-            transport: "tcp".to_owned(),
+            transport: MQTTTransport::default(),
             port: 1883,
             user: "mqtt".to_owned(),
             password: "password".to_owned(),
@@ -139,7 +231,7 @@ impl Default for MQTTConfigs {
 }
 
 #[derive(Debug, Clone)]
-pub struct AmqpConfigs {
+pub struct RabbitMQConfigs {
     ///Default: localhost
     pub host: String,
     ///Default: 5672
@@ -151,7 +243,7 @@ pub struct AmqpConfigs {
     pub vhost: String,
 }
 
-impl Default for AmqpConfigs {
+impl Default for RabbitMQConfigs {
     fn default() -> Self {
         Self {
             host: "localhost".to_owned(),
@@ -399,10 +491,14 @@ impl<T> Configs<T>
 where
     T: DynamicConfigs,
 {
-    pub fn amqp_uri(&self) -> String {
+    pub fn rabbitmq_uri(&self) -> String {
         format!(
             "amqp://{}:{}@{}:{}{}",
-            self.amqp.user, self.amqp.password, self.amqp.host, self.amqp.port, self.amqp.vhost
+            self.rabbitmq.user,
+            self.rabbitmq.password,
+            self.rabbitmq.host,
+            self.rabbitmq.port,
+            self.rabbitmq.vhost
         )
     }
 }
@@ -423,10 +519,14 @@ mod tests {
         let cfg = Configs::<Empty>::default();
 
         assert_eq!(
-            cfg.amqp_uri(),
+            cfg.rabbitmq_uri(),
             format!(
                 "amqp://{}:{}@{}:{}{}",
-                cfg.amqp.user, cfg.amqp.password, cfg.amqp.host, cfg.amqp.port, cfg.amqp.vhost
+                cfg.rabbitmq.user,
+                cfg.rabbitmq.password,
+                cfg.rabbitmq.host,
+                cfg.rabbitmq.port,
+                cfg.rabbitmq.vhost
             )
         )
     }

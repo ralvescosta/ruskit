@@ -6,6 +6,7 @@ use mockall::*;
 use serde_json::Value;
 use tracing::error;
 
+#[derive(Default)]
 pub struct AWSSecretClient {
     pub(crate) secrets: Value,
 }
@@ -19,7 +20,7 @@ impl SecretClient for AWSSecretClient {
 
         let Value::String(secret) = value else {
             error!(key = key, "secret {} was not found", key);
-            return Err(SecretsManagerError::SecretNotFound{});
+            return Err(SecretsManagerError::SecretNotFound {});
         };
 
         Ok(secret)

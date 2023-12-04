@@ -5,6 +5,9 @@ pub enum MessagingError {
     #[error("internal error")]
     InternalError,
 
+    #[error("there is no handler registered")]
+    UnregisteredHandler,
+
     #[error("failure to connect")]
     ConnectionError,
 

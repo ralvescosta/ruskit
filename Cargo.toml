@@ -15,6 +15,7 @@ members = [
     "metrics",
     "migrator",
     "mqtt",
+    "mqttv2",
     "otel",
     "secrets_manager",
     "sql_pool",

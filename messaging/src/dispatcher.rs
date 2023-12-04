@@ -2,8 +2,6 @@ use crate::{errors::MessagingError, handler::ConsumerHandler};
 use async_trait::async_trait;
 use std::sync::Arc;
 
-#[cfg(test)]
-use mockall::*;
 #[cfg(feature = "mocks")]
 use mockall::*;
 
@@ -13,7 +11,6 @@ pub struct DispatcherDefinition {
     pub msg_type: String,
 }
 
-#[cfg_attr(test, automock)]
 #[cfg_attr(feature = "mocks", automock)]
 #[async_trait]
 pub trait Dispatcher: Send + Sync {

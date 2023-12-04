@@ -2,7 +2,7 @@ use crate::otel::AmqpTracePropagator;
 use async_trait::async_trait;
 use lapin::{
     options::BasicPublishOptions,
-    types::{AMQPValue, FieldTable, LongInt, ShortInt, ShortString},
+    types::{AMQPValue, FieldTable, LongInt, LongString, ShortInt, ShortString},
     BasicProperties, Channel,
 };
 use messaging::{
@@ -38,7 +38,8 @@ impl Publisher for RabbitMQPublisher {
         if infos.headers.is_some() {
             for (key, value) in infos.headers.clone().unwrap() {
                 let amqp_value = match value {
-                    HeaderValues::String(v) => AMQPValue::ShortString(ShortString::from(v)),
+                    HeaderValues::ShortString(v) => AMQPValue::ShortString(ShortString::from(v)),
+                    HeaderValues::LongString(v) => AMQPValue::LongString(LongString::from(v)),
                     HeaderValues::Int(v) => AMQPValue::ShortInt(ShortInt::from(v)),
                     HeaderValues::LongInt(v) => AMQPValue::LongInt(LongInt::from(v)),
                 };

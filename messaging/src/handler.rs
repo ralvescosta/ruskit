@@ -3,8 +3,6 @@ use async_trait::async_trait;
 use opentelemetry::Context;
 use std::collections::HashMap;
 
-#[cfg(test)]
-use mockall::*;
 #[cfg(feature = "mocks")]
 use mockall::*;
 
@@ -16,7 +14,6 @@ pub struct ConsumerPayload {
     pub headers: Option<HashMap<String, String>>,
 }
 
-#[cfg_attr(test, automock)]
 #[cfg_attr(feature = "mocks", automock)]
 #[async_trait]
 pub trait ConsumerHandler: Send + Sync {

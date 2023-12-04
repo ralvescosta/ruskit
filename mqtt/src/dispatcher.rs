@@ -1,105 +1,81 @@
-use crate::errors::MQTTError;
 use async_trait::async_trait;
 use futures_util::StreamExt;
+use messaging::{
+    dispatcher::{Dispatcher, DispatcherDefinition},
+    errors::MessagingError,
+    handler::{ConsumerHandler, ConsumerPayload},
+};
 use opentelemetry::{
     global::{self, BoxedTracer},
     trace::{SpanKind, Status, TraceContextExt},
     Context,
 };
 use paho_mqtt::{AsyncClient, AsyncReceiver, Message};
-use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, sync::Arc};
 use tracing::{debug, error, warn};
-
-#[cfg(test)]
-use mockall::*;
-#[cfg(feature = "mocks")]
-use mockall::*;
-
-#[cfg_attr(test, automock)]
-#[cfg_attr(feature = "mocks", automock)]
-#[async_trait]
-pub trait ConsumerHandler {
-    async fn exec(&self, ctx: &Context, msgs: &[u8], topic: &TopicMessage)
-        -> Result<(), MQTTError>;
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash, Serialize, Deserialize)]
-pub struct TopicMessage {
-    pub topic: String,
-    pub label: String,
-    pub organization_id: String,
-    pub network: String,
-    pub collector_id: String,
-    pub is_ack: bool,
-}
-
-impl TopicMessage {
-    pub fn new(topic: &str) -> Result<TopicMessage, MQTTError> {
-        let splitted = topic.split("/").collect::<Vec<&str>>();
-        if splitted.len() <= 3 {
-            return Err(MQTTError::UnformattedTopicError {});
-        }
-
-        let mut is_ack = false;
-        if splitted.len() == 5 {
-            is_ack = true;
-        }
-
-        let label = splitted[0];
-        let organization_id = splitted[1];
-        let network = splitted[2];
-        let collector_id = splitted[3];
-
-        Ok(TopicMessage {
-            topic: topic.to_owned(),
-            label: label.to_owned(),
-            organization_id: organization_id.to_owned(),
-            network: network.to_owned(),
-            collector_id: collector_id.to_owned(),
-            is_ack,
-        })
-    }
-}
 
 pub struct MQTTDispatcher {
     conn: Arc<AsyncClient>,
     stream: AsyncReceiver<Option<Message>>,
-    pub(crate) topics: Vec<String>,
-    pub(crate) dispatches: Vec<Arc<dyn ConsumerHandler + Sync + Send>>,
-    pub(crate) tracer: BoxedTracer,
+    tracer: BoxedTracer,
+    topics: Vec<String>,
+    handlers: Vec<Arc<dyn ConsumerHandler>>,
 }
 
 impl MQTTDispatcher {
     pub fn new(conn: Arc<AsyncClient>, stream: AsyncReceiver<Option<Message>>) -> Self {
-        MQTTDispatcher {
+        Self {
             conn,
             stream,
+            tracer: global::tracer("mqtt-consumer"),
             topics: vec![],
-            dispatches: vec![],
-            tracer: global::tracer("mqtt_consumer"),
+            handlers: vec![],
         }
     }
+}
 
-    pub fn declare(
-        &mut self,
-        topic: &str,
-        dispatch: Arc<dyn ConsumerHandler + Send + Sync>,
-    ) -> Result<(), MQTTError> {
-        if topic.is_empty() {
-            return Err(MQTTError::DispatcherError {});
+#[async_trait]
+impl Dispatcher for MQTTDispatcher {
+    fn register(
+        mut self,
+        definition: &DispatcherDefinition,
+        handler: Arc<dyn ConsumerHandler>,
+    ) -> Self {
+        if definition.name.is_empty() {
+            warn!("cant create dispatcher with empty topic");
+            return self;
         }
 
-        self.topics.push(topic.to_owned());
-        self.dispatches.push(dispatch);
+        self.topics.push(definition.name.clone());
+        self.handlers.push(handler);
+
+        self
+    }
+
+    async fn consume_blocking(&self) -> Result<(), MessagingError> {
+        for topic in self.topics.clone() {
+            self.conn.subscribe(topic, 2);
+        }
+
+        let mut cloned_stream = self.stream.clone();
+
+        while let Some(delivery) = cloned_stream.next().await {
+            match delivery {
+                Some(msg) => match self.consume(&Context::new(), &msg).await {
+                    Err(e) => error!(error = e.to_string(), "failure to consume msg"),
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
 
         Ok(())
     }
+}
 
-    async fn consume(&self, ctx: &Context, msg: &Message) -> Result<(), MQTTError> {
-        let dispatch_index = self.get_dispatch_index(ctx, msg.topic())?;
-
-        let metadata = TopicMessage::new(msg.topic())?;
+impl MQTTDispatcher {
+    async fn consume(&self, ctx: &Context, msg: &Message) -> Result<(), MessagingError> {
+        let handler_idx = self.get_handler_index(ctx, msg.topic())?;
 
         let ctx = traces::span_ctx(&self.tracer, SpanKind::Consumer, msg.topic());
         let span = ctx.span();
@@ -111,9 +87,16 @@ impl MQTTDispatcher {
             msg.topic()
         );
 
-        let dispatch = self.dispatches.get(dispatch_index).unwrap();
+        let handler = self.handlers.get(handler_idx).unwrap();
 
-        return match dispatch.exec(&ctx, msg.payload(), &metadata).await {
+        let payload = ConsumerPayload {
+            from: msg.topic().to_owned(),
+            msg_type: String::new(),
+            payload: msg.payload().into(),
+            headers: None,
+        };
+
+        return match handler.exec(&ctx, &payload).await {
             Ok(_) => {
                 debug!(
                     trace.id = traces::trace_id(&ctx),
@@ -138,33 +121,18 @@ impl MQTTDispatcher {
         };
     }
 
-    pub async fn consume_blocking(&mut self) -> Result<(), MQTTError> {
-        for topic in self.topics.clone() {
-            self.conn.subscribe(topic, 2);
-        }
+    fn get_handler_index(
+        &self,
+        ctx: &Context,
+        received_topic: &str,
+    ) -> Result<usize, MessagingError> {
+        let mut p = usize::MAX;
 
-        while let Some(delivery) = self.stream.next().await {
-            match delivery {
-                Some(msg) => match self.consume(&Context::new(), &msg).await {
-                    Err(e) => error!(error = e.to_string(), ""),
-                    _ => {}
-                },
-                _ => {}
-            }
-        }
-
-        Ok(())
-    }
-}
-
-impl MQTTDispatcher {
-    fn get_dispatch_index(&self, ctx: &Context, received_topic: &str) -> Result<usize, MQTTError> {
-        let mut p: i16 = -1;
-        for handler_topic_index in 0..self.topics.len() {
+        'outer: for handler_topic_index in 0..self.topics.len() {
             let handler_topic = self.topics[handler_topic_index].clone();
 
             if received_topic == handler_topic {
-                p = handler_topic_index as i16;
+                p = handler_topic_index;
                 break;
             }
 
@@ -172,53 +140,52 @@ impl MQTTDispatcher {
                 break;
             }
 
-            let handler_fields: Vec<_> = handler_topic.split('/').collect();
-            let received_fields: Vec<_> = received_topic.split('/').collect();
+            let saved_topic_fields: Vec<_> = handler_topic.split('/').collect();
+            let received_topic_fields: Vec<_> = received_topic.split('/').collect();
 
-            for i in 0..handler_fields.len() {
-                if handler_fields[i] == "#" {
-                    p = handler_topic_index as i16;
-                    break;
+            for i in 0..saved_topic_fields.len() {
+                if saved_topic_fields[i] == "#" {
+                    p = handler_topic_index;
+                    break 'outer;
                 }
 
-                if handler_fields[i] != "+" && handler_fields[i] != received_fields[i] {
-                    break;
+                if saved_topic_fields[i] != "+" && saved_topic_fields[i] != received_topic_fields[i]
+                {
+                    break 'outer;
                 }
 
-                if handler_fields[i] == "+" && i == handler_fields.len() - 1 {
-                    p = handler_topic_index as i16;
+                if saved_topic_fields[i] == "+" && i == saved_topic_fields.len() - 1 {
+                    p = handler_topic_index;
+                    break 'outer;
                 }
             }
 
-            if handler_fields.len() == received_fields.len() {
-                p = handler_topic_index as i16;
+            if saved_topic_fields.len() == received_topic_fields.len() {
+                p = handler_topic_index;
                 break;
             }
         }
 
-        if p == -1 {
+        if p == usize::MAX {
             warn!(
                 trace.id = traces::trace_id(&ctx),
                 span.id = traces::span_id(&ctx),
+                topic = received_topic,
                 "cant find dispatch for this topic"
             );
-            return Err(MQTTError::UnregisteredDispatchForThisTopicError(
-                received_topic.to_owned(),
-            ));
+            return Err(MessagingError::UnregisteredHandler);
         }
 
-        Ok(p as usize)
+        Ok(p)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::vec;
-
     use super::*;
-    use crate::errors::MQTTError;
-    use async_trait::async_trait;
+    use messaging::handler::MockConsumerHandler;
     use paho_mqtt::CreateOptions;
+    use std::vec;
 
     #[test]
     fn test_new() {
@@ -231,23 +198,40 @@ mod tests {
     fn test_declare() {
         let mut client = AsyncClient::new(CreateOptions::default()).unwrap();
         let stream = client.get_stream(2048);
-        let mut dispatch = MQTTDispatcher::new(Arc::new(client), stream);
+        let dispatch = MQTTDispatcher::new(Arc::new(client), stream)
+            .register(
+                &DispatcherDefinition {
+                    name: "some/topic".to_owned(),
+                    msg_type: String::new(),
+                },
+                Arc::new(MockConsumerHandler::new()),
+            )
+            .register(
+                &DispatcherDefinition {
+                    name: String::new(),
+                    msg_type: String::new(),
+                },
+                Arc::new(MockConsumerHandler::new()),
+            );
 
-        let res = dispatch.declare("some/topic", Arc::new(MockDispatch::new()));
-        assert!(res.is_ok());
-
-        let res = dispatch.declare("", Arc::new(MockDispatch::new()));
-        assert!(res.is_err());
+        assert!(dispatch.handlers.len() == 1);
     }
 
     #[tokio::test]
     async fn test_consume() {
         let mut client = AsyncClient::new(CreateOptions::default()).unwrap();
         let stream = client.get_stream(2048);
-        let mut dispatch = MQTTDispatcher::new(Arc::new(client), stream);
 
-        let res = dispatch.declare("some/topic/#", Arc::new(MockDispatch::new()));
-        assert!(res.is_ok());
+        let mut handler = MockConsumerHandler::new();
+        handler.expect_exec().return_once(move |_, _| Ok(()));
+
+        let dispatch = MQTTDispatcher::new(Arc::new(client), stream).register(
+            &DispatcherDefinition {
+                name: "some/topic/#".to_owned(),
+                msg_type: String::new(),
+            },
+            Arc::new(handler),
+        );
 
         let msg = Message::new("some/topic/sub/1", vec![], 0);
 
@@ -259,14 +243,21 @@ mod tests {
     async fn test_consume_with_plus_wildcard() {
         let mut client = AsyncClient::new(CreateOptions::default()).unwrap();
         let stream = client.get_stream(2048);
-        let mut dispatch = MQTTDispatcher::new(Arc::new(client), stream);
 
-        let res = dispatch.declare("some/+/+/sub", Arc::new(MockDispatch::new()));
-        assert!(res.is_ok());
+        let mut handler = MockConsumerHandler::new();
+        handler.expect_exec().return_once(move |_, _| Ok(()));
+
+        let dispatcher = MQTTDispatcher::new(Arc::new(client), stream).register(
+            &DispatcherDefinition {
+                name: "some/+/+/sub".to_owned(),
+                msg_type: String::new(),
+            },
+            Arc::new(handler),
+        );
 
         let msg = Message::new("some/topic/with/sub", vec![], 0);
 
-        let res = dispatch.consume(&Context::new(), &msg).await;
+        let res = dispatcher.consume(&Context::new(), &msg).await;
         assert!(res.is_ok());
     }
 
@@ -274,17 +265,23 @@ mod tests {
     async fn test_consume_with_dispatch_return_err() {
         let mut client = AsyncClient::new(CreateOptions::default()).unwrap();
         let stream = client.get_stream(2048);
-        let mut dispatch = MQTTDispatcher::new(Arc::new(client), stream);
 
-        let mut mock = MockDispatch::new();
-        mock.set_error(MQTTError::InternalError {});
+        let mut handler = MockConsumerHandler::new();
+        handler
+            .expect_exec()
+            .return_once(move |_, _| Err(MessagingError::ConsumerError("err".to_string())));
 
-        let res = dispatch.declare("/some/topic/#", Arc::new(mock));
-        assert!(res.is_ok());
+        let dispatcher = MQTTDispatcher::new(Arc::new(client), stream).register(
+            &DispatcherDefinition {
+                name: "/some/topic/#".to_owned(),
+                msg_type: String::new(),
+            },
+            Arc::new(handler),
+        );
 
         let msg = Message::new("/some/topic/sub", vec![], 0);
 
-        let res = dispatch.consume(&Context::new(), &msg).await;
+        let res = dispatcher.consume(&Context::new(), &msg).await;
         assert!(res.is_err());
     }
 
@@ -292,44 +289,21 @@ mod tests {
     async fn test_consume_with_unregistered_consumer() {
         let mut client = AsyncClient::new(CreateOptions::default()).unwrap();
         let stream = client.get_stream(2048);
-        let mut dispatch = MQTTDispatcher::new(Arc::new(client), stream);
 
-        let res = dispatch.declare("other/topic/#", Arc::new(MockDispatch::new()));
-        assert!(res.is_ok());
+        let mut handler = MockConsumerHandler::new();
+        handler.expect_exec().return_once(move |_, _| Ok(()));
+
+        let dispatcher = MQTTDispatcher::new(Arc::new(client), stream).register(
+            &DispatcherDefinition {
+                name: "other/topic/#".to_owned(),
+                msg_type: String::new(),
+            },
+            Arc::new(handler),
+        );
 
         let msg = Message::new("some/topic/sub", vec![], 0);
 
-        let res = dispatch.consume(&Context::new(), &msg).await;
+        let res = dispatcher.consume(&Context::new(), &msg).await;
         assert!(res.is_err());
-    }
-
-    struct MockDispatch {
-        error: Option<MQTTError>,
-    }
-
-    impl MockDispatch {
-        pub fn new() -> Self {
-            MockDispatch { error: None }
-        }
-
-        pub fn set_error(&mut self, err: MQTTError) {
-            self.error = Some(err)
-        }
-    }
-
-    #[async_trait]
-    impl ConsumerHandler for MockDispatch {
-        async fn exec(
-            &self,
-            _ctx: &Context,
-            _msgs: &[u8],
-            _topic: &TopicMessage,
-        ) -> Result<(), MQTTError> {
-            if self.error.is_some() {
-                return Err(self.error.clone().unwrap());
-            }
-
-            Ok(())
-        }
     }
 }

@@ -1,10 +1,6 @@
 use crate::errors::MQTTError;
 use async_trait::async_trait;
 use futures_util::StreamExt;
-#[cfg(test)]
-use mockall::*;
-#[cfg(feature = "mocks")]
-use mockall::*;
 use opentelemetry::{
     global::{self, BoxedTracer},
     trace::{SpanKind, Status, TraceContextExt},
@@ -14,6 +10,11 @@ use paho_mqtt::{AsyncClient, AsyncReceiver, Message};
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, sync::Arc};
 use tracing::{debug, error, warn};
+
+#[cfg(test)]
+use mockall::*;
+#[cfg(feature = "mocks")]
+use mockall::*;
 
 #[cfg_attr(test, automock)]
 #[cfg_attr(feature = "mocks", automock)]

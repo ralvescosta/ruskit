@@ -1,13 +1,14 @@
 use crate::{errors::MQTTError, payload::Payload};
 use async_trait::async_trait;
-#[cfg(test)]
-use mockall::*;
-#[cfg(feature = "mocks")]
-use mockall::*;
 use opentelemetry::Context;
 use paho_mqtt::{AsyncClient, Message};
 use std::sync::Arc;
 use tracing::error;
+
+#[cfg(test)]
+use mockall::*;
+#[cfg(feature = "mocks")]
+use mockall::*;
 
 #[cfg_attr(test, automock)]
 #[cfg_attr(feature = "mocks", automock)]

@@ -92,7 +92,7 @@ pub(crate) async fn consume<'c>(
     }
 
     //ack msg and remove from queue if handler failure and there are no fallback configured or send to dlq
-    if !dispatcher_def.queue_def.retry_name.is_none() {
+    if dispatcher_def.queue_def.retry_name.is_none() {
         match delivery
             .nack(BasicNackOptions {
                 multiple: false,

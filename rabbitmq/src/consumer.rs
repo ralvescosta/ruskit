@@ -1,4 +1,4 @@
-use crate::{dispatcher::DispatcherDefinition, errors::AmqpError, otel};
+use crate::{dispatcher::RabbitMQDispatcherDefinition, errors::AmqpError, otel};
 use lapin::{
     message::Delivery,
     options::{BasicAckOptions, BasicNackOptions, BasicPublishOptions},
@@ -6,6 +6,7 @@ use lapin::{
     types::FieldTable,
     Channel,
 };
+use messaging::handler::ConsumerPayload;
 use opentelemetry::{
     global::BoxedTracer,
     trace::{Span, Status},
@@ -19,7 +20,7 @@ pub const AMQP_HEADERS_COUNT: &str = "count";
 pub(crate) async fn consume<'c>(
     tracer: &BoxedTracer,
     delivery: &Delivery,
-    defs: &'c HashMap<String, DispatcherDefinition>,
+    defs: &'c HashMap<String, RabbitMQDispatcherDefinition>,
     channel: Arc<Channel>,
 ) -> Result<(), AmqpError> {
     let (msg_type, count) = extract_header_properties(&delivery.properties);
@@ -29,12 +30,12 @@ pub(crate) async fn consume<'c>(
     debug!(
         trace.id = traces::trace_id(&ctx),
         span.id = traces::span_id(&ctx),
-        "received: {} - queue: {}",
+        "received: {} - exchange: {}",
         msg_type,
-        "queue.name",
+        delivery.exchange.to_string(),
     );
 
-    let Some(def)  = defs.get(&msg_type) else {
+    let Some(dispatcher_def) = defs.get(&msg_type) else {
         let msg = "removing message from queue - reason: unsupported msg type";
         span.record_error(&AmqpError::ConsumerError(msg.to_string()));
         span.set_status(Status::Error {
@@ -59,7 +60,15 @@ pub(crate) async fn consume<'c>(
         return Err(AmqpError::InternalError {});
     };
 
-    let result = def.handler.exec(&ctx, delivery.data.as_slice()).await;
+    let payload = ConsumerPayload {
+        from: dispatcher_def.queue_def.name.clone(),
+        msg_type: msg_type.clone(),
+        //TODO
+        payload: delivery.data.clone().into_boxed_slice(),
+        headers: None,
+    };
+
+    let result = dispatcher_def.handler.exec(&ctx, &payload).await;
     if result.is_ok() {
         debug!("message successfully processed");
         match delivery.ack(BasicAckOptions { multiple: false }).await {
@@ -83,7 +92,7 @@ pub(crate) async fn consume<'c>(
     }
 
     //ack msg and remove from queue if handler failure and there are no fallback configured or send to dlq
-    if !def.queue_def.retry_name.is_none() {
+    if dispatcher_def.queue_def.retry_name.is_none() {
         match delivery
             .nack(BasicNackOptions {
                 multiple: false,
@@ -108,7 +117,7 @@ pub(crate) async fn consume<'c>(
     }
 
     //send msg to retry when handler failure and the retry count Dont active the max of the retries configured
-    if count < def.queue_def.retries.unwrap() as i64 {
+    if count < dispatcher_def.queue_def.retries.unwrap() as i64 {
         warn!(
             trace.id = traces::trace_id(&ctx),
             span.id = traces::span_id(&ctx),
@@ -147,7 +156,7 @@ pub(crate) async fn consume<'c>(
     match channel
         .basic_publish(
             "",
-            &def.queue_def.clone().dlq_name.unwrap(),
+            &dispatcher_def.queue_def.clone().dlq_name.unwrap(),
             BasicPublishOptions::default(),
             &delivery.data,
             delivery.properties.clone(),

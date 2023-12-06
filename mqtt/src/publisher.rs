@@ -1,50 +1,64 @@
-use crate::{errors::MQTTError, payload::Payload};
 use async_trait::async_trait;
-#[cfg(test)]
-use mockall::*;
-#[cfg(feature = "mocks")]
-use mockall::*;
-use opentelemetry::Context;
+use messaging::{
+    errors::MessagingError,
+    publisher::{HeaderValues, PublishInfos, Publisher},
+};
+use opentelemetry::{
+    trace::{Status, TraceContextExt},
+    Context,
+};
 use paho_mqtt::{AsyncClient, Message};
-use std::sync::Arc;
+use std::{borrow::Cow, sync::Arc};
 use tracing::error;
-
-#[cfg_attr(test, automock)]
-#[cfg_attr(feature = "mocks", automock)]
-#[async_trait]
-pub trait Publisher {
-    async fn publish(
-        &self,
-        ctx: &Context,
-        topic: &str,
-        payload: &Payload,
-        qos: i32,
-    ) -> Result<(), MQTTError>;
-}
 
 pub struct MQTTPublisher {
     conn: Arc<AsyncClient>,
 }
 
+impl MQTTPublisher {
+    pub fn new(conn: Arc<AsyncClient>) -> Self {
+        Self { conn }
+    }
+}
+
 #[async_trait]
 impl Publisher for MQTTPublisher {
-    async fn publish(
-        &self,
-        _ctx: &Context,
-        topic: &str,
-        payload: &Payload,
-        qos: i32,
-    ) -> Result<(), MQTTError> {
+    async fn publish(&self, ctx: &Context, infos: &PublishInfos) -> Result<(), MessagingError> {
+        let span = ctx.span();
+
+        let mut qos: i32 = 0;
+
+        if let Some(headers) = &infos.headers {
+            if let Some(custom_qos) = headers.get("qos") {
+                if let HeaderValues::Int(custom) = custom_qos {
+                    qos = custom.to_owned() as i32;
+                }
+
+                if let HeaderValues::LongInt(custom) = custom_qos {
+                    qos = custom.to_owned();
+                }
+            }
+        }
+
         match self
             .conn
-            .publish(Message::new(topic, payload.0.clone(), qos))
+            .publish(Message::new(infos.to.clone(), infos.payload.clone(), qos))
             .await
         {
             Err(err) => {
                 error!(error = err.to_string(), "error to publish message");
-                Err(MQTTError::PublishingError {})
+
+                span.record_error(&err);
+                span.set_status(Status::Error {
+                    description: Cow::from("error to publish"),
+                });
+
+                Err(MessagingError::PublishingError {})
             }
-            _ => Ok(()),
+            _ => {
+                span.set_status(Status::Ok);
+                Ok(())
+            }
         }
     }
 }

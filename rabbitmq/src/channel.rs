@@ -14,7 +14,7 @@ where
     let options = ConnectionProperties::default()
         .with_connection_name(LongString::from(cfg.app.name.clone()));
 
-    let uri = &cfg.amqp_uri();
+    let uri = &cfg.rabbitmq_uri();
     let conn = match Connection::connect(uri, options).await {
         Ok(c) => Ok(c),
         Err(err) => {

@@ -8,6 +8,6 @@ use mockall::*;
 #[cfg_attr(test, automock)]
 #[cfg_attr(mock, automock)]
 #[async_trait]
-pub trait SecretClient {
+pub trait SecretClient: Send + Sync {
     fn get_by_key(&self, key: &str) -> Result<String, SecretsManagerError>;
 }

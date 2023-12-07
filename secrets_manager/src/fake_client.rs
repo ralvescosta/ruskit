@@ -1,5 +1,6 @@
 use crate::{errors::SecretsManagerError, SecretClient};
 
+#[derive(Default)]
 pub struct FakeSecretClient;
 
 impl SecretClient for FakeSecretClient {

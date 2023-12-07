@@ -1,4 +1,4 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct QueueDefinition {
     pub(crate) name: String,
     pub(crate) durable: bool,

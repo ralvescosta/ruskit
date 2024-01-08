@@ -11,10 +11,10 @@ sqlite = ["dep:deadpool-sqlite"]
 configs = { path = "../configs" }
 
 tracing = { version = "0.1.40" }
-thiserror = { version = "1.0.50" }
+thiserror = { version = "1.0.56" }
 
 # PostgreSQL dep
-deadpool-postgres = { version = "0.11.0", optional = true }
+deadpool-postgres = { version = "0.12.1", optional = true }
 tokio-postgres = { version = "0.7.10",  features = ["with-chrono-0_4", "with-uuid-0_8"], optional = true }
 
 # SQLite dep

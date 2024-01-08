@@ -11,17 +11,17 @@ use opentelemetry::{
 use std::{borrow::Cow, collections::BTreeMap};
 use tracing::error;
 
-pub(crate) struct AmqpTracePropagator<'a> {
+pub(crate) struct RabbitMQTracePropagator<'a> {
     headers: &'a mut BTreeMap<ShortString, AMQPValue>,
 }
 
-impl<'a> AmqpTracePropagator<'a> {
+impl<'a> RabbitMQTracePropagator<'a> {
     pub(crate) fn new(headers: &'a mut BTreeMap<ShortString, AMQPValue>) -> Self {
         Self { headers }
     }
 }
 
-impl<'a> Injector for AmqpTracePropagator<'a> {
+impl<'a> Injector for RabbitMQTracePropagator<'a> {
     fn set(&mut self, key: &str, value: String) {
         self.headers.insert(
             key.to_lowercase().into(),
@@ -30,7 +30,7 @@ impl<'a> Injector for AmqpTracePropagator<'a> {
     }
 }
 
-impl<'a> Extractor for AmqpTracePropagator<'a> {
+impl<'a> Extractor for RabbitMQTracePropagator<'a> {
     fn get(&self, key: &str) -> Option<&str> {
         self.headers.get(key).and_then(|header_value| {
             if let AMQPValue::LongString(header_value) = header_value {
@@ -50,7 +50,7 @@ impl<'a> Extractor for AmqpTracePropagator<'a> {
 
 pub fn new_span(props: &AMQPProperties, tracer: &BoxedTracer, name: &str) -> (Context, BoxedSpan) {
     let ctx = opentelemetry::global::get_text_map_propagator(|propagator| {
-        propagator.extract(&AmqpTracePropagator::new(
+        propagator.extract(&RabbitMQTracePropagator::new(
             &mut props.headers().clone().unwrap_or_default().inner().clone(),
         ))
     });

@@ -12,13 +12,13 @@ validator = ["dep:validator"]
 health = ["dep:health-readiness"]
 
 [dependencies]
-actix-web = { version = "4.4.0" }
-actix-http = { version = "3.4.0" }
-actix-cors = { version = "0.6.4" }
-serde = { version = "1.0.193", features = ["derive"] }
-serde_json = { version = "1.0.108" }
+actix-web = { version = "4.4.1" }
+actix-http = { version = "3.5.1" }
+actix-cors = { version = "0.6.5" }
+serde = { version = "1.0.195", features = ["derive"] }
+serde_json = { version = "1.0.94" }
 tracing = { version = "0.1.40" }
-futures-util = { version = "0.3.28" }
+futures-util = { version = "0.3.30" }
 opentelemetry = { version = "0.21.0" }
 
 # openapi

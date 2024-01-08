@@ -9,6 +9,6 @@ secrets-manager = { path = "../secrets_manager" }
 logging = { path = "../logging" }
 
 dotenvy = { version = "0.15.7" }
-base64 = { version = "0.21.5" }
+base64 = { version = "0.21.6" }
 tracing = { version = "0.1.40" }
-thiserror = { version = "1.0.50" }
+thiserror = { version = "1.0.56" }

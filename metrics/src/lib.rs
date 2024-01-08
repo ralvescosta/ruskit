@@ -1,7 +1,3 @@
-mod selectors;
-
-#[cfg(feature = "otlp")]
-pub mod otlp;
-
-#[cfg(feature = "prometheus")]
-pub mod prometheus;
+pub mod errors;
+pub mod exporters;
+pub mod provider;

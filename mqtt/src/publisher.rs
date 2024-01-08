@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use messaging::{
     errors::MessagingError,
-    publisher::{HeaderValues, PublishInfos, Publisher},
+    publisher::{HeaderValues, PublishMessage, Publisher},
 };
 use opentelemetry::{
     trace::{Status, TraceContextExt},
@@ -23,7 +23,7 @@ impl MQTTPublisher {
 
 #[async_trait]
 impl Publisher for MQTTPublisher {
-    async fn publish(&self, ctx: &Context, infos: &PublishInfos) -> Result<(), MessagingError> {
+    async fn publish(&self, ctx: &Context, infos: &PublishMessage) -> Result<(), MessagingError> {
         let span = ctx.span();
 
         let mut qos: i32 = 0;
@@ -42,7 +42,7 @@ impl Publisher for MQTTPublisher {
 
         match self
             .conn
-            .publish(Message::new(infos.to.clone(), infos.payload.clone(), qos))
+            .publish(Message::new(infos.to.clone(), infos.data.clone(), qos))
             .await
         {
             Err(err) => {
@@ -53,7 +53,7 @@ impl Publisher for MQTTPublisher {
                     description: Cow::from("error to publish"),
                 });
 
-                Err(MessagingError::PublishingError {})
+                Err(MessagingError::PublisherError {})
             }
             _ => {
                 span.set_status(Status::Ok);

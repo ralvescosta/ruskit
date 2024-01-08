@@ -1,4 +1,5 @@
 use crate::{errors::SecretsManagerError, AWSSecretClient};
+use aws_config::BehaviorVersion;
 use aws_sdk_secretsmanager as secretsmanager;
 #[cfg(test)]
 use mockall::*;
@@ -25,7 +26,7 @@ impl AWSSecretClientBuilder {
     }
 
     pub async fn build(&self) -> Result<AWSSecretClient, SecretsManagerError> {
-        let config = aws_config::load_from_env().await;
+        let config = aws_config::load_defaults(BehaviorVersion::latest()).await;
         let client = Client::new(&config);
 
         let id = self.secret_id();
@@ -43,7 +44,7 @@ impl AWSSecretClientBuilder {
 
         let Some(string) = output.secret_string() else {
             error!("secret was not found");
-            return Err(SecretsManagerError::AwsSecretWasNotFound{});
+            return Err(SecretsManagerError::AwsSecretWasNotFound {});
         };
 
         match serde_json::from_str(string) {

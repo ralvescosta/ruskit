@@ -11,8 +11,8 @@ configs = { path = '../configs' }
 http-components = { path = '../http_components', features = ["metrics", "health"]}
 health-readiness = { path = '../health_readiness' }
 
-thiserror = { version = "1.0.50" }
-actix-web = { version = "4.3.1" }
+thiserror = { version = "1.0.56" }
+actix-web = { version = "4.4.1" }
 tracing = { version = "0.1.40" }
 opentelemetry = { version = "0.21.0" }
 

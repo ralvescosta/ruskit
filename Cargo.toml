@@ -2,11 +2,12 @@
 resolver = "2"
 
 members = [
-    "messaging",
-    "rabbitmq",
-    "auth",
     "configs",
     "configs_builder",
+    "messaging",
+    "rabbitmq",
+    "kafka",
+    "auth",
     "health_readiness",
     "http_components",
     "http_server",

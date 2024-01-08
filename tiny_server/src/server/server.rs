@@ -5,7 +5,7 @@ use actix_web::{
     web::{self, Data},
     App, HttpServer as ActixHttpServer,
 };
-use configs::AppConfigs;
+use configs::{Configs, DynamicConfigs};
 use health_readiness::{HealthReadinessService, HealthReadinessServiceImpl};
 #[cfg(feature = "prometheus")]
 use http_components::handlers::PrometheusMetricsHandler;
@@ -25,9 +25,12 @@ pub struct TinyHTTPServer {
 }
 
 impl TinyHTTPServer {
-    pub fn new(cfg: &AppConfigs) -> TinyHTTPServer {
+    pub fn new<T>(cfg: &Configs<T>) -> TinyHTTPServer
+    where
+        T: DynamicConfigs,
+    {
         TinyHTTPServer {
-            addr: cfg.app_addr(),
+            addr: cfg.health_readiness.health_readiness_addr(),
             services: vec![],
             health_check: None,
             #[cfg(feature = "prometheus")]

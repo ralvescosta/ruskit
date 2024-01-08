@@ -6,7 +6,7 @@ use lapin::{
     types::FieldTable,
     Channel,
 };
-use messaging::handler::ConsumerPayload;
+use messaging::handler::ConsumerMessage;
 use opentelemetry::{
     global::BoxedTracer,
     trace::{Span, Status},
@@ -60,15 +60,14 @@ pub(crate) async fn consume<'c>(
         return Err(AmqpError::InternalError {});
     };
 
-    let payload = ConsumerPayload {
-        from: dispatcher_def.queue_def.name.clone(),
-        msg_type: msg_type.clone(),
-        //TODO
-        payload: delivery.data.clone().into_boxed_slice(),
-        headers: None,
-    };
+    let msg = ConsumerMessage::new(
+        &dispatcher_def.queue_def.name,
+        &msg_type,
+        &delivery.data,
+        None,
+    );
 
-    let result = dispatcher_def.handler.exec(&ctx, &payload).await;
+    let result = dispatcher_def.handler.exec(&ctx, &msg).await;
     if result.is_ok() {
         debug!("message successfully processed");
         match delivery.ack(BasicAckOptions { multiple: false }).await {

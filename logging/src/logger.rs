@@ -41,7 +41,8 @@ pub fn setup(cfg: &AppConfigs) -> Result<(), LoggingError> {
             .with_target("rustls::client::hs", LevelFilter::WARN)
             .with_target("rustls::anchors", LevelFilter::WARN)
             .with_target("rustls::client::tls13", LevelFilter::WARN)
-            .with_target("paho_mqtt::async_client", LevelFilter::WARN);
+            .with_target("paho_mqtt::async_client", LevelFilter::WARN)
+            .with_target("c_trace", LevelFilter::WARN);
     }
 
     let mut fmt_pretty: Option<Layer<_, Pretty, Format<Pretty>>> = None;

@@ -11,6 +11,18 @@ pub struct DispatcherDefinition {
     pub msg_type: String,
 }
 
+impl DispatcherDefinition {
+    pub fn new<T>(name: T, msg_type: T) -> Self
+    where
+        T: Into<String>,
+    {
+        DispatcherDefinition {
+            name: name.into(),
+            msg_type: msg_type.into(),
+        }
+    }
+}
+
 #[cfg_attr(feature = "mocks", automock)]
 #[async_trait]
 pub trait Dispatcher: Send + Sync {

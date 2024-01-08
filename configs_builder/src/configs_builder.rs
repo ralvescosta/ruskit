@@ -6,24 +6,27 @@ use crate::{
         DEV_ENV_FILE_NAME, DYNAMO_ENDPOINT_ENV_KEY, DYNAMO_EXPIRE_ENV_KEY, DYNAMO_REGION_ENV_KEY,
         DYNAMO_TABLE_ENV_KEY, ENABLE_HEALTH_READINESS_ENV_KEY, ENABLE_METRICS_ENV_KEY,
         ENABLE_TRACES_ENV_KEY, HEALTH_READINESS_PORT_ENV_KEY, HOST_NAME_ENV_KEY,
-        LOCAL_ENV_FILE_NAME, LOG_LEVEL_ENV_KEY, METRIC_ACCESS_KEY_ENV_KEY,
-        METRIC_EXPORT_RATE_BASE_ENV_KEY, METRIC_EXPORT_TIMEOUT_ENV_KEY, METRIC_HOST_ENV_KEY,
-        METRIC_SERVICE_TYPE_ENV_KEY, MQTT_BROKER_KIND_ENV_KEY, MQTT_CA_CERT_PATH_ENV_KEY,
-        MQTT_HOST_ENV_KEY, MQTT_PASSWORD_ENV_KEY, MQTT_PORT_ENV_KEY, MQTT_TRANSPORT_ENV_KEY,
-        MQTT_USER_ENV_KEY, MULTIPLE_MESSAGE_TIMER_ENV_KEY, POSTGRES_DB_ENV_KEY,
-        POSTGRES_HOST_ENV_KEY, POSTGRES_PASSWORD_ENV_KEY, POSTGRES_PORT_ENV_KEY,
-        POSTGRES_USER_ENV_KEY, PROD_FILE_NAME, RABBITMQ_HOST_ENV_KEY, RABBITMQ_PASSWORD_ENV_KEY,
-        RABBITMQ_PORT_ENV_KEY, RABBITMQ_USER_ENV_KEY, RABBITMQ_VHOST_ENV_KEY, SECRET_KEY_ENV_KEY,
-        SECRET_MANAGER_ENV_KEY, SECRET_PREFIX, SQLITE_FILE_NAME_ENV_KEY, STAGING_FILE_NAME,
-        TRACE_ACCESS_KEY_ENV_KEY, TRACE_EXPORT_RATE_BASE_ENV_KEY, TRACE_EXPORT_TIMEOUT_ENV_KEY,
-        TRACE_HOST_ENV_KEY, TRACE_SERVICE_TYPE_ENV_KEY,
+        KAFKA_HOST_ENV_KEY, KAFKA_PASSWORD_ENV_KEY, KAFKA_PORT_ENV_KEY,
+        KAFKA_SASL_MECHANISMS_ENV_KEY, KAFKA_SECURITY_PROTOCOL_ENV_KEY, KAFKA_TIMEOUT_ENV_KEY,
+        KAFKA_USER_ENV_KEY, LOCAL_ENV_FILE_NAME, LOG_LEVEL_ENV_KEY, METRIC_ACCESS_KEY_ENV_KEY,
+        METRIC_EXPORTER_ENV_KEY, METRIC_EXPORT_RATE_BASE_ENV_KEY, METRIC_EXPORT_TIMEOUT_ENV_KEY,
+        METRIC_HEADER_ACCESS_KEY_ENV_KEY, METRIC_HOST_ENV_KEY, METRIC_SERVICE_TYPE_ENV_KEY,
+        MQTT_BROKER_KIND_ENV_KEY, MQTT_CA_CERT_PATH_ENV_KEY, MQTT_HOST_ENV_KEY,
+        MQTT_PASSWORD_ENV_KEY, MQTT_PORT_ENV_KEY, MQTT_TRANSPORT_ENV_KEY, MQTT_USER_ENV_KEY,
+        POSTGRES_DB_ENV_KEY, POSTGRES_HOST_ENV_KEY, POSTGRES_PASSWORD_ENV_KEY,
+        POSTGRES_PORT_ENV_KEY, POSTGRES_USER_ENV_KEY, PROD_FILE_NAME, RABBITMQ_HOST_ENV_KEY,
+        RABBITMQ_PASSWORD_ENV_KEY, RABBITMQ_PORT_ENV_KEY, RABBITMQ_USER_ENV_KEY,
+        RABBITMQ_VHOST_ENV_KEY, SECRET_KEY_ENV_KEY, SECRET_MANAGER_ENV_KEY, SECRET_PREFIX,
+        SQLITE_FILE_NAME_ENV_KEY, STAGING_FILE_NAME, TRACE_ACCESS_KEY_ENV_KEY,
+        TRACE_EXPORTER_ENV_KEY, TRACE_EXPORT_RATE_BASE_ENV_KEY, TRACE_EXPORT_TIMEOUT_ENV_KEY,
+        TRACE_HEADER_ACCESS_KEY_ENV_KEY, TRACE_HOST_ENV_KEY, TRACE_SERVICE_TYPE_ENV_KEY,
     },
     errors::ConfigsError,
 };
 use base64::{engine::general_purpose, Engine};
 use configs::{
     AppConfigs, Configs, DynamicConfigs, Environment, MQTTBrokerKind, MQTTTransport,
-    SecretsManagerKind,
+    MetricExporterKind, SecretsManagerKind, TraceExporterKind,
 };
 use dotenvy::from_filename;
 use secrets_manager::{AWSSecretClientBuilder, FakeSecretClient, SecretClient};
@@ -35,6 +38,7 @@ pub struct ConfigBuilder {
     client: Option<Arc<dyn SecretClient>>,
     mqtt: bool,
     rabbitmq: bool,
+    kafka: bool,
     postgres: bool,
     sqlite: bool,
     aws: bool,
@@ -57,6 +61,11 @@ impl ConfigBuilder {
 
     pub fn rabbitmq(mut self) -> Self {
         self.rabbitmq = true;
+        self
+    }
+
+    pub fn kafka(mut self) -> Self {
+        self.kafka = true;
         self
     }
 
@@ -142,6 +151,9 @@ impl ConfigBuilder {
             if self.fill_rabbitmq(&mut cfg, &key, &value) {
                 continue;
             };
+            if self.fill_kafka(&mut cfg, &key, &value) {
+                continue;
+            };
             if self.fill_trace(&mut cfg, &key, &value) {
                 continue;
             }
@@ -207,17 +219,12 @@ impl ConfigBuilder {
         let secret_key = env::var(SECRET_KEY_ENV_KEY).unwrap_or_default();
         let host = env::var(HOST_NAME_ENV_KEY).unwrap_or_default();
         let port = env::var(APP_PORT_ENV_KEY)
-            .unwrap_or("3000".to_owned())
+            .unwrap_or("3000".into())
             .parse()
             .unwrap_or_default();
-        let log_level = env::var(LOG_LEVEL_ENV_KEY).unwrap_or("debug".to_owned());
-        let secret_manager = env::var(SECRET_MANAGER_ENV_KEY).unwrap_or("None".to_owned());
-        let message_time = env::var(MULTIPLE_MESSAGE_TIMER_ENV_KEY)
-            .unwrap_or("15000".to_owned())
-            .parse()
-            .unwrap();
+        let log_level = env::var(LOG_LEVEL_ENV_KEY).unwrap_or("debug".into());
+        let secret_manager = env::var(SECRET_MANAGER_ENV_KEY).unwrap_or("None".into());
 
-        cfg.multiple_message_timer = message_time;
         cfg.app = AppConfigs {
             enable_external_creates_logging: false,
             env,
@@ -244,16 +251,25 @@ impl ConfigBuilder {
                 cfg.metric.enable = self.get_from_secret(value.into(), false);
                 true
             }
+            METRIC_EXPORTER_ENV_KEY if self.metric => {
+                cfg.metric.exporter =
+                    self.get_from_secret(value.into(), MetricExporterKind::Stdout);
+                true
+            }
             METRIC_HOST_ENV_KEY if self.metric => {
-                cfg.metric.host = self.get_from_secret(value.into(), "localhost".to_owned());
+                cfg.metric.host = self.get_from_secret(value.into(), "localhost".into());
+                true
+            }
+            METRIC_HEADER_ACCESS_KEY_ENV_KEY if self.metric => {
+                cfg.metric.header_access_key = self.get_from_secret(value.into(), "api-key".into());
                 true
             }
             METRIC_ACCESS_KEY_ENV_KEY if self.metric => {
-                cfg.metric.key = self.get_from_secret(value.into(), "key".to_owned());
+                cfg.metric.access_key = self.get_from_secret(value.into(), "key".into());
                 true
             }
             METRIC_SERVICE_TYPE_ENV_KEY if self.metric => {
-                cfg.metric.service_type = self.get_from_secret(value.into(), "service".to_owned());
+                cfg.metric.service_type = self.get_from_secret(value.into(), "service".into());
                 true
             }
             METRIC_EXPORT_TIMEOUT_ENV_KEY if self.metric => {
@@ -283,16 +299,24 @@ impl ConfigBuilder {
                 cfg.trace.enable = self.get_from_secret(value.into(), false);
                 true
             }
+            TRACE_EXPORTER_ENV_KEY if self.trace => {
+                cfg.trace.exporter = self.get_from_secret(value.into(), TraceExporterKind::Stdout);
+                true
+            }
             TRACE_HOST_ENV_KEY if self.trace => {
-                cfg.trace.host = self.get_from_secret(value.into(), "localhost".to_owned());
+                cfg.trace.host = self.get_from_secret(value.into(), "localhost".into());
+                true
+            }
+            TRACE_HEADER_ACCESS_KEY_ENV_KEY if self.trace => {
+                cfg.trace.header_access_key = self.get_from_secret(value.into(), "api-key".into());
                 true
             }
             TRACE_ACCESS_KEY_ENV_KEY if self.trace => {
-                cfg.trace.key = self.get_from_secret(value.into(), "key".to_owned());
+                cfg.trace.access_key = self.get_from_secret(value.into(), "key".into());
                 true
             }
             TRACE_SERVICE_TYPE_ENV_KEY if self.trace => {
-                cfg.trace.service_type = self.get_from_secret(value.into(), "service".to_owned());
+                cfg.trace.service_type = self.get_from_secret(value.into(), "service".into());
                 true
             }
             TRACE_EXPORT_TIMEOUT_ENV_KEY if self.trace => {
@@ -319,28 +343,28 @@ impl ConfigBuilder {
     {
         match key.into().as_str() {
             AUTH0_DOMAIN_ENV_KEY if self.auth0 => {
-                cfg.auth0.domain = self.get_from_secret(value.into(), "localhost".to_owned());
+                cfg.auth0.domain = self.get_from_secret(value.into(), "localhost".into());
                 true
             }
             AUTH0_AUDIENCE_ENV_KEY if self.auth0 => {
-                cfg.auth0.audience = self.get_from_secret(value.into(), "localhost".to_owned());
+                cfg.auth0.audience = self.get_from_secret(value.into(), "localhost".into());
                 true
             }
             AUTH0_ISSUER_ENV_KEY if self.auth0 => {
-                cfg.auth0.issuer = self.get_from_secret(value.into(), "localhost".to_owned());
+                cfg.auth0.issuer = self.get_from_secret(value.into(), "localhost".into());
                 true
             }
             AUTH0_GRANT_TYPE_ENV_KEY if self.auth0 => {
                 cfg.auth0.grant_type =
-                    self.get_from_secret(value.into(), "client_credentials".to_owned());
+                    self.get_from_secret(value.into(), "client_credentials".into());
                 true
             }
             AUTH0_CLIENT_ID_ENV_KEY if self.auth0 => {
-                cfg.auth0.client_id = self.get_from_secret(value.into(), "".to_owned());
+                cfg.auth0.client_id = self.get_from_secret(value.into(), "".into());
                 true
             }
             AUTH0_CLIENT_SECRET_ENV_KEY if self.auth0 => {
-                cfg.auth0.client_secret = self.get_from_secret(value.into(), "".to_owned());
+                cfg.auth0.client_secret = self.get_from_secret(value.into(), "".into());
                 true
             }
             _ => false,
@@ -358,16 +382,16 @@ impl ConfigBuilder {
     {
         match key.into().as_str() {
             MQTT_BROKER_KIND_ENV_KEY if self.mqtt => {
-                let kind = self.get_from_secret(value.into(), "SELF_HOSTED".to_owned());
+                let kind = self.get_from_secret::<String>(value.into(), "SELF_HOSTED".into());
                 cfg.mqtt.broker_kind = MQTTBrokerKind::from(&kind);
                 true
             }
             MQTT_HOST_ENV_KEY if self.mqtt => {
-                cfg.mqtt.host = self.get_from_secret(value.into(), "localhost".to_owned());
+                cfg.mqtt.host = self.get_from_secret(value.into(), "localhost".into());
                 true
             }
             MQTT_TRANSPORT_ENV_KEY if self.mqtt => {
-                let transport = self.get_from_secret(value.into(), "tcp".to_owned());
+                let transport = self.get_from_secret::<String>(value.into(), "tcp".into());
                 cfg.mqtt.transport = MQTTTransport::from(&transport);
                 true
             }
@@ -376,15 +400,15 @@ impl ConfigBuilder {
                 true
             }
             MQTT_USER_ENV_KEY if self.mqtt => {
-                cfg.mqtt.user = self.get_from_secret(value.into(), "mqtt".to_owned());
+                cfg.mqtt.user = self.get_from_secret(value.into(), "mqtt".into());
                 true
             }
             MQTT_PASSWORD_ENV_KEY if self.mqtt => {
-                cfg.mqtt.password = self.get_from_secret(value.into(), "password".to_owned());
+                cfg.mqtt.password = self.get_from_secret(value.into(), "password".into());
                 true
             }
             MQTT_CA_CERT_PATH_ENV_KEY if self.mqtt => {
-                cfg.mqtt.root_ca_path = self.get_from_secret(value.into(), "".to_owned());
+                cfg.mqtt.root_ca_path = self.get_from_secret(value.into(), "".into());
                 true
             }
             _ => false,
@@ -402,7 +426,7 @@ impl ConfigBuilder {
     {
         match key.into().as_str() {
             RABBITMQ_HOST_ENV_KEY if self.rabbitmq => {
-                cfg.rabbitmq.host = self.get_from_secret(value.into(), "localhost".to_owned());
+                cfg.rabbitmq.host = self.get_from_secret(value.into(), "localhost".into());
                 true
             }
             RABBITMQ_PORT_ENV_KEY if self.rabbitmq => {
@@ -410,15 +434,57 @@ impl ConfigBuilder {
                 true
             }
             RABBITMQ_USER_ENV_KEY if self.rabbitmq => {
-                cfg.rabbitmq.user = self.get_from_secret(value.into(), "guest".to_owned());
+                cfg.rabbitmq.user = self.get_from_secret(value.into(), "guest".into());
                 true
             }
             RABBITMQ_PASSWORD_ENV_KEY if self.rabbitmq => {
-                cfg.rabbitmq.password = self.get_from_secret(value.into(), "guest".to_owned());
+                cfg.rabbitmq.password = self.get_from_secret(value.into(), "guest".into());
                 true
             }
             RABBITMQ_VHOST_ENV_KEY if self.rabbitmq => {
-                cfg.rabbitmq.vhost = self.get_from_secret(value.into(), "".to_owned());
+                cfg.rabbitmq.vhost = self.get_from_secret(value.into(), "".into());
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn fill_kafka<T>(
+        &self,
+        cfg: &mut Configs<T>,
+        key: impl Into<std::string::String>,
+        value: impl Into<std::string::String>,
+    ) -> bool
+    where
+        T: DynamicConfigs,
+    {
+        match key.into().as_str() {
+            KAFKA_HOST_ENV_KEY if self.kafka => {
+                cfg.kafka.host = self.get_from_secret(value.into(), "localhost".into());
+                true
+            }
+            KAFKA_PORT_ENV_KEY if self.kafka => {
+                cfg.kafka.port = self.get_from_secret(value.into(), 9094);
+                true
+            }
+            KAFKA_TIMEOUT_ENV_KEY if self.kafka => {
+                cfg.kafka.timeout = self.get_from_secret(value.into(), 6000);
+                true
+            }
+            KAFKA_SECURITY_PROTOCOL_ENV_KEY if self.kafka => {
+                cfg.kafka.security_protocol = self.get_from_secret(value.into(), "SASL_SSL".into());
+                true
+            }
+            KAFKA_SASL_MECHANISMS_ENV_KEY if self.kafka => {
+                cfg.kafka.sasl_mechanisms = self.get_from_secret(value.into(), "PLAIN".into());
+                true
+            }
+            KAFKA_USER_ENV_KEY if self.kafka => {
+                cfg.kafka.user = self.get_from_secret(value.into(), "user".into());
+                true
+            }
+            KAFKA_PASSWORD_ENV_KEY if self.kafka => {
+                cfg.kafka.password = self.get_from_secret(value.into(), "password".into());
                 true
             }
             _ => false,
@@ -436,15 +502,15 @@ impl ConfigBuilder {
     {
         match key.into().as_str() {
             POSTGRES_HOST_ENV_KEY if self.postgres => {
-                cfg.postgres.host = self.get_from_secret(value.into(), "localhost".to_owned());
+                cfg.postgres.host = self.get_from_secret(value.into(), "localhost".into());
                 true
             }
             POSTGRES_USER_ENV_KEY if self.postgres => {
-                cfg.postgres.user = self.get_from_secret(value.into(), "postgres".to_owned());
+                cfg.postgres.user = self.get_from_secret(value.into(), "postgres".into());
                 true
             }
             POSTGRES_PASSWORD_ENV_KEY if self.postgres => {
-                cfg.postgres.password = self.get_from_secret(value.into(), "postgres".to_owned());
+                cfg.postgres.password = self.get_from_secret(value.into(), "postgres".into());
                 true
             }
             POSTGRES_PORT_ENV_KEY if self.postgres => {
@@ -452,7 +518,7 @@ impl ConfigBuilder {
                 true
             }
             POSTGRES_DB_ENV_KEY if self.postgres => {
-                cfg.postgres.db = self.get_from_secret(value.into(), "hdr".to_owned());
+                cfg.postgres.db = self.get_from_secret(value.into(), "hdr".into());
                 true
             }
             _ => false,
@@ -470,16 +536,15 @@ impl ConfigBuilder {
     {
         match key.into().as_str() {
             DYNAMO_ENDPOINT_ENV_KEY if self.dynamo => {
-                cfg.dynamo.endpoint = self.get_from_secret(value.into(), "localhost".to_owned());
+                cfg.dynamo.endpoint = self.get_from_secret(value.into(), "localhost".into());
                 true
             }
             DYNAMO_TABLE_ENV_KEY if self.dynamo => {
-                cfg.dynamo.table = self.get_from_secret(value.into(), "table".to_owned());
+                cfg.dynamo.table = self.get_from_secret(value.into(), "table".into());
                 true
             }
             DYNAMO_REGION_ENV_KEY if self.dynamo => {
-                cfg.dynamo.region =
-                    self.get_from_secret(value.into(), AWS_DEFAULT_REGION.to_owned());
+                cfg.dynamo.region = self.get_from_secret(value.into(), AWS_DEFAULT_REGION.into());
                 true
             }
             DYNAMO_EXPIRE_ENV_KEY if self.dynamo => {
@@ -501,12 +566,12 @@ impl ConfigBuilder {
     {
         match key.into().as_str() {
             AWS_IAM_ACCESS_KEY_ID if self.aws => {
-                cfg.aws.access_key_id = Some(self.get_from_secret(value.into(), "key".to_owned()));
+                cfg.aws.access_key_id = Some(self.get_from_secret(value.into(), "key".into()));
                 true
             }
             AWS_IAM_SECRET_ACCESS_KEY if self.aws => {
                 cfg.aws.secret_access_key =
-                    Some(self.get_from_secret(value.into(), "secret".to_owned()));
+                    Some(self.get_from_secret(value.into(), "secret".into()));
                 true
             }
             _ => false,
@@ -546,15 +611,15 @@ impl ConfigBuilder {
     {
         match key.into().as_str() {
             SQLITE_FILE_NAME_ENV_KEY if self.sqlite => {
-                cfg.sqlite.file = self.get_from_secret(value.into(), "local.db".to_owned());
+                cfg.sqlite.file = self.get_from_secret(value.into(), "local.db".into());
                 true
             }
             "SQLITE_USER" if self.sqlite => {
-                cfg.sqlite.user = self.get_from_secret(value.into(), "user".to_owned());
+                cfg.sqlite.user = self.get_from_secret(value.into(), "user".into());
                 true
             }
             "SQLITE_PASSWORD" if self.sqlite => {
-                cfg.sqlite.password = self.get_from_secret(value.into(), "password".to_owned());
+                cfg.sqlite.password = self.get_from_secret(value.into(), "password".into());
                 true
             }
             _ => false,

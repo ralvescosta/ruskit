@@ -1,26 +1,28 @@
 use configs::{Configs, DynamicConfigs};
-use opentelemetry::{global, KeyValue};
+use opentelemetry::KeyValue;
 use opentelemetry_sdk::{metrics::MeterProvider, Resource};
 use prometheus::Registry;
-use std::{error::Error, sync::Arc};
-use tracing::debug;
+use std::sync::Arc;
+use tracing::error;
 
-pub fn setup<T>(cfg: &Configs<T>) -> Result<Arc<Registry>, Box<dyn Error>>
+use crate::errors::MetricsError;
+
+pub fn install<T>(cfg: &Configs<T>) -> Result<(MeterProvider, Arc<Registry>), MetricsError>
 where
     T: DynamicConfigs,
 {
     let registry = Registry::new();
 
-    if !cfg.metric.enable {
-        debug!("metrics::setup skipping metrics export setup");
-        return Ok(Arc::new(registry));
-    }
-
-    debug!("metrics::setup configure prometheus metrics...");
-
-    let exporter = opentelemetry_prometheus::exporter()
+    let exporter = match opentelemetry_prometheus::exporter()
         .with_registry(registry.clone())
-        .build()?;
+        .build()
+    {
+        Ok(e) => Ok(e),
+        Err(err) => {
+            error!(error = err.to_string(), "failure to create prom exporter");
+            Err(MetricsError::ExporterProviderError)
+        }
+    }?;
 
     let provider = MeterProvider::builder()
         .with_resource(Resource::new(vec![
@@ -32,9 +34,5 @@ where
         .with_reader(exporter)
         .build();
 
-    global::set_meter_provider(provider);
-
-    debug!("metrics::setup prometheus installed");
-
-    Ok(Arc::new(registry))
+    Ok((provider, Arc::new(registry)))
 }

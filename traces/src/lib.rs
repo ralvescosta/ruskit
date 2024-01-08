@@ -1,6 +1,8 @@
-pub mod grpc;
-pub mod jaeger;
-pub mod otlp;
+pub mod errors;
+pub mod exporters;
+pub mod extractors;
+pub mod injectors;
+pub mod provider;
 
 use configs::{Configs, DynamicConfigs, Environment};
 use opentelemetry::trace::TraceContextExt;

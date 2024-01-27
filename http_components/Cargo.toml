@@ -15,7 +15,7 @@ health = ["dep:health-readiness"]
 actix-web = { version = "4.4.1" }
 actix-http = { version = "3.5.1" }
 actix-cors = { version = "0.7.0" }
-serde = { version = "1.0.195", features = ["derive"] }
+serde = { version = "1.0.196", features = ["derive"] }
 serde_json = { version = "1.0.94" }
 tracing = { version = "0.1.40" }
 futures-util = { version = "0.3.30" }

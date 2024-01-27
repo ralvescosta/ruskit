@@ -14,8 +14,8 @@ auth = { path = "../auth" }
 
 thiserror = { version = "1.0.56" }
 actix-web = { version = "4.4.1" }
-serde = { version = "1.0.195", features = ["derive"] }
-serde_json = { version = "1.0.111" }
+serde = { version = "1.0.196", features = ["derive"] }
+serde_json = { version = "1.0.112" }
 tracing = { version = "0.1.40" }
 opentelemetry = { version = "0.21.0" }
 

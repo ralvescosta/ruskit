@@ -1,8 +1,3 @@
-pub const LOCAL_ENV_FILE_NAME: &str = "./.env.local";
-pub const DEV_ENV_FILE_NAME: &str = "./.env.develop";
-pub const STAGING_FILE_NAME: &str = "./.env.staging";
-pub const PROD_FILE_NAME: &str = "./.env.prod";
-
 pub const SECRET_PREFIX: &str = "!";
 pub const SECRET_PREFIX_TO_DECODE: &str = "!!";
 

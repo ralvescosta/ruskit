@@ -10,7 +10,7 @@ traces = { path = "../traces" }
 
 lapin = { version = "2.3.1" }
 opentelemetry = { version = "0.21.0" }
-uuid = { version = "1.6.1", features = ["v4"] }
+uuid = { version = "1.7.0", features = ["v4"] }
 async-trait = { version = "0.1.77" }
 tracing = { version = "0.1.40" }
 serde_json = { version = "1.0.111" }

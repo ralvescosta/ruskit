@@ -1,4 +1,3 @@
-use crate::otel;
 use async_trait::async_trait;
 use configs::{Configs, DynamicConfigs, Environment};
 use messaging::{
@@ -19,14 +18,15 @@ use std::str;
 use std::{collections::HashMap, sync::Arc};
 use tracing::{debug, error, warn};
 
-#[derive(Clone)]
+use crate::otel;
+
 pub struct KafkaDispatcher {
     consumer: Arc<StreamConsumer>,
     dispatchers: HashMap<String, Arc<dyn ConsumerHandler>>,
 }
 
 impl KafkaDispatcher {
-    pub fn new<T>(cfgs: &Configs<T>) -> Result<Self, MessagingError>
+    pub fn new<T>(cfgs: &Configs<T>) -> Result<Arc<Self>, MessagingError>
     where
         T: DynamicConfigs,
     {
@@ -56,10 +56,10 @@ impl KafkaDispatcher {
             }
         }?;
 
-        Ok(Self {
+        Ok(Arc::new(Self {
             consumer: Arc::new(consumer),
             dispatchers: HashMap::new(),
-        })
+        }))
     }
 }
 

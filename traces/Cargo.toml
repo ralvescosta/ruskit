@@ -10,14 +10,14 @@ stdout = ["dep:opentelemetry-stdout"]
 [dependencies]
 configs = { path = "../configs" }
 
-opentelemetry = { version = "0.21.0" }
-opentelemetry_sdk = { version = "0.21.2", features = ["rt-tokio"]}
-tracing = { version = "0.1.40" }
-thiserror = { version = "1.0.56" }
-serde = { version = "1.0.196", features = ["derive"] }
-tonic = { version = "0.9.2", features = ["tls"] }
-tokio = { version = "1.35.1", features = ["default"] }
+opentelemetry = { workspace = true }
+opentelemetry_sdk = { workspace = true, features = ["rt-tokio"]}
+tracing = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+tonic = { workspace = true, features = ["tls"] }
+tokio = { workspace = true, features = ["default"] }
 
-opentelemetry-otlp = { version = "0.14.0", features = ["tonic", "tls", "tls-roots"], optional = true }
+opentelemetry-otlp = { git = "ssh://git@github.com/open-telemetry/opentelemetry-rust.git", rev = "v0.21.2", features = ["tonic", "tls", "tls-roots"], optional = true }
 
-opentelemetry-stdout = { version = "0.2.0", features = ["trace"], optional = true }
+opentelemetry-stdout = { git = "ssh://git@github.com/open-telemetry/opentelemetry-rust.git", rev = "v0.21.2", features = ["trace"], optional = true }

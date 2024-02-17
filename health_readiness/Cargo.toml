@@ -9,12 +9,12 @@ rabbitmq = ["dep:lapin"]
 postgres = ["dep:deadpool-postgres"]
 
 [dependencies]
-async-trait = { version = "0.1.77" }
-tracing = { version = "0.1.40" }
-thiserror = { version = "1.0.56" }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
 
 # mqtt
-paho-mqtt = { version = "0.12.1", optional = true }
+paho-mqtt = { version = "0.12.3", optional = true }
 
 #  rabbitmq
 lapin = { version = "2.3.1", optional = true }

@@ -10,8 +10,8 @@ sqlite = ["dep:deadpool-sqlite"]
 [dependencies]
 configs = { path = "../configs" }
 
-tracing = { version = "0.1.40" }
-thiserror = { version = "1.0.56" }
+tracing = { workspace = true }
+thiserror = { workspace = true }
 
 # PostgreSQL dep
 deadpool-postgres = { version = "0.12.1", optional = true }

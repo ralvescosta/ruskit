@@ -9,7 +9,6 @@ use auth::jwt_manager::JwtManager;
 use configs::AppConfigs;
 use health_readiness::{HealthReadinessService, HealthReadinessServiceImpl};
 use http_components::{
-    handlers::health_handler,
     middlewares,
     middlewares::otel::{HTTPOtelMetrics, HTTPOtelTracing},
     CustomServiceConfigure,
@@ -17,15 +16,15 @@ use http_components::{
 use opentelemetry::global;
 use std::{sync::Arc, time::Duration};
 use tracing::error;
-#[cfg(openapi)]
+#[cfg(feature = "openapi")]
 use utoipa::openapi::OpenApi;
-#[cfg(openapi)]
+#[cfg(feature = "openapi")]
 use utoipa_swagger_ui::SwaggerUi;
 
 pub struct HTTPServer {
     addr: String,
     services: Vec<Arc<CustomServiceConfigure>>,
-    #[cfg(openapi)]
+    #[cfg(feature = "openapi")]
     openapi: Option<OpenApi>,
     jwt_manager: Option<Arc<dyn JwtManager>>,
     health_check: Option<Arc<dyn HealthReadinessService>>,
@@ -36,7 +35,7 @@ impl HTTPServer {
         HTTPServer {
             addr: cfg.app_addr(),
             services: vec![],
-            #[cfg(openapi)]
+            #[cfg(feature = "openapi")]
             openapi: None,
             jwt_manager: None,
             health_check: None,
@@ -55,7 +54,7 @@ impl HTTPServer {
         self
     }
 
-    #[cfg(openapi)]
+    #[cfg(feature = "openapi")]
     pub fn openapi(mut self, openapi: &OpenApi) -> Self {
         self.openapi = Some(openapi.to_owned());
         self
@@ -68,7 +67,7 @@ impl HTTPServer {
 
     pub async fn start(&self) -> Result<(), HTTPServerError> {
         ActixHttpServer::new({
-            #[cfg(openapi)]
+            #[cfg(feature = "openapi")]
             let openapi = self.openapi.clone();
 
             let jwt_manager = self.jwt_manager.clone();
@@ -106,7 +105,7 @@ impl HTTPServer {
                     }
                 });
 
-                #[cfg(openapi)]
+                #[cfg(feature = "openapi")]
                 if openapi.is_some() {
                     app = app.service(
                         SwaggerUi::new("/docs/{_:.*}")
@@ -114,8 +113,7 @@ impl HTTPServer {
                     );
                 }
 
-                app.service(health_handler)
-                    .default_service(web::to(middlewares::not_found::not_found))
+                app.default_service(web::to(middlewares::not_found::not_found))
                     .wrap(actix_middleware::Logger::default())
             }
         })

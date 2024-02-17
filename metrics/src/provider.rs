@@ -4,10 +4,10 @@ use prometheus::Registry;
 use std::sync::Arc;
 use tracing::{debug, error};
 
-#[cfg(all(feature = "otlp", feature = "prometheus", feature = "stdout"))]
+#[cfg(any(feature = "otlp", feature = "prometheus", feature = "stdout"))]
 use crate::exporters;
 
-#[cfg(all(feature = "otlp", feature = "prometheus", feature = "stdout"))]
+#[cfg(any(feature = "otlp", feature = "prometheus", feature = "stdout"))]
 use opentelemetry::global;
 
 pub fn init<T>(cfg: &Configs<T>) -> Result<Option<Arc<Registry>>, MetricsError>

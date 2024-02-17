@@ -7,17 +7,27 @@ members = [
     "messaging",
     "rabbitmq",
     "kafka",
-    "auth",
-    "health_readiness",
     "http_components",
+    "health_readiness",
+    "health_http_server",
     "http_server",
-    "tiny_server",
     "logging",
     "metrics",
     "migrator",
     "mqtt",
-    "otel",
     "secrets_manager",
     "sql_pool",
     "traces",
+    "auth",
 ]
+
+[workspace.dependencies]
+thiserror = { version = "1.0.57" }
+serde = { version = "1.0.196" }
+serde_json = { version = "1.0.113" }
+tokio = { version = "1.36.0" }
+async-trait = { version = "0.1.77" }
+tracing = { version = "0.1.40" }
+opentelemetry = { git = "ssh://git@github.com/open-telemetry/opentelemetry-rust.git", rev = "v0.21.2" }
+opentelemetry_sdk = { git = "ssh://git@github.com/open-telemetry/opentelemetry-rust.git", rev = "v0.21.2" }
+tonic = { version = "0.11.0" }

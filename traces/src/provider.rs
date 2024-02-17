@@ -8,7 +8,7 @@ use opentelemetry_sdk::{
 use std::vec;
 use tracing::{debug, error};
 
-#[cfg(all(feature = "otlp", feature = "stdout"))]
+#[cfg(any(feature = "otlp", feature = "stdout"))]
 use crate::exporters;
 
 pub fn init<T>(cfg: &Configs<T>) -> Result<(), TracesError>

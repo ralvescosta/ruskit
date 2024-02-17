@@ -51,13 +51,4 @@ impl Environment {
     pub fn is_prod(&self) -> bool {
         self == &Environment::Prod
     }
-
-    pub fn filename(&self) -> String {
-        match *self {
-            Environment::Local => ".env.local".into(),
-            Environment::Dev => ".env.develop".into(),
-            Environment::Staging => ".env.staging".into(),
-            Environment::Prod => ".env.prod".into(),
-        }
-    }
 }

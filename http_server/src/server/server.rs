@@ -1,16 +1,18 @@
 use crate::errors::HTTPServerError;
 use actix_web::{
     http::KeepAlive,
-    middleware as actix_middleware,
+    middleware::{self as actix_middleware, Logger},
     web::{self, Data},
     App, HttpServer as ActixHttpServer,
 };
-use auth::jwt_manager::JwtManager;
 use configs::AppConfigs;
 use health_readiness::{HealthReadinessService, HealthReadinessServiceImpl};
 use http_components::{
-    middlewares,
-    middlewares::otel::{HTTPOtelMetrics, HTTPOtelTracing},
+    handlers::health_handler,
+    middlewares::{
+        self,
+        otel::{HTTPOtelMetrics, HTTPOtelTracing},
+    },
     CustomServiceConfigure,
 };
 use opentelemetry::global;
@@ -26,7 +28,6 @@ pub struct HTTPServer {
     services: Vec<Arc<CustomServiceConfigure>>,
     #[cfg(feature = "openapi")]
     openapi: Option<OpenApi>,
-    jwt_manager: Option<Arc<dyn JwtManager>>,
     health_check: Option<Arc<dyn HealthReadinessService>>,
 }
 
@@ -37,7 +38,6 @@ impl HTTPServer {
             services: vec![],
             #[cfg(feature = "openapi")]
             openapi: None,
-            jwt_manager: None,
             health_check: None,
         }
     }
@@ -46,11 +46,6 @@ impl HTTPServer {
 impl HTTPServer {
     pub fn custom_configure(mut self, s: CustomServiceConfigure) -> Self {
         self.services.push(Arc::new(s));
-        self
-    }
-
-    pub fn jwt_manager(mut self, manager: Arc<dyn JwtManager>) -> Self {
-        self.jwt_manager = Some(manager);
         self
     }
 
@@ -70,7 +65,6 @@ impl HTTPServer {
             #[cfg(feature = "openapi")]
             let openapi = self.openapi.clone();
 
-            let jwt_manager = self.jwt_manager.clone();
             let health_check_service = match self.health_check.clone() {
                 Some(check) => check,
                 _ => Arc::new(HealthReadinessServiceImpl::default()),
@@ -86,15 +80,10 @@ impl HTTPServer {
                     .wrap(HTTPOtelTracing::new())
                     .wrap(HTTPOtelMetrics::new())
                     .app_data(middlewares::deserializer::handler())
-                    .app_data(Data::<Arc<dyn HealthReadinessService>>::new(
+                    .app_data(Data::<dyn HealthReadinessService>::from(
                         health_check_service.clone(),
-                    ));
-
-                if let Some(jwt_manager) = jwt_manager.clone() {
-                    app = app.app_data::<Data<Arc<dyn JwtManager>>>(
-                        Data::<Arc<dyn JwtManager>>::new(jwt_manager.clone()),
-                    );
-                }
+                    ))
+                    .service(health_handler);
 
                 let services = services.clone();
                 app = app.configure(move |config| {
@@ -114,7 +103,7 @@ impl HTTPServer {
                 }
 
                 app.default_service(web::to(middlewares::not_found::not_found))
-                    .wrap(actix_middleware::Logger::default())
+                    .wrap(Logger::default())
             }
         })
         .shutdown_timeout(60)

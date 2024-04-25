@@ -71,3 +71,57 @@ fn _flatten_errors(
         })
         .collect::<Vec<_>>()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_http::StatusCode;
+    use serde_json::{json, Value};
+    use validator::Validate;
+
+    #[derive(Validate)]
+    struct TestStruct {
+        #[validate(length(min = 1))]
+        name: String,
+        #[validate(range(min = 18, max = 120))]
+        age: u8,
+    }
+
+    #[test]
+    fn test_body_validator_ok() {
+        let ctx = Context::new();
+
+        let body = TestStruct {
+            name: "John Doe".to_owned(),
+            age: 25,
+        };
+
+        let result = body_validator(&ctx, &body);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_body_validator_err() {
+        let ctx = Context::new();
+
+        let body = TestStruct {
+            name: "".to_owned(),
+            age: 150,
+        };
+
+        let result = body_validator(&ctx, &body);
+
+        assert!(result.is_err());
+
+        let error = result.unwrap_err();
+        assert_eq!(error.status_code, StatusCode::BAD_REQUEST.as_u16());
+        assert_eq!(error.message, "unformatted body");
+
+        let details = error.details;
+        assert!(details.is_object());
+
+        let details_map = details.as_object().unwrap();
+        assert_eq!(details_map.len(), 2);
+    }
+}

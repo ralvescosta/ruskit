@@ -12,3 +12,4 @@ async-trait = { workspace = true }
 opentelemetry = { workspace = true }
 tracing = { workspace = true }
 tokio = { workspace = true, features = ["default"] }
+thiserror = { workspace = true }

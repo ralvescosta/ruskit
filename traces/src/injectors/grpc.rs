@@ -25,6 +25,6 @@ impl<'a> Injector for GRPCInjector<'a> {
 
 pub fn inject(ctx: &Context, meta: &mut tonic::metadata::MetadataMap) {
     global::get_text_map_propagator(|propagator| {
-        propagator.inject_context(&ctx, &mut GRPCInjector(meta))
+        propagator.inject_context(ctx, &mut GRPCInjector(meta))
     });
 }

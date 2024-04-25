@@ -1,13 +1,13 @@
 use crate::{
-    kafka::KafkaConfigs, AppConfigs, Auth0Configs, AwsConfigs, DynamoConfigs,
-    HealthReadinessConfigs, MQTTConfigs, MetricConfigs, PostgresConfigs, RabbitMQConfigs,
+    kafka::KafkaConfigs, AppConfigs, AwsConfigs, DynamoConfigs, HealthReadinessConfigs,
+    IdentityServerConfigs, MQTTConfigs, MetricConfigs, PostgresConfigs, RabbitMQConfigs,
     SqliteConfigs, TraceConfigs,
 };
 
 #[derive(Debug, Clone, Default)]
 pub struct Configs<T: DynamicConfigs> {
     pub app: AppConfigs,
-    pub auth0: Auth0Configs,
+    pub identity: IdentityServerConfigs,
     pub mqtt: MQTTConfigs,
     pub rabbitmq: RabbitMQConfigs,
     pub kafka: KafkaConfigs,

@@ -570,6 +570,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "thiserror",
  "tokio",
  "tracing",
 ]
@@ -2422,6 +2423,7 @@ dependencies = [
  "messaging",
  "opentelemetry",
  "rdkafka",
+ "thiserror",
  "tokio",
  "tracing",
 ]

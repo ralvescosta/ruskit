@@ -15,7 +15,7 @@ pub struct AWSSecretClient {
 #[cfg_attr(mock, automock)]
 impl SecretClient for AWSSecretClient {
     fn get_by_key(&self, key: &str) -> Result<String, SecretsManagerError> {
-        let key = key.strip_prefix("!").unwrap_or_default();
+        let key = key.strip_prefix('!').unwrap_or_default();
         let value = self.secrets[key].clone();
 
         let Value::String(secret) = value else {

@@ -1,4 +1,4 @@
-use super::{manager::JwtManager, types::TokenClaims};
+use super::{errors::AuthError, manager::JwtManager, types::TokenClaims};
 use async_trait::async_trait;
 use configs::IdentityServerConfigs;
 use jsonwebtoken::jwk::JwkSet;
@@ -37,7 +37,7 @@ impl Auth0JwtManager {
 
 #[async_trait]
 impl JwtManager for Auth0JwtManager {
-    async fn verify(&self, ctx: &Context, token: &str) -> Result<TokenClaims, ()> {
+    async fn verify(&self, ctx: &Context, token: &str) -> Result<TokenClaims, AuthError> {
         let mut span = self.tracer.start_with_context("authenticate", ctx);
 
         if let Some(cached_claim) = self.jwt_cache.get(token).await {
@@ -75,7 +75,7 @@ impl JwtManager for Auth0JwtManager {
 }
 
 impl Auth0JwtManager {
-    async fn get_jwks(&self, span: &mut BoxedSpan) -> Result<JwkSet, ()> {
+    async fn get_jwks(&self, span: &mut BoxedSpan) -> Result<JwkSet, AuthError> {
         let res = match reqwest::get(&format!(
             "https://{}/{}",
             self.cfg.realm, ".well-known/jwks.json"
@@ -88,7 +88,7 @@ impl Auth0JwtManager {
                 span.set_status(Status::Error {
                     description: Cow::from("error to get jwks from auth0 api"),
                 });
-                Err(())
+                Err(AuthError::CouldNotRetrieveJWKS)
             }
             Ok(r) => Ok(r),
         }?;
@@ -100,12 +100,12 @@ impl Auth0JwtManager {
                 span.set_status(Status::Error {
                     description: Cow::from("error deserializing the jwks"),
                 });
-                Err(())
+                Err(AuthError::FailedToDeserializeToken)
             }
             Ok(v) => Ok(v),
         }?;
 
-        return Ok(val);
+        Ok(val)
     }
 }
 

@@ -12,5 +12,6 @@ tracing = { workspace = true }
 async-trait = { workspace = true }
 opentelemetry = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
-alcoholic_jwt = { version =  "4091.0.0" }
-reqwest = { version = "0.11.24", features = ["json"] }
+reqwest = { version = "0.12.3", features = ["json"] }
+moka = { version = "0.12.7", features = ["future"] }
+jsonwebtoken = { version = "9.3.0" }

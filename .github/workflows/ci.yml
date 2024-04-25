@@ -15,13 +15,11 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image:  xd009642/tarpaulin:develop-nightly
-      options:  --security-opt seccomp=unconfined
-
     steps:
     - name: 📁 Checkout
       uses: actions/checkout@v3
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: ⚡ Cache
       uses: actions/cache@v3
@@ -34,36 +32,44 @@ jobs:
           ~/.cargo/registry/index/
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
-          .cargo/
-          target/
+          target/   
 
     - name: 🔧 Install protoc
-      uses: arduino/setup-protoc@v1
+      uses: arduino/setup-protoc@v1.1.2
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: 🔨 Install tools
       run: |
-        apt update && apt install sudo
-        sudo apt install libssl-dev build-essential cmake pkg-config llvm-dev libclang-dev clang mosquitto-dev libmosquitto-dev libsqlite3-dev -y
-      
+        sudo apt update \
+        && sudo apt install libssl-dev build-essential cmake pkg-config llvm-dev libclang-dev clang libmosquitto-dev libsqlite3-dev -y \
+        && cargo install --locked cargo-audit || true \
+        && cargo install cargo-tarpaulin
+
+    - name: 🔐 Run audit
+      run: |
+        cargo audit
+
     - name: 🔎 Run tests
       run: |
-        cargo +nightly tarpaulin --workspace --timeout 120 --out xml
+        cargo tarpaulin --workspace --timeout 120 --skip-clean --out xml
 
     - name: ☁ Codecov
       uses: codecov/codecov-action@v3
       with:
         token: ${{secrets.CODECOV_TOKEN}}
+        verbose: true
       
   tag:
     needs: [build]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: 📁 Checkout
         uses: actions/checkout@v2
         with:
           fetch-depth: '0'
 
-      - name: Pre release
+      - name: ⚙ Pre release
         if: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop'}}
         uses: anothrNick/github-tag-action@v1
         env:
@@ -72,7 +78,7 @@ jobs:
           WITH_V: true
           PRERELEASE: true
 
-      - name: Patch release
+      - name: ⚙ Patch release
         if: ${{ github.ref == 'refs/heads/develop' }}
         uses: anothrNick/github-tag-action@v1
         env:
@@ -81,7 +87,7 @@ jobs:
           WITH_V: true
           PRERELEASE: true
 
-      - name: Minor release
+      - name: ⚙ Minor release
         if: ${{ github.ref == 'refs/heads/main' }}
         uses: anothrNick/github-tag-action@v1
         env:

@@ -1,12 +1,25 @@
-name: Security audit
+name: security-audit
+
 on:
   schedule:
     - cron: '0 0 * * *'
+    
 jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions-rs/audit-check@v1
+      - name: 📁 Checkout
+        uses: actions/checkout@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
+
+      - name: 🧰 Install tools
+        run: |
+          sudo apt update \
+          && sudo apt install libssl-dev build-essential cmake pkg-config llvm-dev libclang-dev clang libmosquitto-dev libsqlite3-dev -y
+
+      - name: 🔐 Run audit
+        uses: actions-rs/audit-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

@@ -1,13 +1,16 @@
 use configs::{Configs, DynamicConfigs};
 use opentelemetry::KeyValue;
-use opentelemetry_sdk::{metrics::MeterProvider, Resource};
+use opentelemetry_sdk::{
+    metrics::{MeterProviderBuilder, SdkMeterProvider},
+    Resource,
+};
 use prometheus::Registry;
 use std::sync::Arc;
 use tracing::error;
 
 use crate::errors::MetricsError;
 
-pub fn install<T>(cfg: &Configs<T>) -> Result<(MeterProvider, Arc<Registry>), MetricsError>
+pub fn install<T>(cfg: &Configs<T>) -> Result<(SdkMeterProvider, Arc<Registry>), MetricsError>
 where
     T: DynamicConfigs,
 {
@@ -24,7 +27,7 @@ where
         }
     }?;
 
-    let provider = MeterProvider::builder()
+    let provider = MeterProviderBuilder::default()
         .with_resource(Resource::new(vec![
             KeyValue::new("service.name", cfg.app.name.clone()),
             KeyValue::new("service.type", cfg.metric.service_type.clone()),

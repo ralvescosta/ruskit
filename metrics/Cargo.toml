@@ -12,18 +12,18 @@ stdout = ["dep:opentelemetry-stdout", "dep:tokio"]
 configs = { path = "../configs" }
 
 opentelemetry = { workspace = true, features = ["metrics"] }
-opentelemetry_sdk = { version = "0.21.2", features = ["metrics", "rt-tokio"] }
+opentelemetry_sdk = { workspace = true, features = ["metrics", "rt-tokio"] }
 tracing = { workspace = true }
 thiserror = { workspace = true }
 
 # OTLP Featue
 tonic = { workspace = true, features = ["tls"], optional = true }
 tokio = { workspace = true, features = ["default"], optional = true }
-opentelemetry-otlp = { git = "ssh://git@github.com/open-telemetry/opentelemetry-rust.git", rev = "v0.21.2", features = ["tonic", "metrics", "grpc-tonic" , "tls", "tls-roots"], optional = true }
+opentelemetry-otlp = { version = "0.15", features = ["metrics", "prost", "grpc-tonic", "gzip-tonic","tls", "tls-roots"], optional = true }
 
 # Prometheus Feature
 prometheus = { version = "0.13.3" }
-opentelemetry-prometheus = { git = "ssh://git@github.com/open-telemetry/opentelemetry-rust.git", rev = "v0.21.2", optional = true }
+opentelemetry-prometheus = { version = "0.15", optional = true }
 
 # Stdout
-opentelemetry-stdout = { git = "ssh://git@github.com/open-telemetry/opentelemetry-rust.git", rev = "v0.21.2", features = ["metrics"], optional = true }
+opentelemetry-stdout = { version = "0.3", features = ["metrics"], optional = true }

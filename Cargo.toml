@@ -22,12 +22,12 @@ members = [
 ]
 
 [workspace.dependencies]
-thiserror = { version = "1.0.57" }
-serde = { version = "1.0.196" }
-serde_json = { version = "1.0.113" }
-tokio = { version = "1.36.0" }
-async-trait = { version = "0.1.77" }
+thiserror = { version = "1.0.59" }
+serde = { version = "1.0.198" }
+serde_json = { version = "1.0.116" }
+tokio = { version = "1.37.0" }
+async-trait = { version = "0.1.80" }
 tracing = { version = "0.1.40" }
-opentelemetry = { git = "ssh://git@github.com/open-telemetry/opentelemetry-rust.git", rev = "v0.21.2" }
-opentelemetry_sdk = { git = "ssh://git@github.com/open-telemetry/opentelemetry-rust.git", rev = "v0.21.2" }
-tonic = { version = "0.11.0" }
+tonic = { version = "0.11" }
+opentelemetry = { version = "0.22.0" }
+opentelemetry_sdk = { version = "0.22.1" }

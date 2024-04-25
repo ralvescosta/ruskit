@@ -14,7 +14,7 @@ messaging = { path = "../messaging" }
 opentelemetry = { workspace = true }
 tracing = { workspace = true }
 async-trait = { workspace = true }
-bytes = { version = "1.5.0", features = ["serde"] }
+bytes = { version = "1.6.0", features = ["serde"] }
 paho-mqtt = { version = "0.12.3" }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

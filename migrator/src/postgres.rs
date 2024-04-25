@@ -85,7 +85,7 @@ impl MigratorDriver for PostgresDriver {
 
         let conn = self.get_conn().await?;
 
-        let dirs = self.read_dir_sorted(migrations_path)?;
+        let dirs = self.read_dir_sorted_for_up(migrations_path)?;
 
         self.begin(&conn).await?;
 
@@ -158,9 +158,85 @@ impl MigratorDriver for PostgresDriver {
 
     async fn down(
         &self,
-        _path: Option<&str>,
+        path: Option<&str>,
         _migration: Option<&str>,
     ) -> Result<(), MigrationError> {
+        let mut migrations_path = "./bins/migrations/sql/";
+
+        if path.is_some() {
+            migrations_path = path.unwrap();
+        }
+
+        let conn = self.get_conn().await?;
+
+        let dirs = self.read_dir_sorted_for_down(migrations_path)?;
+
+        self.begin(&conn).await?;
+
+        for dir in dirs {
+            let (file_name, file_path) = dir;
+
+            if self.migrate_executed_already(&conn, &file_name).await? {
+                continue;
+            }
+
+            let query = match fs::read_to_string(file_path) {
+                Ok(q) => Ok(q),
+                Err(err) => {
+                    error!(error = err.to_string(), "error to read migration file");
+                    self.rollback(&conn).await?;
+                    Err(MigrationError::InternalError {})
+                }
+            }?;
+
+            match conn.batch_execute(&query).await {
+                Err(err) => {
+                    if err.code().unwrap_or(&SqlState::SYNTAX_ERROR) == &SqlState::DUPLICATE_TABLE {
+                        warn!(
+                            error = err.to_string(),
+                            "there is a table with the same name"
+                        );
+                        return Ok(());
+                    }
+
+                    error!(error = err.to_string(), "error to execute migrate query");
+                    self.rollback(&conn).await?;
+                    Err(MigrationError::MigrateQueryErr {})
+                }
+                _ => Ok(()),
+            }?;
+
+            let statement = match conn
+                .prepare("INSERT INTO migrations (migrate) values ($1)")
+                .await
+            {
+                Err(err) => {
+                    error!(
+                        error = err.to_string(),
+                        migrate = file_name,
+                        "error to execute prepare insert in migrations table"
+                    );
+                    self.rollback(&conn).await?;
+                    Err(MigrationError::PrepareStatementErr {})
+                }
+                Ok(s) => Ok(s),
+            }?;
+
+            match conn.query(&statement, &[&file_name]).await {
+                Err(err) => {
+                    error!(
+                        error = err.to_string(),
+                        "error to inset migrate in migrations table"
+                    );
+                    self.rollback(&conn).await?;
+                    Err(MigrationError::InsertErr {})
+                }
+                _ => Ok(()),
+            }?;
+        }
+
+        self.commit(&conn).await?;
+
         Ok(())
     }
 }
@@ -209,7 +285,7 @@ impl PostgresDriver {
         }
     }
 
-    fn read_dir_sorted(&self, path: &str) -> Result<Vec<(String, PathBuf)>, MigrationError> {
+    fn read_dir_sorted_for_up(&self, path: &str) -> Result<Vec<(String, PathBuf)>, MigrationError> {
         let dirs = match fs::read_dir(path) {
             Ok(d) => Ok(d),
             Err(err) => {
@@ -227,6 +303,34 @@ impl PostgresDriver {
                 )
             })
             .filter(|f| f.0.contains("up") && f.0.contains(".sql"))
+            .collect();
+
+        migrations.sort_by_key(|v| v.0.clone());
+
+        Ok(migrations)
+    }
+
+    fn read_dir_sorted_for_down(
+        &self,
+        path: &str,
+    ) -> Result<Vec<(String, PathBuf)>, MigrationError> {
+        let dirs = match fs::read_dir(path) {
+            Ok(d) => Ok(d),
+            Err(err) => {
+                error!(error = err.to_string(), "error reading the migration path");
+                Err(MigrationError::InternalError {})
+            }
+        }?;
+
+        let mut migrations: Vec<(String, PathBuf)> = dirs
+            .map(|d| {
+                let dir = d.unwrap();
+                (
+                    dir.file_name().into_string().unwrap_or_default(),
+                    dir.path(),
+                )
+            })
+            .filter(|f| f.0.contains("down") && f.0.contains(".sql"))
             .collect();
 
         migrations.sort_by_key(|v| v.0.clone());

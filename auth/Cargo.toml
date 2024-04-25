@@ -11,6 +11,7 @@ serde_json = { workspace = true }
 tracing = { workspace = true }
 async-trait = { workspace = true }
 opentelemetry = { workspace = true }
+thiserror = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
 reqwest = { version = "0.12.3", features = ["json"] }
 moka = { version = "0.12.7", features = ["future"] }

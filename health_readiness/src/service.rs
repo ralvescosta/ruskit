@@ -34,11 +34,11 @@ pub struct HealthReadinessServiceImpl {
 
 impl HealthReadinessServiceImpl {
     pub fn empty() -> Arc<HealthReadinessServiceImpl> {
-        return Arc::new(HealthReadinessServiceImpl { checkers: vec![] });
+        Arc::new(HealthReadinessServiceImpl { checkers: vec![] })
     }
 
     pub fn new(checkers: Vec<Arc<dyn HealthChecker>>) -> Arc<HealthReadinessServiceImpl> {
-        return Arc::new(HealthReadinessServiceImpl { checkers });
+        Arc::new(HealthReadinessServiceImpl { checkers })
     }
 
     #[cfg(feature = "mqtt")]

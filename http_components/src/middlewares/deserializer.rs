@@ -11,7 +11,7 @@ pub fn handler() -> JsonConfig {
             format!("JSON error: {:?}", err),
             HttpResponse::BadRequest().json(HTTPError::bad_request(
                 "unformatted body",
-                &format!("{}", err),
+                format!("{}", err),
             )),
         )
         .into()

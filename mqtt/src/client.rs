@@ -32,10 +32,10 @@ impl MQTTClient {
             MQTTBrokerKind::Default => password_connection_opts(&cfgs.mqtt),
         };
 
-        return MQTTClient {
+        MQTTClient {
             crate_opts,
             connection_opts,
-        };
+        }
     }
 
     pub async fn connect(
@@ -66,7 +66,7 @@ where
     T: DynamicConfigs,
 {
     CreateOptionsBuilder::new()
-        .server_uri(&format!(
+        .server_uri(format!(
             "{}://{}:{}",
             cfgs.mqtt.transport, cfgs.mqtt.host, cfgs.mqtt.port
         ))

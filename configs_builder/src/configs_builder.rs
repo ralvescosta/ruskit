@@ -189,9 +189,7 @@ impl ConfigBuilder {
         app_cfg: &AppConfigs,
     ) -> Result<Option<Arc<dyn SecretClient>>, ConfigsError> {
         match app_cfg.secret_manager {
-            SecretsManagerKind::None => {
-                return Ok(Some(Arc::new(FakeSecretClient::new())));
-            }
+            SecretsManagerKind::None => Ok(Some(Arc::new(FakeSecretClient::new()))),
 
             SecretsManagerKind::AWSSecretManager => {
                 let secret_key = env::var(SECRET_KEY_ENV_KEY).unwrap_or_default();
@@ -649,7 +647,7 @@ impl ConfigBuilder {
 
         v.parse().unwrap_or_else(|_| {
             error!(key = key, value = v, "parse went wrong");
-            return default;
+            default
         })
     }
 

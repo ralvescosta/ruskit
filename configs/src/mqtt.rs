@@ -10,7 +10,7 @@ pub enum MQTTBrokerKind {
 impl From<&str> for MQTTBrokerKind {
     fn from(value: &str) -> Self {
         match value.to_uppercase().as_str() {
-            "AWSIoTCore" => MQTTBrokerKind::AWSIoTCore,
+            "AWSIOTCORE" => MQTTBrokerKind::AWSIoTCore,
             _ => MQTTBrokerKind::Default,
         }
     }
@@ -19,7 +19,7 @@ impl From<&str> for MQTTBrokerKind {
 impl From<&String> for MQTTBrokerKind {
     fn from(value: &String) -> Self {
         match value.to_uppercase().as_str() {
-            "AWSIoTCore" => MQTTBrokerKind::AWSIoTCore,
+            "AWSIOTCORE" => MQTTBrokerKind::AWSIoTCore,
             _ => MQTTBrokerKind::Default,
         }
     }

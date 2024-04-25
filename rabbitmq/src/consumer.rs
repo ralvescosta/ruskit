@@ -25,7 +25,7 @@ pub(crate) async fn consume<'c>(
 ) -> Result<(), AmqpError> {
     let (msg_type, count) = extract_header_properties(&delivery.properties);
 
-    let (ctx, mut span) = otel::new_span(&delivery.properties, &tracer, &msg_type);
+    let (ctx, mut span) = otel::new_span(&delivery.properties, tracer, &msg_type);
 
     debug!(
         trace.id = traces::trace_id(&ctx),
@@ -41,22 +41,22 @@ pub(crate) async fn consume<'c>(
         span.set_status(Status::Error {
             description: Cow::from(msg),
         });
+
         debug!(
             trace.id = traces::trace_id(&ctx),
             span.id = traces::span_id(&ctx),
             "{}",
             msg
         );
-        match delivery.ack(BasicAckOptions { multiple: false }).await {
-            Err(e) => {
-                error!("error whiling ack msg");
-                span.record_error(&e);
-                span.set_status(Status::Error {
-                    description: Cow::from("error to ack msg"),
-                });
-            }
-            _ => {}
+
+        if let Err(e) = delivery.ack(BasicAckOptions { multiple: false }).await {
+            error!("error whiling ack msg");
+            span.record_error(&e);
+            span.set_status(Status::Error {
+                description: Cow::from("error to ack msg"),
+            });
         };
+
         return Err(AmqpError::InternalError {});
     };
 
@@ -172,25 +172,25 @@ pub(crate) async fn consume<'c>(
             span.set_status(Status::Error {
                 description: Cow::from("msg was sent to dlq"),
             });
-            return Err(AmqpError::PublishingToDQLError {});
+
+            Err(AmqpError::PublishingToDQLError {})
         }
-        _ => {
-            match delivery.ack(BasicAckOptions { multiple: false }).await {
-                Err(e) => {
-                    error!(
-                        trace.id = traces::trace_id(&ctx),
-                        span.id = traces::span_id(&ctx),
-                        "error whiling ack msg to default queue"
-                    );
-                    span.record_error(&e);
-                    span.set_status(Status::Error {
-                        description: Cow::from("msg was sent to dlq"),
-                    });
-                    return Err(AmqpError::AckMessageError {});
-                }
-                _ => return Ok(()),
-            };
-        }
+        _ => match delivery.ack(BasicAckOptions { multiple: false }).await {
+            Err(e) => {
+                error!(
+                    trace.id = traces::trace_id(&ctx),
+                    span.id = traces::span_id(&ctx),
+                    "error whiling ack msg to default queue"
+                );
+                span.record_error(&e);
+                span.set_status(Status::Error {
+                    description: Cow::from("msg was sent to dlq"),
+                });
+
+                Err(AmqpError::AckMessageError {})
+            }
+            _ => Ok(()),
+        },
     }
 }
 
@@ -202,7 +202,7 @@ fn extract_header_properties(props: &AMQPProperties) -> (String, i64) {
 
     let count = match headers.inner().get(AMQP_HEADERS_X_DEATH) {
         Some(value) => match value.as_array() {
-            Some(arr) => match arr.as_slice().get(0) {
+            Some(arr) => match arr.as_slice().first() {
                 Some(value) => match value.as_field_table() {
                     Some(table) => match table.inner().get(AMQP_HEADERS_COUNT) {
                         Some(value) => match value.as_long_long_int() {

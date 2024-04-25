@@ -18,17 +18,17 @@ pub enum HeaderValues {
     LongLongUint(u64),
 }
 
-impl Into<String> for HeaderValues {
-    fn into(self) -> String {
-        match self {
-            Self::ShortString(v) => v,
-            Self::LongString(v) => v,
-            Self::Int(v) => v.to_string(),
-            Self::LongInt(v) => v.to_string(),
-            Self::LongLongInt(v) => v.to_string(),
-            Self::Uint(v) => v.to_string(),
-            Self::LongUint(v) => v.to_string(),
-            Self::LongLongUint(v) => v.to_string(),
+impl From<HeaderValues> for String {
+    fn from(val: HeaderValues) -> Self {
+        match val {
+            HeaderValues::ShortString(v) => v,
+            HeaderValues::LongString(v) => v,
+            HeaderValues::Int(v) => v.to_string(),
+            HeaderValues::LongInt(v) => v.to_string(),
+            HeaderValues::LongLongInt(v) => v.to_string(),
+            HeaderValues::Uint(v) => v.to_string(),
+            HeaderValues::LongUint(v) => v.to_string(),
+            HeaderValues::LongLongUint(v) => v.to_string(),
         }
     }
 }

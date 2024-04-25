@@ -3,12 +3,12 @@ use crate::errors::MetricsError;
 use configs::{Configs, DynamicConfigs};
 use opentelemetry::KeyValue;
 use opentelemetry_otlp::{Protocol, WithExportConfig};
-use opentelemetry_sdk::{metrics::MeterProvider, runtime, Resource};
+use opentelemetry_sdk::{metrics::SdkMeterProvider, runtime, Resource};
 use std::time::Duration;
 use tonic::metadata::{Ascii, MetadataKey, MetadataMap};
 use tracing::error;
 
-pub fn install<T>(cfg: &Configs<T>) -> Result<MeterProvider, MetricsError>
+pub fn install<T>(cfg: &Configs<T>) -> Result<SdkMeterProvider, MetricsError>
 where
     T: DynamicConfigs,
 {

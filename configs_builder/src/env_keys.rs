@@ -1,3 +1,8 @@
+pub const LOCAL_ENV_FILE_NAME: &str = "./.env.local";
+pub const DEV_ENV_FILE_NAME: &str = "./.env.develop";
+pub const STAGING_FILE_NAME: &str = "./.env.staging";
+pub const PROD_FILE_NAME: &str = "./.env.prod";
+
 pub const SECRET_PREFIX: &str = "!";
 pub const SECRET_PREFIX_TO_DECODE: &str = "!!";
 
@@ -10,12 +15,13 @@ pub const HOST_NAME_ENV_KEY: &str = "HOST_NAME";
 pub const APP_PORT_ENV_KEY: &str = "APP_PORT";
 pub const LOG_LEVEL_ENV_KEY: &str = "LOG_LEVEL";
 
-pub const AUTH0_DOMAIN_ENV_KEY: &str = "AUTH0_DOMAIN";
-pub const AUTH0_AUDIENCE_ENV_KEY: &str = "AUTH0_AUDIENCE";
-pub const AUTH0_ISSUER_ENV_KEY: &str = "AUTH0_ISSUER";
-pub const AUTH0_GRANT_TYPE_ENV_KEY: &str = "AUTH0_GRANT_TYPE";
-pub const AUTH0_CLIENT_ID_ENV_KEY: &str = "AUTH0_CLIENT_ID";
-pub const AUTH0_CLIENT_SECRET_ENV_KEY: &str = "AUTH0_CLIENT_SECRET";
+pub const IDENTITY_SERVER_URL_ENV_KEY: &str = "IDENTITY_SERVER_URL";
+pub const IDENTITY_SERVER_REALM_ENV_KEY: &str = "IDENTITY_SERVER_REALM";
+pub const IDENTITY_SERVER_AUDIENCE_ENV_KEY: &str = "IDENTITY_SERVER_AUDIENCE";
+pub const IDENTITY_SERVER_ISSUER_ENV_KEY: &str = "IDENTITY_SERVER_ISSUER";
+pub const IDENTITY_SERVER_GRANT_TYPE_ENV_KEY: &str = "IDENTITY_SERVER_GRANT_TYPE";
+pub const IDENTITY_SERVER_CLIENT_ID_ENV_KEY: &str = "IDENTITY_SERVER_CLIENT_ID";
+pub const IDENTITY_SERVER_CLIENT_SECRET_ENV_KEY: &str = "IDENTITY_SERVER_CLIENT_SECRET";
 
 pub const MQTT_BROKER_KIND_ENV_KEY: &str = "MQTT_BROKER_KIND";
 pub const MQTT_HOST_ENV_KEY: &str = "MQTT_HOST";

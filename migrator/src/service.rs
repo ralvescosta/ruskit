@@ -10,6 +10,13 @@ pub trait MigratorDriver {
         -> Result<(), MigrationError>;
 }
 
+#[derive(Default)]
+pub enum MigrationMode {
+    #[default]
+    Up,
+    Down,
+}
+
 pub struct Migrator {
     driver: Arc<dyn MigratorDriver>,
 }
@@ -23,16 +30,15 @@ impl Migrator {
 impl Migrator {
     pub async fn exec(
         &self,
-        mode: &str,
+        mode: &MigrationMode,
         path: Option<&str>,
         migration: Option<&str>,
     ) -> Result<(), MigrationError> {
         self.driver.migration_table().await?;
 
         match match mode {
-            "up" => self.driver.up(path, migration).await,
-            "down" => self.driver.down(path, migration).await,
-            _ => Err(MigrationError::InvalidArgumentErr(mode.to_owned())),
+            MigrationMode::Up => self.driver.up(path, migration).await,
+            MigrationMode::Down => self.driver.down(path, migration).await,
         } {
             Err(e) => Err(e),
             _ => Ok(()),
@@ -46,7 +52,7 @@ impl Migrator {
         path: Option<&str>,
         migration: Option<&str>,
     ) -> Result<(), MigrationError> {
-        self.exec(&"up".to_owned(), path, migration).await
+        self.exec(&MigrationMode::Up, path, migration).await
     }
 
     pub async fn exec_down(
@@ -54,6 +60,6 @@ impl Migrator {
         path: Option<&str>,
         migration: Option<&str>,
     ) -> Result<(), MigrationError> {
-        self.exec(&"down".to_owned(), path, migration).await
+        self.exec(&MigrationMode::Down, path, migration).await
     }
 }

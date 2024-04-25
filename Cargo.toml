@@ -7,17 +7,27 @@ members = [
     "messaging",
     "rabbitmq",
     "kafka",
-    "auth",
-    "health_readiness",
     "http_components",
+    "health_readiness",
+    "health_http_server",
     "http_server",
-    "tiny_server",
     "logging",
     "metrics",
     "migrator",
     "mqtt",
-    "otel",
     "secrets_manager",
     "sql_pool",
     "traces",
+    "auth",
 ]
+
+[workspace.dependencies]
+thiserror = { version = "1.0.59" }
+serde = { version = "1.0.198" }
+serde_json = { version = "1.0.116" }
+tokio = { version = "1.37.0" }
+async-trait = { version = "0.1.80" }
+tracing = { version = "0.1.40" }
+tonic = { version = "0.11" }
+opentelemetry = { version = "0.22.0" }
+opentelemetry_sdk = { version = "0.22.1" }

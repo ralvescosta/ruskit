@@ -3,8 +3,8 @@
 use super::attributes::metrics_attributes_from_request;
 use actix_web::dev;
 use futures_util::future::{self, FutureExt as _, LocalBoxFuture};
-use opentelemetry::global;
 use opentelemetry::metrics::{Counter, Histogram, Meter, Unit, UpDownCounter};
+use opentelemetry::{global, Key, KeyValue, Value};
 use std::{sync::Arc, time::SystemTime};
 
 // Follows the experimental semantic conventions for HTTP metrics:
@@ -47,58 +47,6 @@ impl Metrics {
     }
 }
 
-/// Request metrics tracking
-///
-/// # Examples
-///
-/// ```no_run
-/// use actix_web::{dev, http, web, App, HttpRequest, HttpServer};
-/// use http_components::{
-///     middlewares::otel::{
-///         HTTPOtelMetrics,
-///     },
-///     handlers::PrometheusMetricsHandler
-/// };
-/// use opentelemetry::{
-///     global,
-///     sdk::{
-///         export::metrics::aggregation,
-///         metrics::{controllers, processors, selectors},
-///         propagation::TraceContextPropagator,
-///     },
-/// };
-///
-/// # #[cfg(feature = "metrics-prometheus")]
-/// #[actix_web::main]
-/// async fn main() -> std::io::Result<()> {
-///     // Request metrics middleware
-///     let meter = global::meter("actix_web");
-///     let request_metrics = RequestMetricsBuilder::new().build(meter);
-///
-///     // Prometheus request metrics handler
-///     let controller = controllers::basic(
-///         processors::factory(
-///             selectors::simple::histogram([1.0, 2.0, 5.0, 10.0, 20.0, 50.0]),
-///             aggregation::cumulative_temporality_selector(),
-///         )
-///         .with_memory(true),
-///     )
-///     .build();
-///     let exporter = opentelemetry_prometheus::exporter(controller).init();
-///     let metrics_handler = PrometheusMetricsHandler::new(exporter);
-///
-///     // Run actix server, metrics are now available at http://localhost:8080/metrics
-///     HttpServer::new(move || {
-///         App::new()
-///             .wrap(HTTPOtelMetrics::new())
-///             .wrap(request_metrics.clone())
-///             .route("/metrics", web::get().to(metrics_handler.clone()))
-///     })
-///     .bind("localhost:8080")?
-///     .run()
-///     .await
-/// }
-/// ```
 #[derive(Clone, Debug)]
 pub struct HTTPOtelMetrics {
     metrics: Arc<Metrics>,
@@ -177,9 +125,10 @@ where
             // Ignore actix errors for metrics
             match res {
                 Ok(success) => {
-                    attributes.push(
-                        HTTP_RESPONSE_STATUS_CODE.string(success.status().as_str().to_owned()),
-                    );
+                    attributes.push(KeyValue::new::<Key, Value>(
+                        HTTP_RESPONSE_STATUS_CODE.into(),
+                        success.status().as_str().to_owned().into(),
+                    ));
 
                     metrics.http_server_duration.record(
                         timer
@@ -194,10 +143,14 @@ where
                     Ok(success)
                 }
                 Err(err) => {
-                    attributes.push(
-                        HTTP_RESPONSE_STATUS_CODE
-                            .string(err.as_response_error().status_code().as_str().to_owned()),
-                    );
+                    attributes.push(KeyValue::new::<Key, Value>(
+                        HTTP_RESPONSE_STATUS_CODE.into(),
+                        err.as_response_error()
+                            .status_code()
+                            .as_str()
+                            .to_owned()
+                            .into(),
+                    ));
 
                     metrics.http_requests.add(1, &attributes);
 

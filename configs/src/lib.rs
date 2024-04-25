@@ -1,10 +1,10 @@
 mod app;
-mod auth0;
 mod aws;
 mod configs;
 mod dynamo;
 mod environment;
 mod health_readiness;
+mod identity_server;
 mod kafka;
 mod metrics;
 mod mqtt;
@@ -15,12 +15,12 @@ mod sqlite;
 mod traces;
 
 pub use app::AppConfigs;
-pub use auth0::Auth0Configs;
 pub use aws::AwsConfigs;
 pub use configs::{Configs, DynamicConfigs, Empty};
 pub use dynamo::DynamoConfigs;
 pub use environment::Environment;
 pub use health_readiness::HealthReadinessConfigs;
+pub use identity_server::IdentityServerConfigs;
 pub use kafka::KafkaConfigs;
 pub use metrics::{MetricConfigs, MetricExporterKind};
 pub use mqtt::{MQTTBrokerKind, MQTTConfigs, MQTTTransport};

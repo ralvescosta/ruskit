@@ -18,6 +18,6 @@ serde = { workspace = true, features = ["derive"] }
 tonic = { workspace = true, features = ["tls"] }
 tokio = { workspace = true, features = ["default"] }
 
-opentelemetry-otlp = { git = "ssh://git@github.com/open-telemetry/opentelemetry-rust.git", rev = "v0.21.2", features = ["tonic", "tls", "tls-roots"], optional = true }
+opentelemetry-otlp = { version = "0.15", features = ["tonic", "tls", "tls-roots"], optional = true }
 
-opentelemetry-stdout = { git = "ssh://git@github.com/open-telemetry/opentelemetry-rust.git", rev = "v0.21.2", features = ["trace"], optional = true }
+opentelemetry-stdout = { version = "0.3", features = ["trace"], optional = true }

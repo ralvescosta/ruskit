@@ -1,7 +1,7 @@
 use crate::errors::TracesError;
-use opentelemetry::global;
+use opentelemetry::{global, propagation::TextMapCompositePropagator};
 use opentelemetry_sdk::{
-    propagation::{BaggagePropagator, TextMapCompositePropagator, TraceContextPropagator},
+    propagation::{BaggagePropagator, TraceContextPropagator},
     trace::{Config, TracerProvider},
 };
 use tracing::debug;

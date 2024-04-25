@@ -1,15 +1,17 @@
 use crate::{
     env_keys::{
-        APP_NAME_ENV_KEY, APP_PORT_ENV_KEY, AUTH0_AUDIENCE_ENV_KEY, AUTH0_CLIENT_ID_ENV_KEY,
-        AUTH0_CLIENT_SECRET_ENV_KEY, AUTH0_DOMAIN_ENV_KEY, AUTH0_GRANT_TYPE_ENV_KEY,
-        AUTH0_ISSUER_ENV_KEY, AWS_DEFAULT_REGION, AWS_IAM_ACCESS_KEY_ID, AWS_IAM_SECRET_ACCESS_KEY,
-        DEV_ENV_FILE_NAME, DYNAMO_ENDPOINT_ENV_KEY, DYNAMO_EXPIRE_ENV_KEY, DYNAMO_REGION_ENV_KEY,
-        DYNAMO_TABLE_ENV_KEY, ENABLE_HEALTH_READINESS_ENV_KEY, ENABLE_METRICS_ENV_KEY,
-        ENABLE_TRACES_ENV_KEY, HEALTH_READINESS_PORT_ENV_KEY, HOST_NAME_ENV_KEY,
-        KAFKA_HOST_ENV_KEY, KAFKA_PASSWORD_ENV_KEY, KAFKA_PORT_ENV_KEY,
-        KAFKA_SASL_MECHANISMS_ENV_KEY, KAFKA_SECURITY_PROTOCOL_ENV_KEY, KAFKA_TIMEOUT_ENV_KEY,
-        KAFKA_USER_ENV_KEY, LOCAL_ENV_FILE_NAME, LOG_LEVEL_ENV_KEY, METRIC_ACCESS_KEY_ENV_KEY,
-        METRIC_EXPORTER_ENV_KEY, METRIC_EXPORT_RATE_BASE_ENV_KEY, METRIC_EXPORT_TIMEOUT_ENV_KEY,
+        APP_NAME_ENV_KEY, APP_PORT_ENV_KEY, AWS_DEFAULT_REGION, AWS_IAM_ACCESS_KEY_ID,
+        AWS_IAM_SECRET_ACCESS_KEY, DEV_ENV_FILE_NAME, DYNAMO_ENDPOINT_ENV_KEY,
+        DYNAMO_EXPIRE_ENV_KEY, DYNAMO_REGION_ENV_KEY, DYNAMO_TABLE_ENV_KEY,
+        ENABLE_HEALTH_READINESS_ENV_KEY, ENABLE_METRICS_ENV_KEY, ENABLE_TRACES_ENV_KEY,
+        HEALTH_READINESS_PORT_ENV_KEY, HOST_NAME_ENV_KEY, IDENTITY_SERVER_AUDIENCE_ENV_KEY,
+        IDENTITY_SERVER_CLIENT_ID_ENV_KEY, IDENTITY_SERVER_CLIENT_SECRET_ENV_KEY,
+        IDENTITY_SERVER_GRANT_TYPE_ENV_KEY, IDENTITY_SERVER_ISSUER_ENV_KEY,
+        IDENTITY_SERVER_REALM_ENV_KEY, IDENTITY_SERVER_URL_ENV_KEY, KAFKA_HOST_ENV_KEY,
+        KAFKA_PASSWORD_ENV_KEY, KAFKA_PORT_ENV_KEY, KAFKA_SASL_MECHANISMS_ENV_KEY,
+        KAFKA_SECURITY_PROTOCOL_ENV_KEY, KAFKA_TIMEOUT_ENV_KEY, KAFKA_USER_ENV_KEY,
+        LOCAL_ENV_FILE_NAME, LOG_LEVEL_ENV_KEY, METRIC_ACCESS_KEY_ENV_KEY, METRIC_EXPORTER_ENV_KEY,
+        METRIC_EXPORT_RATE_BASE_ENV_KEY, METRIC_EXPORT_TIMEOUT_ENV_KEY,
         METRIC_HEADER_ACCESS_KEY_ENV_KEY, METRIC_HOST_ENV_KEY, METRIC_SERVICE_TYPE_ENV_KEY,
         MQTT_BROKER_KIND_ENV_KEY, MQTT_CA_CERT_PATH_ENV_KEY, MQTT_HOST_ENV_KEY,
         MQTT_PASSWORD_ENV_KEY, MQTT_PORT_ENV_KEY, MQTT_TRANSPORT_ENV_KEY, MQTT_USER_ENV_KEY,
@@ -46,7 +48,7 @@ pub struct ConfigBuilder {
     metric: bool,
     trace: bool,
     health: bool,
-    auth0: bool,
+    identity: bool,
 }
 
 impl ConfigBuilder {
@@ -104,8 +106,8 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn auth0(mut self) -> Self {
-        self.auth0 = true;
+    pub fn identity_server(mut self) -> Self {
+        self.identity = true;
         self
     }
 
@@ -142,7 +144,7 @@ impl ConfigBuilder {
         self.client = self.get_secret_client(&cfg.app).await?;
 
         for (key, value) in env::vars() {
-            if self.fill_auth0(&mut cfg, &key, &value) {
+            if self.fill_identity_server(&mut cfg, &key, &value) {
                 continue;
             };
             if self.fill_mqtt(&mut cfg, &key, &value) {
@@ -332,7 +334,7 @@ impl ConfigBuilder {
         }
     }
 
-    fn fill_auth0<T>(
+    fn fill_identity_server<T>(
         &self,
         cfg: &mut Configs<T>,
         key: impl Into<std::string::String>,
@@ -342,29 +344,33 @@ impl ConfigBuilder {
         T: DynamicConfigs,
     {
         match key.into().as_str() {
-            AUTH0_DOMAIN_ENV_KEY if self.auth0 => {
-                cfg.auth0.domain = self.get_from_secret(value.into(), "localhost".into());
+            IDENTITY_SERVER_URL_ENV_KEY if self.identity => {
+                cfg.identity.url = self.get_from_secret(value.into(), "http://localhost".into());
                 true
             }
-            AUTH0_AUDIENCE_ENV_KEY if self.auth0 => {
-                cfg.auth0.audience = self.get_from_secret(value.into(), "localhost".into());
+            IDENTITY_SERVER_REALM_ENV_KEY if self.identity => {
+                cfg.identity.realm = self.get_from_secret(value.into(), "localhost".into());
                 true
             }
-            AUTH0_ISSUER_ENV_KEY if self.auth0 => {
-                cfg.auth0.issuer = self.get_from_secret(value.into(), "localhost".into());
+            IDENTITY_SERVER_AUDIENCE_ENV_KEY if self.identity => {
+                cfg.identity.audience = self.get_from_secret(value.into(), "audience".into());
                 true
             }
-            AUTH0_GRANT_TYPE_ENV_KEY if self.auth0 => {
-                cfg.auth0.grant_type =
+            IDENTITY_SERVER_ISSUER_ENV_KEY if self.identity => {
+                cfg.identity.issuer = self.get_from_secret(value.into(), "issuer".into());
+                true
+            }
+            IDENTITY_SERVER_GRANT_TYPE_ENV_KEY if self.identity => {
+                cfg.identity.grant_type =
                     self.get_from_secret(value.into(), "client_credentials".into());
                 true
             }
-            AUTH0_CLIENT_ID_ENV_KEY if self.auth0 => {
-                cfg.auth0.client_id = self.get_from_secret(value.into(), "".into());
+            IDENTITY_SERVER_CLIENT_ID_ENV_KEY if self.identity => {
+                cfg.identity.client_id = self.get_from_secret(value.into(), "".into());
                 true
             }
-            AUTH0_CLIENT_SECRET_ENV_KEY if self.auth0 => {
-                cfg.auth0.client_secret = self.get_from_secret(value.into(), "".into());
+            IDENTITY_SERVER_CLIENT_SECRET_ENV_KEY if self.identity => {
+                cfg.identity.client_secret = self.get_from_secret(value.into(), "".into());
                 true
             }
             _ => false,

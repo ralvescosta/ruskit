@@ -11,4 +11,4 @@ logging = { path = "../logging" }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 dotenvy = { version = "0.15.7" }
-base64 = { version = "0.21.7" }
+base64 = { version = "0.22" }

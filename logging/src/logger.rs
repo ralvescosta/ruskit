@@ -30,19 +30,17 @@ pub fn setup(cfg: &AppConfigs) -> Result<(), LoggingError> {
     if !cfg.enable_external_creates_logging {
         target_filters = Targets::new()
             .with_default(level_filter)
-            .with_target("lapin::channels", LevelFilter::WARN)
-            .with_target("tower::buffer::worker", LevelFilter::WARN)
-            .with_target("h2::client", LevelFilter::WARN)
-            .with_target("h2::codec::framed_read", LevelFilter::WARN)
-            .with_target("h2::codec::framed_write", LevelFilter::WARN)
-            .with_target("h2::proto::settings", LevelFilter::WARN)
-            .with_target("hyper::client::connect::dns", LevelFilter::WARN)
-            .with_target("hyper::client::connect::http", LevelFilter::WARN)
-            .with_target("rustls::client::hs", LevelFilter::WARN)
-            .with_target("rustls::anchors", LevelFilter::WARN)
-            .with_target("rustls::client::tls13", LevelFilter::WARN)
-            .with_target("paho_mqtt::async_client", LevelFilter::WARN)
-            .with_target("c_trace", LevelFilter::WARN);
+            .with_target("lapin", LevelFilter::WARN)
+            .with_target("tower", LevelFilter::WARN)
+            .with_target("h2", LevelFilter::WARN)
+            .with_target("hyper", LevelFilter::WARN)
+            .with_target("rustls", LevelFilter::WARN)
+            .with_target("paho_mqtt", LevelFilter::WARN)
+            .with_target("c_trace", LevelFilter::WARN)
+            .with_target("aws_smithy_runtime", LevelFilter::WARN)
+            .with_target("aws_config", LevelFilter::WARN)
+            .with_target("aws_sdk_secretsmanager", LevelFilter::WARN)
+            .with_target("log", LevelFilter::WARN);
     }
 
     let mut fmt_pretty: Option<Layer<_, Pretty, Format<Pretty>>> = None;

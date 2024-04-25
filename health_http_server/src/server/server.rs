@@ -14,10 +14,11 @@ use opentelemetry::global;
 #[cfg(feature = "prometheus")]
 use prometheus::Registry;
 use std::{sync::Arc, time::Duration};
-use tracing::error;
+use tracing::{error, info};
 
 pub struct TinyHTTPServer {
     addr: String,
+    enabled: bool,
     services: Vec<Arc<CustomServiceConfigure>>,
     health_check: Option<Arc<dyn HealthReadinessService>>,
     #[cfg(feature = "prometheus")]
@@ -31,6 +32,7 @@ impl TinyHTTPServer {
     {
         TinyHTTPServer {
             addr: cfg.health_readiness.health_readiness_addr(),
+            enabled: cfg.health_readiness.enable,
             services: vec![],
             health_check: None,
             #[cfg(feature = "prometheus")]
@@ -57,6 +59,11 @@ impl TinyHTTPServer {
     }
 
     pub async fn start(&self) -> Result<(), HTTPServerError> {
+        if !self.enabled {
+            info!("skipping health http server!");
+            return Ok(());
+        }
+
         match ActixHttpServer::new({
             let health_check_service = match self.health_check.clone() {
                 Some(check) => check,

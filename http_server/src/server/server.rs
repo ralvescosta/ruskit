@@ -1,33 +1,33 @@
 use crate::errors::HTTPServerError;
 use actix_web::{
     http::KeepAlive,
-    middleware as actix_middleware,
+    middleware::{self as actix_middleware, Logger},
     web::{self, Data},
     App, HttpServer as ActixHttpServer,
 };
-use auth::jwt_manager::JwtManager;
 use configs::AppConfigs;
 use health_readiness::{HealthReadinessService, HealthReadinessServiceImpl};
 use http_components::{
     handlers::health_handler,
-    middlewares,
-    middlewares::otel::{HTTPOtelMetrics, HTTPOtelTracing},
+    middlewares::{
+        self,
+        otel::{HTTPOtelMetrics, HTTPOtelTracing},
+    },
     CustomServiceConfigure,
 };
 use opentelemetry::global;
 use std::{sync::Arc, time::Duration};
 use tracing::error;
-#[cfg(openapi)]
+#[cfg(feature = "openapi")]
 use utoipa::openapi::OpenApi;
-#[cfg(openapi)]
+#[cfg(feature = "openapi")]
 use utoipa_swagger_ui::SwaggerUi;
 
 pub struct HTTPServer {
     addr: String,
     services: Vec<Arc<CustomServiceConfigure>>,
-    #[cfg(openapi)]
+    #[cfg(feature = "openapi")]
     openapi: Option<OpenApi>,
-    jwt_manager: Option<Arc<dyn JwtManager>>,
     health_check: Option<Arc<dyn HealthReadinessService>>,
 }
 
@@ -36,9 +36,8 @@ impl HTTPServer {
         HTTPServer {
             addr: cfg.app_addr(),
             services: vec![],
-            #[cfg(openapi)]
+            #[cfg(feature = "openapi")]
             openapi: None,
-            jwt_manager: None,
             health_check: None,
         }
     }
@@ -50,12 +49,7 @@ impl HTTPServer {
         self
     }
 
-    pub fn jwt_manager(mut self, manager: Arc<dyn JwtManager>) -> Self {
-        self.jwt_manager = Some(manager);
-        self
-    }
-
-    #[cfg(openapi)]
+    #[cfg(feature = "openapi")]
     pub fn openapi(mut self, openapi: &OpenApi) -> Self {
         self.openapi = Some(openapi.to_owned());
         self
@@ -68,10 +62,9 @@ impl HTTPServer {
 
     pub async fn start(&self) -> Result<(), HTTPServerError> {
         ActixHttpServer::new({
-            #[cfg(openapi)]
+            #[cfg(feature = "openapi")]
             let openapi = self.openapi.clone();
 
-            let jwt_manager = self.jwt_manager.clone();
             let health_check_service = match self.health_check.clone() {
                 Some(check) => check,
                 _ => Arc::new(HealthReadinessServiceImpl::default()),
@@ -87,15 +80,10 @@ impl HTTPServer {
                     .wrap(HTTPOtelTracing::new())
                     .wrap(HTTPOtelMetrics::new())
                     .app_data(middlewares::deserializer::handler())
-                    .app_data(Data::<Arc<dyn HealthReadinessService>>::new(
+                    .app_data(Data::<dyn HealthReadinessService>::from(
                         health_check_service.clone(),
-                    ));
-
-                if let Some(jwt_manager) = jwt_manager.clone() {
-                    app = app.app_data::<Data<Arc<dyn JwtManager>>>(
-                        Data::<Arc<dyn JwtManager>>::new(jwt_manager.clone()),
-                    );
-                }
+                    ))
+                    .service(health_handler);
 
                 let services = services.clone();
                 app = app.configure(move |config| {
@@ -106,7 +94,7 @@ impl HTTPServer {
                     }
                 });
 
-                #[cfg(openapi)]
+                #[cfg(feature = "openapi")]
                 if openapi.is_some() {
                     app = app.service(
                         SwaggerUi::new("/docs/{_:.*}")
@@ -114,9 +102,8 @@ impl HTTPServer {
                     );
                 }
 
-                app.service(health_handler)
-                    .default_service(web::to(middlewares::not_found::not_found))
-                    .wrap(actix_middleware::Logger::default())
+                app.default_service(web::to(middlewares::not_found::not_found))
+                    .wrap(Logger::default())
             }
         })
         .shutdown_timeout(60)

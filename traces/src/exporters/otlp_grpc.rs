@@ -1,9 +1,9 @@
 use crate::errors::TracesError;
 use configs::{Configs, DynamicConfigs};
-use opentelemetry::global;
+use opentelemetry::{global, propagation::TextMapCompositePropagator};
 use opentelemetry_otlp::{Protocol, WithExportConfig};
 use opentelemetry_sdk::{
-    propagation::{BaggagePropagator, TextMapCompositePropagator, TraceContextPropagator},
+    propagation::{BaggagePropagator, TraceContextPropagator},
     runtime,
     trace::Config,
 };

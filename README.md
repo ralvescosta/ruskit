@@ -1,6 +1,10 @@
 # Ruskit
 
-:warning::construction: **Work In Progress** :construction::warning:
+---
+
+This repository was moved to the new one, check out the [New Repository](https://github.com/tointernet/ruskit)
+
+---
 
 [![ci](https://github.com/ralvescosta/ruskit/actions/workflows/ci.yml/badge.svg)](https://github.com/ralvescosta/ruskit/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/ralvescosta/ruskit/branch/main/graph/badge.svg?token=6EAILKZFDO)](https://codecov.io/gh/ralvescosta/ruskit)
 
